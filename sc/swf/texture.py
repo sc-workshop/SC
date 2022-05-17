@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+from sc.utils import BinaryWriter
+
 
 PIXEL_FORMATS = [
     "GL_RGBA",
@@ -108,6 +110,40 @@ PIXEL_READ_FUNCTIONS = {
 }
 
 
+def write_rgba8888(stream, pixel):
+    b, g, r, a = pixel
+    stream.write_int(r << 24 | g << 16 | b << 8 | a)
+
+def write_rgba4444(stream, pixel):
+    b, g, r, a = pixel
+    stream.write_ushort(a >> 4 | b >> 4 << 4 | g >> 4 << 8 | r >> 4 << 12)
+
+def write_rgba5551(stream, pixel):
+    b, g, r, a = pixel
+    stream.write_ushort(a >> 7 | b >> 3 << 1 | g >> 3 << 6 | r >> 3 << 11)
+
+def write_rgb565(stream, pixel):
+    b, g, r = pixel
+    #print(b, g, r)
+    stream.write_ushort(int(b >> 3 | g >> 2 << 5 | r >> 3 << 11))
+
+def write_la8(stream, pixel):
+    l, a = pixel
+    stream.write_ushort(a << 8 | l)
+
+def write_l8(stream, pixel):
+    stream.write_uchar(pixel)
+
+PIXEL_WRITE_FUNCTIONS = {
+    "GL_RGBA8": write_rgba8888,
+    "GL_RGBA4": write_rgba4444,
+    "GL_RGB5_A1": write_rgba5551,
+    "GL_RGB565": write_rgb565,
+    "GL_LUMINANCE8_ALPHA8": write_la8,
+    "GL_LUMINANCE8": write_l8
+}
+
+
 def make_linear(texture, pixels):
     block_size = 32
 
@@ -122,12 +158,12 @@ def make_linear(texture, pixels):
         for x_block in range(x_blocks):
             for y in range(block_size):
                 for x in range(block_size):
-                    texture.image[ y_block * block_size + y, x_block * block_size + x] = pixels[i]
+                    texture.image[y_block * block_size + y, x_block * block_size + x] = pixels[i]
                     i += 1
         
         for y in range(block_size):
             for x in range(x_rest):
-                texture.image[ y_block * block_size + y, (texture.width - x_rest) + x] = pixels[i]
+                texture.image[y_block * block_size + y, (texture.width - x_rest) + x] = pixels[i]
                 i += 1
     
     for x_block in range(x_blocks):
@@ -140,6 +176,46 @@ def make_linear(texture, pixels):
         for x in range(x_rest):
             texture.image[y + (texture.height - y_rest), x + (texture.width - x_rest)] = pixels[i]
             i += 1
+
+
+def make_blocks(texture):
+    def add_pixel(pixel):
+        texture.image[int(pixel_index / width), pixel_index % width] = pixel
+    
+    clone = texture.image
+
+    height, width, channels = texture.image.shape
+    block_size = 32
+
+    x_blocks_count = width // block_size
+    y_blocks_count = height // block_size
+    x_rest = width % block_size
+    y_rest = height % block_size
+    
+    pixel_index = 0
+
+    for y_chunk in range(y_blocks_count):
+        for x_chunk in range(x_blocks_count):
+            for y in range(block_size):
+                for x in range(block_size):
+                    add_pixel(clone[x + (x_chunk * block_size), y + (y_chunk * block_size)])
+                    pixel_index += 1
+
+        for y in range(block_size):
+            for x in range(x_rest):
+                add_pixel(clone[x + (width - x_rest), y + (y_chunk * block_size)])
+                pixel_index += 1
+
+    for x_chunk in range(width // block_size):
+        for y in range(y_rest):
+            for x in range(block_size):
+                add_pixel(clone[x + (x_chunk * block_size), y + (height - y_rest)])
+                pixel_index += 1
+
+    for y in range(y_rest):
+        for x in range(x_rest):
+            add_pixel(clone[x + (width - x_rest), y + (height - y_rest)])
+            pixel_index += 1
 
 
 class SWFTexture:
@@ -190,3 +266,40 @@ class SWFTexture:
 
             if not self.linear:
                 make_linear(self, pixels)
+    
+    def save(self, swf, has_external_texture: bool):
+        stream = BinaryWriter()
+
+        height, width, channels = self.image.shape
+
+        self.width = width
+        self.height = height
+
+        if channels == 4:
+            self.pixel_format = "GL_RGBA"
+        elif channels == 3:
+            self.pixel_format = "GL_RGB"
+        elif channels == 2:
+            self.pixel_format = "GL_LUMINANCE_ALPHA"
+        else:
+            self.pixel_format = "GL_LUMINANCE"
+
+        pixel_type_index = PIXEL_FORMATS.index(self.pixel_format)
+
+        self.pixel_type = PIXEL_TYPES[pixel_type_index]
+        self.pixel_internal_format = PIXEL_INTERNAL_FORMATS[pixel_type_index]
+
+        stream.write_uchar(pixel_type_index)
+
+        stream.write_ushort(self.width)
+        stream.write_ushort(self.height)
+
+        if not has_external_texture:
+            if not self.linear:
+                make_blocks(self)
+            
+            for y in range(self.height):
+                for x in range(self.width):
+                    PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format](stream, self.image[y, x])
+
+        return 1, stream.buffer

@@ -203,7 +203,17 @@ class SupercellSWF:
         
         return has_external_texture, has_highres_texture, has_lowres_texture
     
-    def save_tags(self, is_texture: bool, has_external_texture: bool, has_highres_texture: bool, has_lowres_texture: bool):
+    def save_texture(self):
+        for texture in self.textures:
+            tag, buffer = texture.save(self, False)
+
+            self.writer.write_uchar(tag)
+            self.writer.write_int(len(buffer))
+            self.writer.write(buffer)
+        
+        self.writer.write(bytes(5))
+    
+    def save_tags(self, has_external_texture: bool, has_highres_texture: bool, has_lowres_texture: bool):
         if self.highres_asset_postfix != "_tex.sc" or self.lowres_asset_postfix != "_lowres_tex.sc":
             postfix_tag = BinaryWriter()
 
@@ -233,9 +243,6 @@ class SupercellSWF:
             self.writer.write_int(len(buffer))
             self.writer.write(buffer)
         
-        if is_texture:
-            return
-
         for movieclip_modifier in self.movieclip_modifiers:
             tag, buffer = movieclip_modifier.save()
 
@@ -299,6 +306,8 @@ class SupercellSWF:
         self.writer.write(bytes(5))
 
     def save_internal(self, filepath: str, is_texture: bool, has_external_texture: bool, has_highres_texture: bool, has_lowres_texture: bool):
+        self.writer = BinaryWriter()
+        
         if not is_texture:
             self.writer.write_ushort(len(self.shapes))
             self.writer.write_ushort(len(self.movieclips))
@@ -314,17 +323,23 @@ class SupercellSWF:
 
             self.writer.write(bytes(5))
 
+            self.writer.write_ushort(len(self.exports))
+
             for export_id in self.exports:
                 self.writer.write_ushort(export_id)
             
             for export_id in self.exports:
                 self.writer.write_ascii(self.exports[export_id])
 
-        self.save_tags(is_texture, has_external_texture, has_highres_texture, has_lowres_texture)
+            self.save_tags(has_external_texture, has_highres_texture, has_lowres_texture)
+        
+        else:
+            self.save_texture()
 
         with open(filepath, 'wb') as file:
             compressor = Compressor()
             file.write(compressor.compress(self.writer.buffer, Signatures.SC, 1))
+            #file.write(self.writer.buffer)
 
     def save(self, filepath: str, has_external_texture: bool = True, has_highres_texture: bool = True, has_lowres_texture: bool = False):
         self.filename = filepath

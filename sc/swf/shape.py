@@ -100,9 +100,9 @@ class ShapeDrawBitmapCommand:
         
         for coord in self.uv_coords:
             u, v = coord
-            
-            stream.write_ushort(int(round(u * 0xFFFF / swf.textures[self.texture_index].width)))
-            stream.write_ushort(int(round(v * 0xFFFF / swf.textures[self.texture_index].height)))
+
+            stream.write_ushort(int(round((u * 0xFFFF) / swf.textures[self.texture_index].width)))
+            stream.write_ushort(int(round((v * 0xFFFF) / swf.textures[self.texture_index].height)))
         
         return 22, stream.buffer
 

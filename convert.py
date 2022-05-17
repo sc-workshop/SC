@@ -1,4 +1,4 @@
-#import cv2
+import cv2
 #import numpy as np
 
 from sc.swf import SupercellSWF
@@ -10,7 +10,10 @@ from sc.xfl import convert_sc_to_xfl
 
 if __name__ == "__main__":
     sc = SupercellSWF()
-    sc.load("assets/loading.sc")
+    sc.load("assets/fish.sc")
+
+    for texture in sc.textures:
+        cv2.imwrite("assets/fish_0.png", texture.image)
 
     #xfl = XFlash()
     #xfl.load_from_sc(sc)
