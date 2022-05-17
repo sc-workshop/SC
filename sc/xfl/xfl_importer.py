@@ -185,22 +185,28 @@ def convert_shapes(swf, xfl):
             rotation, mirroring = calculate_rotation2(bitmap)
 
             rotation_matrix = AffineTransform()
-            rotation_matrix.rotate(rotation)
+            rotation_matrix.rotate(radians(-rotation))
             rotation_matrix = rotation_matrix.get_matrix()
 
             sx, sy, w, h = calculate_scale([[rotation_matrix[0] * point[0] + -(rotation_matrix[1]) * point[1], -(rotation_matrix[2]) * point[0] + rotation_matrix[3] * point[1]] for point in bitmap.uv_coords], bitmap.xy_coords)
 
+            #print(x, y)
+            #print(sx, sy, w, h)
+            #print(rotation, mirroring)
+
             at = AffineTransform()
 
-            # sx *= -1 if mirroring else 1
+            sx *= -1 if mirroring else 1
 
             at.scale(sx, sy)
-            at.translate(x - (w / 2), y - (h / 2))
+            at.translate(-w / 2, -h / 2)
             at.rotate(radians(-rotation))
 
             if mirroring:
-                at.scale(-1, 1)
                 at.tx *= -1
+            
+            at.tx += x
+            at.ty += y
 
             prepared_shape["matrices"].append(at.get_matrix())
 
@@ -265,10 +271,10 @@ def convert_shapes(swf, xfl):
                 matrix = shape["matrices"][shape["bitmaps"].index(bitmap)]
 
                 matrix_holder.attrib = {
-                    "a": str(matrix[0]),
-                    "b": str(matrix[1]),
-                    "c": str(matrix[2]),
-                    "d": str(matrix[3]),
+                    "a": str(matrix[1]),
+                    "b": str(matrix[0]),
+                    "c": str(matrix[3]),
+                    "d": str(matrix[2]),
                     "tx": str(matrix[4]),
                     "ty": str(matrix[5])
                 }
