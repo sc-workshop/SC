@@ -1,0 +1,3 @@
+sc-compression
+numpy
+opencv-python
