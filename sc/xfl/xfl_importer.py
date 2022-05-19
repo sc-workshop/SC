@@ -149,8 +149,8 @@ def convert_movieclips(swf, xfl):
 
             symbol.attrib["scaleGridLeft"] = str(x)
             symbol.attrib["scaleGridTop"] = str(y)
-            symbol.attrib["scaleGridRight"] = str(width)
-            symbol.attrib["scaleGridBottom"] = str(height)
+            symbol.attrib["scaleGridRight"] = str(width + x)
+            symbol.attrib["scaleGridBottom"] = str(height + y)
 
         with open(f"{xfl.library_dir}{movieclip.id}.xml", 'wb') as file:
             file.write(tostring(symbol))
