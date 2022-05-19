@@ -8,7 +8,7 @@ from math import radians, degrees
 from xml.etree.ElementTree import *
 
 from sc.utils import AffineTransform
-from sc.swf.shape import  calculate_translation, calculate_rotation, calculate_rotation2, calculate_scale
+from sc.swf.shape import  get_center, calculate_rotation, calculate_rotation2, calculate_scale
 
 from sc.xfl.xfl import XFL
 from sc.xfl.bitmap import Bitmap
@@ -181,32 +181,58 @@ def convert_shapes(swf, xfl):
                 "simY": uv_y.count(uv_y[0]) == len(uv_y)
             }
 
-            x, y = calculate_translation(bitmap)
+            a, b, c, d = cv2.boundingRect(np.array(bitmap.uv_coords, dtype=np.int32))
+            if c - a - 1 and not prepared_bitmap['simX']:
+                c -= 1
+            if d - b - 1 and not prepared_bitmap['simY']:
+                d -= 1
+            prepared_bitmap['rect'] = a, b, c, d
+
             rotation, mirroring = calculate_rotation2(bitmap)
+            if shape.id == 5:
+                print(rotation)
+                #rotation = 180
 
             rotation_matrix = AffineTransform()
             rotation_matrix.rotate(radians(-rotation))
             rotation_matrix = rotation_matrix.get_matrix()
 
-            sx, sy, w, h = calculate_scale([[rotation_matrix[0] * point[0] + -(rotation_matrix[1]) * point[1], -(rotation_matrix[2]) * point[0] + rotation_matrix[3] * point[1]] for point in bitmap.uv_coords], bitmap.xy_coords)
-
-            #print(x, y)
-            #print(sx, sy, w, h)
-            #print(rotation, mirroring)
+            sx, sy, w, h = calculate_scale([[ -rotation_matrix[2] * point[0] + rotation_matrix[3] * point[1], rotation_matrix[0] * point[0] + -rotation_matrix[1] * point[1]] for point in bitmap.uv_coords], bitmap.xy_coords)
 
             at = AffineTransform()
-
-            sx *= -1 if mirroring else 1
-
+            # Scale image point
             at.scale(sx, sy)
-            at.translate(-w / 2, -h / 2)
+            #Rotate image point
             at.rotate(radians(-rotation))
 
-            if mirroring:
+            #rotate image box
+            image_box = [[0,0], [0, h], [w, h], [w, 0]]
+            for point in image_box:
+                point[0] = rotation_matrix[0] * point[0] + -rotation_matrix[1] * point[1]
+                point[1] = -rotation_matrix[2] * point[0] + rotation_matrix[3] * point[1]
+
+            #back image point to center
+            for point in image_box:
+                if point[0] < 0:
+                    image_box = [[box_point[0] + -point[0], box_point[1]] for box_point in image_box]
+                    if at.tx > point[0]:
+                        at.tx = -point[0]
+                if point[1] < 0:
+                    image_box = [[box_point[0], box_point[1] + -point[1]] for box_point in image_box]
+                    if at.ty > point[1]:
+                        at.ty = -point[1]
+
+
+            #u_center, v_center = get_center(image_box)
+            x_center, y_center = get_center(bitmap.xy_coords)
+            #at.translate(y_center - v_center,x_center - u_center)#shit
+
+            at.tx -= x_center + (w/2)
+            at.ty -= y_center + (h/2)
+
+            if not mirroring:
+                at.scale(-1, 1)
                 at.tx *= -1
-            
-            at.tx += x
-            at.ty += y
 
             prepared_shape["matrices"].append(at.get_matrix())
 
@@ -232,9 +258,8 @@ def convert_shapes(swf, xfl):
 
                 cv2.drawContours(mask, [points], -1, (255, 255, 255), -1)
                 res = cv2.bitwise_and(texture.image, texture.image, mask=mask)
-                rect = cv2.boundingRect(points)
-
-                cropped = res[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
+                a, b, c, d = bitmap['rect']
+                cropped = res[b: b + d, a: a + c]
 
                 binary = Bitmap()
                 binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
@@ -271,10 +296,10 @@ def convert_shapes(swf, xfl):
                 matrix = shape["matrices"][shape["bitmaps"].index(bitmap)]
 
                 matrix_holder.attrib = {
-                    "a": str(matrix[1]),
-                    "b": str(matrix[0]),
-                    "c": str(matrix[3]),
-                    "d": str(matrix[2]),
+                    "a": str(matrix[0]),
+                    "b": str(matrix[1]),
+                    "c": str(matrix[2]),
+                    "d": str(matrix[3]),
                     "tx": str(matrix[4]),
                     "ty": str(matrix[5])
                 }
@@ -284,7 +309,7 @@ def convert_shapes(swf, xfl):
                 fill_item = SubElement(frame_elements, "DOMShape")
 
                 fill = SubElement(SubElement(fill_item, "fills"), "FillStyle", index="1")
-                
+
                 color = texture.image[round(bitmap["simX"]), round(bitmap["simY"])]
                 final_color = hex(color[0])[2:] + hex(color[1])[2:] + hex(color[2])[2:]
                 SubElement(fill, "SolidColor", color="#" + final_color, alpha=str(color[3] / 255))

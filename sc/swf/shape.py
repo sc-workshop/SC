@@ -106,20 +106,13 @@ class ShapeDrawBitmapCommand:
         
         return 22, stream.buffer
 
+def get_center(coords):
+    x_coords = [coord[0] for coord in coords]
+    y_coords = [coord[1] for coord in coords]
 
-def calculate_translation(bitmap):
-    def get_center(coords):
-        x_coords = [coord[0] for coord in coords]
-        y_coords = [coord[1] for coord in coords]
+    size = len(coords)
 
-        size = len(coords)
-
-        return sum(x_coords) / size, sum(y_coords) / size
-    
-    x, y = get_center(bitmap.xy_coords)
-
-    return x, y
-
+    return sum(x_coords) / size, sum(y_coords) / size
 
 def calculate_scale(uv_coords, xy_coords):
     uv_left = min(coord[0] for coord in uv_coords)
@@ -138,7 +131,7 @@ def calculate_scale(uv_coords, xy_coords):
     if uv_width == 0 or uv_height == 0:
         return 1, 1, xy_width, xy_height
 
-    return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height
+    return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height,
 
 
 def calculate_rotation2(bitmap):
@@ -158,8 +151,8 @@ def calculate_rotation2(bitmap):
     mirrored_uv = bitmap.uv_coords if not mirroring else [[-coord[0], coord[1]] for coord in bitmap.uv_coords]
     mirrored_xy = bitmap.xy_coords if not mirroring else [[-coord[0], coord[1]] for coord in bitmap.xy_coords]
 
-    dx = mirrored_xy[1][0] - mirrored_xy[0][0]
-    dy = mirrored_xy[1][1] - mirrored_xy[0][1]
+    dx = mirrored_xy[0][1] - mirrored_xy[0][0]
+    dy = mirrored_xy[1][1] - mirrored_xy[1][0]
     du = mirrored_uv[1][0] - mirrored_uv[0][0]
     dv = mirrored_uv[1][1] - mirrored_uv[0][1]
 
