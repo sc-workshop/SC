@@ -66,7 +66,7 @@ class SupercellSWF:
             
             matrix_bank = MatrixBank()
             matrix_bank.matrices = [[1, 0, 0, 1, 0, 0]] * self.matrices_count
-            matrix_bank.color_transforms = [[0, 0, 0, 0, 255, 255, 255, 255]] * self.color_transforms_count
+            matrix_bank.color_transforms = [[0, 0, 0, 0, 1, 1, 1, 1]] * self.color_transforms_count
             self.matrix_banks.append(matrix_bank)
         
         return self.load_tags()
