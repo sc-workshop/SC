@@ -1,4 +1,4 @@
-from sc.utils import BinaryWriter
+from .writable import Writable
 
 
 BLENDMODES = [
@@ -14,7 +14,7 @@ BLENDMODES = [
 ]
 
 
-class MovieClipModifier:
+class MovieClipModifier(Writable):
     def __init__(self) -> None:
         self.id: int = -1
         self.stencil: int = 2
@@ -29,9 +29,9 @@ class MovieClipModifier:
             self.stencil = 4
     
     def save(self):
-        stream = BinaryWriter()
+        super().save()
 
-        stream.write_ushort(self.id)
+        self.write_ushort(self.id)
 
         tag = 38
         if self.stencil == 3:
@@ -39,10 +39,10 @@ class MovieClipModifier:
         elif self.stencil == 4:
             tag = 40
         
-        return tag, stream.buffer
+        return tag, self.buffer
 
 
-class MovieClip:
+class MovieClip(Writable):
     def __init__(self) -> None:
         self.id: int = -1
 
@@ -127,16 +127,63 @@ class MovieClip:
             swf.reader.skip(frame_tag_length)
     
     def save(self, swf):
-        stream = BinaryWriter()
+        super().save()
 
-        stream.write_ushort(self.id)
-        stream.write_uchar(self.frame_rate)
-        stream.write_ushort(len(self.frames))
+        self.write_ushort(self.id)
+        self.write_uchar(self.frame_rate)
+        self.write_ushort(len(self.frames))
 
-        return 12, stream.buffer
+        frame_elements = []
+        for frame in self.frames:
+            for element in frame.elements:
+                frame_elements.append(element)
+        
+        self.write_int(len(frame_elements))
+        for element in frame_elements:
+            self.write_ushort(element["bind"])
+            self.write_ushort(element["matrix"])
+            self.write_ushort(element["color"])
+        
+        self.write_ushort(len(self.binds))
+
+        for bind in self.binds:
+            self.write_ushort(bind["id"])
+        
+        for bind in self.binds:
+            self.write_uchar(BLENDMODES.index(bind["blend"]) & 0x3F)
+        
+        for bind in self.binds:
+            self.write_ascii(bind["name"])
+        
+        if self.matrix_bank > 0:
+            self.write_uchar(41)
+            self.write_int(1)
+            self.write_uchar(self.matrix_bank)
+        
+        for frame in self.frames:
+            tag, buffer = frame.save()
+
+            self.write_uchar(tag)
+            self.write_int(len(buffer))
+            self.write(buffer)
+        
+        if self.nine_slice:
+            self.write_uchar(31)
+            self.write_int(16)
+
+            x, y, width, height = self.nine_slice
+            self.write_twip(x)
+            self.write_twip(y)
+            self.write_twip(width)
+            self.write_twip(height)
+        
+        self.write(bytes(5)) # end tag for frame tags array
+
+        # TODO: add support for tag 35 (idk where difference, but it's also used in games)
+        return 12, self.buffer
 
 
-class MovieClipFrame:
+class MovieClipFrame(Writable):
     def __init__(self) -> None:
         self.elements: list = []
         self.name: str = None
@@ -146,3 +193,11 @@ class MovieClipFrame:
         self.name = swf.reader.read_ascii()
 
         return elements_count
+    
+    def save(self):
+        super().save()
+
+        self.write_ushort(len(self.elements))
+        self.write_ascii(self.name)
+
+        return 11, self.buffer

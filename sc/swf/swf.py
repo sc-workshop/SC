@@ -167,14 +167,14 @@ class SupercellSWF:
             elif tag == 9:
                 color = [0, 0, 0, 0, 1, 1, 1, 1]
 
-                color[0] = self.reader.read_uchar() / 255 # red addition
-                color[1] = self.reader.read_uchar() / 255  # green addition
-                color[2] = self.reader.read_uchar() / 255  # blue addition
+                color[0] = self.reader.read_char() / 127 # red addition
+                color[1] = self.reader.read_char() / 127  # green addition
+                color[2] = self.reader.read_char() / 127  # blue addition
 
-                color[7] = self.reader.read_uchar() / 255  # alpha multiplier
-                color[4] = self.reader.read_uchar() / 255  # red multiplier
-                color[5] = self.reader.read_uchar() / 255  # green multiplier
-                color[6] = self.reader.read_uchar() / 255  # blue multiplier
+                color[7] = self.reader.read_char() / 127  # alpha multiplier
+                color[4] = self.reader.read_char() / 127  # red multiplier
+                color[5] = self.reader.read_char() / 127  # green multiplier
+                color[6] = self.reader.read_char() / 127  # blue multiplier
 
                 self.matrix_banks[matrix_bank_offset].color_transforms[color_transforms_loaded] = color
                 color_transforms_loaded += 1
@@ -258,7 +258,7 @@ class SupercellSWF:
             self.writer.write(buffer)
 
         for text_field in self.text_fields:
-            tag, buffer = text_field.save(self)
+            tag, buffer = text_field.save()
 
             self.writer.write_uchar(tag)
             self.writer.write_int(len(buffer))
@@ -287,14 +287,14 @@ class SupercellSWF:
                 self.writer.write_uchar(9)
                 self.writer.write_int(7)
 
-                self.writer.write_uchar(int(round(color_transform[0] * 255)))
-                self.writer.write_uchar(int(round(color_transform[1] * 255)))
-                self.writer.write_uchar(int(round(color_transform[2] * 255)))
+                self.writer.write_char(int(round(color_transform[1] * 127)))
+                self.writer.write_char(int(round(color_transform[0] * 127)))
+                self.writer.write_char(int(round(color_transform[2] * 127)))
 
-                self.writer.write_uchar(int(round(color_transform[7] * 255)))
-                self.writer.write_uchar(int(round(color_transform[4] * 255)))
-                self.writer.write_uchar(int(round(color_transform[5] * 255)))
-                self.writer.write_uchar(int(round(color_transform[6] * 255)))
+                self.writer.write_char(int(round(color_transform[7] * 127)))
+                self.writer.write_char(int(round(color_transform[4] * 127)))
+                self.writer.write_char(int(round(color_transform[5] * 127)))
+                self.writer.write_char(int(round(color_transform[6] * 127)))
 
         for movieclip in self.movieclips:
             tag, buffer = movieclip.save(self)

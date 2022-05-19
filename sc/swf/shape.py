@@ -1,9 +1,9 @@
 from math import atan2, ceil, degrees
 
-from sc.utils import BinaryWriter
+from .writable import Writable
 
 
-class Shape:
+class Shape(Writable):
     def __init__(self) -> None:
         self.id: int = -1
 
@@ -35,30 +35,32 @@ class Shape:
             swf.reader.skip(bitmap_tag_length)
     
     def save(self, swf):
-        stream = BinaryWriter()
+        super().save()
 
-        stream.write_ushort(self.id)
-        stream.write_ushort(len(self.bitmaps))
+        self.write_ushort(self.id)
+        self.write_ushort(len(self.bitmaps))
 
+        # allocator?
         points_count = 0
         for bitmap in self.bitmaps:
             points_count += len(bitmap.xy_coords)
         
-        stream.write_ushort(points_count)
+        self.write_ushort(points_count)
         
         for bitmap in self.bitmaps:
             tag, buffer = bitmap.save(swf)
 
-            stream.write_uchar(tag)
-            stream.write_int(len(buffer))
-            stream.write(buffer)
+            self.write_uchar(tag)
+            self.write_int(len(buffer))
+            self.write(buffer)
 
-        stream.write(bytes(5))
+        self.write(bytes(5)) # end tag for bitmap tags array
 
-        return 18, stream.buffer
+        # TODO: add support for tag 2 (maxRects in TexturePacker)
+        return 18, self.buffer
 
 
-class ShapeDrawBitmapCommand:
+class ShapeDrawBitmapCommand(Writable):
     def __init__(self) -> None:
         self.texture_index: int = -1
         self.uv_coords: list = []
@@ -87,24 +89,25 @@ class ShapeDrawBitmapCommand:
             self.uv_coords.append([u, v])
     
     def save(self, swf):
-        stream = BinaryWriter()
+        super().save()
 
-        stream.write_uchar(self.texture_index)
-        stream.write_uchar(len(self.xy_coords))
+        self.write_uchar(self.texture_index)
+        self.write_uchar(len(self.xy_coords))
 
         for coord in self.xy_coords:
             x, y = coord
 
-            stream.write_twip(x)
-            stream.write_twip(y)
+            self.write_twip(x)
+            self.write_twip(y)
         
         for coord in self.uv_coords:
             u, v = coord
 
-            stream.write_ushort(int(round((u * 0xFFFF) / swf.textures[self.texture_index].width)))
-            stream.write_ushort(int(round((v * 0xFFFF) / swf.textures[self.texture_index].height)))
+            self.write_ushort(int(round((u * 0xFFFF) / swf.textures[self.texture_index].width)))
+            self.write_ushort(int(round((v * 0xFFFF) / swf.textures[self.texture_index].height)))
         
-        return 22, stream.buffer
+        # TODO: add tag 17 & 4 support (4 - maxRects, 17 - polygon but not normalized)
+        return 22, self.buffer
 
 def get_center(coords):
     x_coords = [coord[0] for coord in coords]
@@ -167,96 +170,3 @@ def calculate_rotation2(bitmap):
         nearest += 180
     
     return nearest, mirroring
-
-
-def calculate_rotation(bitmap):
-    def is_clockwise(points):
-        sum = 0
-        for x in range(len(points)):
-            x1, y1 = points[(x + 1) % len(points)]
-            x2, y2 = points[x]
-            sum += (x1 - x2) * (y1 + y2)
-        return sum < 0
-    
-    uv_cw = is_clockwise(bitmap.uv_coords)
-    xy_cw = is_clockwise(bitmap.xy_coords)
-
-    mirroring = not (uv_cw == xy_cw)
-
-    sheet_pos_0 = bitmap.uv_coords[0]
-    sheet_pos_1 = bitmap.uv_coords[1]
-    shape_pos_0 = bitmap.xy_coords[0]
-    shape_pos_1 = bitmap.xy_coords[1]
-
-    if sheet_pos_0 == sheet_pos_1:
-        sheet_pos_0[0] += 1
-    
-    if mirroring:
-        shape_pos_0[0] *= -1
-        shape_pos_1[0] *= -1
-    
-    if sheet_pos_1[0] > sheet_pos_0[0]:
-        sheet_x = 1
-    elif sheet_pos_1[0] < sheet_pos_0[0]:
-        sheet_x = 2
-    else:
-        sheet_x = 3
-
-    if sheet_pos_1[1] < sheet_pos_0[1]:
-        sheet_y = 1
-    elif sheet_pos_1[1] > sheet_pos_0[1]:
-        sheet_y = 2
-    else:
-        sheet_y = 3
-
-    if shape_pos_1[0] > shape_pos_0[0]:
-        shape_x = 1
-    elif shape_pos_1[0] < shape_pos_0[0]:
-        shape_x = 2
-    else:
-        shape_x = 3
-
-    if shape_pos_1[1] > shape_pos_0[1]:
-        shape_y = 1
-    elif shape_pos_1[1] < shape_pos_0[1]:
-        shape_y = 2
-    else:
-        shape_y = 3
-    
-    rotation = 0
-    if sheet_x == shape_x and sheet_y == shape_y:
-        rotation = 0
-    elif sheet_x == 3:
-        if sheet_x == shape_y:
-            if sheet_y == shape_x:
-                rotation = 1
-            else:
-                rotation = 3
-        else:
-            rotation = 2
-    elif sheet_y == 3:
-        if sheet_y == shape_x:
-            if sheet_x == shape_y:
-                rotation = 3
-            else:
-                rotation = 1
-        else:
-            rotation = 2
-    elif sheet_x != shape_x and sheet_y != shape_y:
-        rotation = 2
-    elif sheet_x == sheet_y:
-        if sheet_x != shape_x:
-            rotation = 3
-        elif sheet_y != shape_y:
-            rotation = 1
-    elif sheet_x != sheet_y:
-        if sheet_x != shape_x:
-            rotation = 1
-        elif sheet_y != shape_y:
-            rotation = 3
-
-    if uv_cw == False and rotation in (1, 3):
-        rotation += 2
-        rotation %= 4
-
-    return rotation * 90, mirroring

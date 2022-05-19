@@ -1,13 +1,13 @@
-from sc.utils import BinaryWriter
+from .writable import Writable
 
 
-class TextField:
+class TextField(Writable):
     def __init__(self) -> None:
         self.id: int = -1
 
         self.font_name: str = None
         self.font_color: int = -1
-        self.outline_color: int = -1
+        self.outline_color: int = None # -1
         self.font_size: int = 0
         self.font_align: int = 0
 
@@ -23,12 +23,12 @@ class TextField:
 
         self.text: str = None
 
-        self.flag1: bool = False
-        self.flag2: bool = False
-        self.flag3: bool = False
+        self.flag1: bool = None # False
+        self.flag2: bool = None # False
+        self.flag3: bool = None # False
 
-        self.c1: int = 0
-        self.c2: int = 0
+        self.c1: int = None # 0
+        self.c2: int = None # 0
     
     def load(self, swf, tag: int):
         self.id = swf.reader.read_ushort()
@@ -72,30 +72,58 @@ class TextField:
         if tag > 43:
             self.flag3 = swf.reader.read_bool()
     
-    def save(self, swf):
-        stream = BinaryWriter()
+    def save(self):
+        super().save()
 
         tag = 7
 
-        stream.write_ushort(self.id)
+        self.write_ushort(self.id)
 
-        stream.write_ascii(self.font_name)
-        stream.write_int(self.font_color)
+        self.write_ascii(self.font_name)
+        self.write_int(self.font_color)
 
-        stream.write_bool(self.bold)
-        stream.write_bool(self.italic)
-        stream.write_bool(self.multiline)
-        stream.write_bool(False) # unused
+        self.write_bool(self.bold)
+        self.write_bool(self.italic)
+        self.write_bool(self.multiline)
+        self.write_bool(False) # unused
 
-        stream.write_uchar(self.font_align)
-        stream.write_uchar(self.font_size)
+        self.write_uchar(self.font_align)
+        self.write_uchar(self.font_size)
 
-        stream.write_short(self.left_corner)
-        stream.write_short(self.top_corner)
-        stream.write_short(self.right_corner)
-        stream.write_short(self.bottom_corner)
+        self.write_short(self.left_corner)
+        self.write_short(self.top_corner)
+        self.write_short(self.right_corner)
+        self.write_short(self.bottom_corner)
 
-        stream.write_bool(self.uppercase)
-        stream.write_ascii(self.text)
+        self.write_bool(self.uppercase)
+        self.write_ascii(self.text)
 
-        return tag, stream.buffer
+        # TODO: change this shit code
+        if self.flag1 is not None:
+            tag = 15
+            self.write_bool(self.flag1)
+
+            if self.flag2 is not None:
+                if self.flag2:
+                    tag = 20
+                else:
+                    if self.outline_color is not None:
+                        tag = 21
+                        self.write_int(self.outline_color)
+
+                        if self.c1 is not None:
+                            tag = 25
+                            self.write_short(self.c1)
+                            self.write_short(0) # unused
+
+                            if self.c2 is not None:
+                                tag = 33
+                                self.write_short(self.c2)
+
+                                if self.flag3 is not None:
+                                    tag = 43
+                                    if self.flag3:
+                                        tag = 44
+                                        self.write_bool(self.flag3)
+
+        return tag, self.buffer

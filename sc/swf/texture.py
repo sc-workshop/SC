@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from sc.utils import BinaryWriter
+from .writable import Writable
 
 
 PIXEL_FORMATS = [
@@ -179,11 +179,6 @@ def make_linear(texture, pixels):
 
 
 def make_blocks(texture):
-    def add_pixel(pixel):
-        texture.image[int(pixel_index / width), pixel_index % width] = pixel
-    
-    clone = texture.image
-
     height, width, channels = texture.image.shape
     block_size = 32
 
@@ -192,33 +187,31 @@ def make_blocks(texture):
     x_rest = width % block_size
     y_rest = height % block_size
     
-    pixel_index = 0
+    pixels = []
 
-    for y_chunk in range(y_blocks_count):
-        for x_chunk in range(x_blocks_count):
+    for y_block in range(y_blocks_count):
+        for x_block in range(x_blocks_count):
             for y in range(block_size):
                 for x in range(block_size):
-                    add_pixel(clone[x + (x_chunk * block_size), y + (y_chunk * block_size)])
-                    pixel_index += 1
+                    pixels.append(texture.image[y + (y_block * block_size), x + (x_block * block_size)])
 
         for y in range(block_size):
             for x in range(x_rest):
-                add_pixel(clone[x + (width - x_rest), y + (y_chunk * block_size)])
-                pixel_index += 1
+                    pixels.append(texture.image[y + (y_block * block_size), x + (width - x_rest)])
 
-    for x_chunk in range(width // block_size):
+    for x_block in range(width // block_size):
         for y in range(y_rest):
             for x in range(block_size):
-                add_pixel(clone[x + (x_chunk * block_size), y + (height - y_rest)])
-                pixel_index += 1
+                    pixels.append(texture.image[y + (height - y_rest), x + (x_block * block_size)])
 
     for y in range(y_rest):
         for x in range(x_rest):
-            add_pixel(clone[x + (width - x_rest), y + (height - y_rest)])
-            pixel_index += 1
+                    pixels.append(texture.image[y + (height - y_rest), x + (width - x_rest)])
+    
+    texture.image = np.array(pixels).reshape(height, width, channels)
 
 
-class SWFTexture:
+class SWFTexture(Writable):
     def __init__(self) -> None:
         self.pixel_format: str = "GL_RGBA"
         self.pixel_internal_format: str = "GL_RGBA8"
@@ -268,7 +261,7 @@ class SWFTexture:
                 make_linear(self, pixels)
     
     def save(self, swf, has_external_texture: bool):
-        stream = BinaryWriter()
+        super().save()
 
         height, width, channels = self.image.shape
 
@@ -289,10 +282,26 @@ class SWFTexture:
         self.pixel_type = PIXEL_TYPES[pixel_type_index]
         self.pixel_internal_format = PIXEL_INTERNAL_FORMATS[pixel_type_index]
 
-        stream.write_uchar(pixel_type_index)
+        tag = 1
+        if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_NEAREST"):
+            if not self.linear:
+                tag = 27 if not self.downscaling else 28
+            else:
+                tag = 24 if not self.downscaling else 1
+        
+        if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_LINEAR_MIPMAP_NEAREST"):
+            if not self.linear and not self.downscaling:
+                tag = 29
+            else:
+                tag = 19 if not self.downscaling else 16
+        
+        if (self.mag_filter, self.min_filter) == ("GL_NEAREST", "GL_NEAREST"):
+            tag = 34
 
-        stream.write_ushort(self.width)
-        stream.write_ushort(self.height)
+        self.write_uchar(pixel_type_index)
+
+        self.write_ushort(self.width)
+        self.write_ushort(self.height)
 
         if not has_external_texture:
             if not self.linear:
@@ -300,6 +309,6 @@ class SWFTexture:
             
             for y in range(self.height):
                 for x in range(self.width):
-                    PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format](stream, self.image[y, x])
+                    PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format](self, self.image[y, x])
 
-        return 1, stream.buffer
+        return tag, self.buffer
