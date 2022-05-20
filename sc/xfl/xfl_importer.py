@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 
-from math import radians
+from math import radians, cos, sin
 
 from xml.etree.ElementTree import *
 
@@ -136,10 +136,10 @@ def convert_movieclips(swf, xfl):
                         color = swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
 
                         color_holder.attrib = {
-                            "redOffset": str(int(color[0] * 255)),
-                            "greenOffset": str(int(color[1] * 255)),
-                            "blueOffset": str(int(color[2] * 255)),
-                            "alphaOffset": str(int(color[3] * 255)), # SupercellSWF doesn't use that
+                            "redOffset": str(color[0] * 255),
+                            "greenOffset": str(color[1] * 255),
+                            "blueOffset": str(color[2] * 255),
+                            "alphaOffset": str(color[3] * 255),
                             "redMultiplier": str(color[4]),
                             "greenMultiplier": str(color[5]),
                             "blueMultiplier": str(color[6]),
@@ -148,7 +148,7 @@ def convert_movieclips(swf, xfl):
         
             layer_idx += 1
             layers_list.append(layer)
-        
+
         # reversing layers (because Adobe Animate says YES.)
         for layer in layers_list[::-1]:
             layers.append(layer)
@@ -185,7 +185,7 @@ def convert_shapes(swf, xfl):
             "colorFills": [] # "color fill commands"
         }
 
-        for bitmap in shape.bitmaps:
+        for bitmap in shape.bitmaps[::-1]:
             # X and Y uv coords for calculating "color fill"
             uv_x = [coord[0] for coord in bitmap.uv_coords]
             uv_y = [coord[1] for coord in bitmap.uv_coords]
@@ -208,6 +208,7 @@ def convert_shapes(swf, xfl):
 
             # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
             rotation, mirroring = calculate_rotation2(bitmap)
+            radians_rotation = radians(rotation)
 
             # at this point little message for Adobe Animate...
             # WHY DO AFFINE TRANSFORMATION MATRICES WORK DIFFERENTLY IN BITMAP INSTANCES AND OTHER INSTANCES?
@@ -217,35 +218,51 @@ def convert_shapes(swf, xfl):
 
             # creating rotation matrix
             rotation_matrix = AffineTransform()
-            rotation_matrix.rotate(radians(-rotation)) # apply rotation
+            rotation_matrix.rotate(radians_rotation) # apply rotation
             rotation_matrix = rotation_matrix.get_matrix() # get it as list
 
             # getting scaling (X & Y) and size (Width & Height) of bitmap vertices (xy_coords)
-            sx, sy, w, h = calculate_scale([[ -rotation_matrix[2] * point[0] + rotation_matrix[3] * point[1], rotation_matrix[0] * point[0] + -rotation_matrix[1] * point[1]] for point in bitmap.uv_coords], bitmap.xy_coords)
+            sx, sy, w, h, uv_w, uv_h = calculate_scale([[ -rotation_matrix[2] * point[0] + rotation_matrix[3] * point[1], rotation_matrix[0] * point[0] + -rotation_matrix[1] * point[1]] for point in bitmap.uv_coords], bitmap.xy_coords)
 
             # creating main affine matrix
             at = AffineTransform()
             at.scale(sx, sy) # apply scale
-            at.rotate(radians(-rotation)) # apply rotation
+            at.rotate(radians_rotation) # apply rotation
 
             # apply rotation to image bounding box
             image_box = [[0, 0], [0, h], [w, h], [w, 0]]
-            for point in image_box:
-                point[0] = rotation_matrix[0] * point[0] + -rotation_matrix[1] * point[1]
-                point[1] = -rotation_matrix[2] * point[0] + rotation_matrix[3] * point[1]
+            for point_index in range(4):
+                point = image_box[point_index]
+
+                x, y = point
+                xx = round(x * cos(radians_rotation) + -y * sin(radians_rotation))
+                yy = round(x * sin(radians_rotation) + y * cos(radians_rotation))
+
+                image_box[point_index] = [xx, yy]
 
             # returning image point to center
-            for point in image_box:
+            for point_index in range(4):
+                point = image_box[point_index]
                 if point[0] < 0:
-                    image_box = [[box_point[0] + -point[0], box_point[1]] for box_point in image_box]
-                    if at.tx > point[0]:
-                        at.tx = -point[0]
+                    image_box = [[box_point[0] - point[0], box_point[1]] for box_point in image_box]
+                    at.tx += -point[0]
+
                 if point[1] < 0:
-                    image_box = [[box_point[0], box_point[1] + -point[1]] for box_point in image_box]
-                    if at.ty > point[1]:
-                        at.ty = -point[1]
+                    image_box = [[box_point[0], box_point[1] - point[1]] for box_point in image_box]
+                    at.ty += -point[1]
+
+            if rotation == 180:
+                tx = at.tx
+                ty = at.ty
+
+                at.tx = ty
+                at.ty = tx
 
             #at.translate(y_center - v_center,x_center - u_center) # shit
+
+            #if shape.id == 1: print(image_box)
+            #if shape.id == 6: print(at.get_matrix(), image_box)
+            if shape.id == 443: print(at.get_matrix(), image_box, rotation)
 
             # return it if u want it
             #at.tx -= x_center + (w/2)
@@ -255,16 +272,16 @@ def convert_shapes(swf, xfl):
             #u_center, v_center = get_center(image_box) # reserve
             x_center, y_center = get_center(bitmap.xy_coords)
 
-            at.tx -= w / 2
-            at.ty -= h / 2
+            at.tx -= h / 2
+            at.ty -= w / 2
 
             at.tx += x_center
             at.ty += y_center
 
             # applying mirror option
-            if not mirroring:
+            '''if not mirroring:
                 at.scale(-1, 1)
-                at.tx *= -1
+                at.tx *= -1'''
 
             # adding matrix
             prepared_shape["matrices"].append(at.get_matrix())
@@ -305,7 +322,7 @@ def convert_shapes(swf, xfl):
                     file.write(binary.save(cropped))
                 
                 # for debug
-                cv2.imwrite(f"{xfl.resources_dir}{shape['id']} {shape['bitmaps'].index(bitmap)}.png", cropped)
+                #cv2.imwrite(f"{xfl.resources_dir}{shape['id']} {shape['bitmaps'].index(bitmap)}.png", cropped)
                 
                 # including this media file to main scene library
                 SubElement(xfl.media, "DOMBitmapItem", name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}", allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false", quality="100", bitmapDataHRef=binary_name)
@@ -338,15 +355,22 @@ def convert_shapes(swf, xfl):
                 matrix_holder = SubElement(SubElement(instance, "matrix"), "Matrix")
 
                 matrix = shape["matrices"][shape["bitmaps"].index(bitmap)]
+                matrix_values = {}
 
-                matrix_holder.attrib = {
-                    "a": str(matrix[0]),
-                    "b": str(matrix[1]),
-                    "c": str(matrix[2]),
-                    "d": str(matrix[3]),
-                    "tx": str(matrix[4]),
-                    "ty": str(matrix[5])
-                }
+                if matrix[0] != 1:
+                    matrix_values["a"] = '%g'%(matrix[0])
+                if matrix[1]:
+                    matrix_values["b"] = '%g'%(matrix[1])
+                if matrix[2]:
+                    matrix_values["c"] = '%g'%(matrix[2])
+                if matrix[3] != 1:
+                    matrix_values["d"] = '%g'%(matrix[3])
+                if matrix[4]:
+                    matrix_values["ty"] = round(matrix[4])
+                if matrix[5]:
+                    matrix_values["tx"] = round(matrix[5])
+
+                matrix_holder.attrib = {value:str(matrix_values[value]) for value in matrix_values}
             
             # creating "color fill"
             else:

@@ -131,10 +131,10 @@ def calculate_scale(uv_coords, xy_coords):
     uv_width, uv_height = uv_right - uv_left, uv_bottom - uv_top
     xy_width, xy_height = xy_right - xy_left, xy_bottom - xy_top
 
-    if uv_width == 0 or uv_height == 0:
-        return 1, 1, xy_width, xy_height
+    if uv_width == 0: uv_width = 1
+    if uv_height == 0: uv_height = 1
 
-    return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height,
+    return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height, uv_width, uv_height
 
 
 def calculate_rotation2(bitmap):
@@ -152,7 +152,7 @@ def calculate_rotation2(bitmap):
     mirroring = not (uv_cw == xy_cw)
 
     mirrored_uv = bitmap.uv_coords if not mirroring else [[-coord[0], coord[1]] for coord in bitmap.uv_coords]
-    mirrored_xy = bitmap.xy_coords if not mirroring else [[-coord[0], coord[1]] for coord in bitmap.xy_coords]
+    mirrored_xy = bitmap.xy_coords if not mirroring else [[coord[0], coord[1]] for coord in bitmap.xy_coords]
 
     dx = mirrored_xy[0][1] - mirrored_xy[0][0]
     dy = mirrored_xy[1][1] - mirrored_xy[1][0]
