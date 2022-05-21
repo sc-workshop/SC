@@ -10,11 +10,11 @@ from sc.utils import BinaryReader, BinaryWriter
 
 class Bitmap:
     def save(self, image):
-        width, height, channels = image.shape
+        height, width, channels = image.shape
 
         image_binary = []
-        for y in range(height):
-            for x in range(width):
+        for x in range(height):
+            for y in range(width):
                 r, g, b, a = image[x, y]
                 image_binary.append(r << 24 | g << 16 | b << 8 | a)
 

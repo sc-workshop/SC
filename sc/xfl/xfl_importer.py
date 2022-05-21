@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 
-from math import radians, cos, sin
+from math import radians, sin, cos
 
 from xml.etree.ElementTree import *
 
@@ -136,10 +136,10 @@ def convert_movieclips(swf, xfl):
                         color = swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
 
                         color_holder.attrib = {
-                            "redOffset": str(color[0] * 255),
-                            "greenOffset": str(color[1] * 255),
-                            "blueOffset": str(color[2] * 255),
-                            "alphaOffset": str(color[3] * 255),
+                            "redOffset": str(color[0]),
+                            "greenOffset": str(color[1]),
+                            "blueOffset": str(color[2]),
+                            "alphaOffset": str(color[3]),
                             "redMultiplier": str(color[4]),
                             "greenMultiplier": str(color[5]),
                             "blueMultiplier": str(color[6]),
@@ -181,14 +181,14 @@ def convert_shapes(swf, xfl):
         prepared_shape = {
             "id": shape.id,
             "bitmaps": [], # bitmap instances
-            "matrices": [], # instance matrices
-            "colorFills": [] # "color fill commands"
+            "colorFills": [], # "color fill commands"
+            "matrices": []
         }
 
-        for bitmap in shape.bitmaps[::-1]:
+        for bitmap in shape.bitmaps:
             # X and Y uv coords for calculating "color fill"
             uv_x = [coord[0] for coord in bitmap.uv_coords]
-            uv_y = [coord[1] for coord in bitmap.uv_coords]
+            uv_y = [coord[1] for coord in bitmap.xy_coords]
 
             prepared_bitmap = {
                 "texture": bitmap.texture_index,
@@ -197,135 +197,123 @@ def convert_shapes(swf, xfl):
                 "simY": uv_y.count(uv_y[0]) == len(uv_y) # and also Y coordinates for it
             }
 
-            # building sprite bounding box
-            a, b, c, d = cv2.boundingRect(np.array(bitmap.uv_coords, dtype=np.int32))
-            if c - a - 1 and not prepared_bitmap['simX']:
-                c -= 1
-            if d - b - 1 and not prepared_bitmap['simY']:
-                d -= 1
-            
-            prepared_bitmap["rect"] = a, b, c, d
+            # checking for dublicate (instancing)
+            if prepared_bitmap not in prepared_shape["bitmaps"]:
+                prepared_shape["bitmaps"].append(prepared_bitmap)
+            else:
+                prepared_shape["bitmaps"].append(prepared_shape["bitmaps"].index(prepared_bitmap))
+        prepared_shapes.append(prepared_shape)
+    
+    # saving prepared bitmaps to Adobe Animate image binary format
+    for shape_index in range(len(prepared_shapes)):
+        shape = prepared_shapes[shape_index]
 
-            # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
-            rotation, mirroring = calculate_rotation2(bitmap)
-            radians_rotation = radians(rotation)
+        for bitmap_index in range(len(shape["bitmaps"])):
+            bitmap = shape["bitmaps"][bitmap_index]
+
+            # creating main affine matrix
+            at = AffineTransform()
 
             # at this point little message for Adobe Animate...
             # WHY DO AFFINE TRANSFORMATION MATRICES WORK DIFFERENTLY IN BITMAP INSTANCES AND OTHER INSTANCES?
             # WHY NORMAL 90 DEGREES ROTATED MATRIX AND 90 DEGREES ROTATED MATRIX IN ADOBE IS DIFFERENT MF????
             # HOT TO F CREATE MATRIX LIKE IN ADOBE ANIMATE???
             # HELP. ~ from 31 and SV
+            if not isinstance(bitmap, int):
+                uv_coords = bitmap["uvCoords"]
+                xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
 
-            # creating rotation matrix
-            rotation_matrix = AffineTransform()
-            rotation_matrix.rotate(radians_rotation) # apply rotation
-            rotation_matrix = rotation_matrix.get_matrix() # get it as list
+                # building sprite bounding box
+                image_box = cv2.boundingRect(np.array(uv_coords))
+                a, b, c, d = image_box
+                if c - 1 > 1 and not prepared_bitmap['simX']:
+                    c -= 1
 
-            # getting scaling (X & Y) and size (Width & Height) of bitmap vertices (xy_coords)
-            sx, sy, w, h, uv_w, uv_h = calculate_scale([[ -rotation_matrix[2] * point[0] + rotation_matrix[3] * point[1], rotation_matrix[0] * point[0] + -rotation_matrix[1] * point[1]] for point in bitmap.uv_coords], bitmap.xy_coords)
+                if d - 1 > 1 and not prepared_bitmap['simY']:
+                    d -= 1
 
-            # creating main affine matrix
-            at = AffineTransform()
-            at.scale(sx, sy) # apply scale
-            at.rotate(radians_rotation) # apply rotation
+                # checking for "color fill"
+                is_color_fill = c + d < 3
+                shape["colorFills"].append(is_color_fill)
 
-            # apply rotation to image bounding box
-            image_box = [[0, 0], [0, h], [w, h], [w, 0]]
-            for point_index in range(4):
-                point = image_box[point_index]
+                if not is_color_fill:
+                    #------------------------------------Bitmap matrix-------------------------------------------------#
+                    # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
+                    rotation, mirroring = calculate_rotation2(uv_coords, xy_coords)
+                    rad_rot = radians(-rotation)
 
-                x, y = point
-                xx = round(x * cos(radians_rotation) + -y * sin(radians_rotation))
-                yy = round(x * sin(radians_rotation) + y * cos(radians_rotation))
+                    sx, sy, w, h = calculate_scale(
+                        [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
+                          round(x * sin(rad_rot) + y * cos(rad_rot))]
+                         for x, y in uv_coords], xy_coords)
 
-                image_box[point_index] = [xx, yy]
+                    at.scale(sx, sy)  # apply scale
+                    left = min(coord[0] for coord in xy_coords)
+                    top = min(coord[1] for coord in xy_coords)
+                    at.translate(top, left)
 
-            # returning image point to center
-            for point_index in range(4):
-                point = image_box[point_index]
-                if point[0] < 0:
-                    image_box = [[box_point[0] - point[0], box_point[1]] for box_point in image_box]
-                    at.tx += -point[0]
+                    #-----------------------------------------Bitmap image----------------------------------------------#
+                    texture = swf.textures[bitmap["texture"]].image
+                    points = np.array(uv_coords, dtype=np.int32)
+                    mask = np.zeros(texture.shape[:2], dtype=np.uint8)
+                    cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
+                    res = cv2.bitwise_and(texture, texture, mask=mask)
+                    res = res[b: b + d, a: a + c]
 
-                if point[1] < 0:
-                    image_box = [[box_point[0], box_point[1] - point[1]] for box_point in image_box]
-                    at.ty += -point[1]
+                    if res.shape[0] > 1 and res.shape[1] > 1: #TODO: Fix 1px bitmaps
+                        uv_h, uv_w = res.shape[:2]
+                        uv_center = (uv_w / 2, uv_h / 2)
+                        rot = cv2.getRotationMatrix2D(uv_center, -rotation, 1)
 
-            if rotation == 180:
-                tx = at.tx
-                ty = at.ty
+                        s = sin(rad_rot)
+                        c = cos(rad_rot)
+                        b_w = int((uv_h * abs(s)) + (uv_w * abs(c)))
+                        b_h = int((uv_h * abs(c)) + (uv_w * abs(s)))
 
-                at.tx = ty
-                at.ty = tx
+                        rot[0, 2] += ((b_w / 2) - uv_center[0])
+                        rot[1, 2] += ((b_h / 2) - uv_center[1])
 
-            #at.translate(y_center - v_center,x_center - u_center) # shit
+                        rotated = cv2.warpAffine(res, rot, (b_w, b_h), flags=cv2.INTER_LINEAR)
 
-            #if shape.id == 1: print(image_box)
-            #if shape.id == 6: print(at.get_matrix(), image_box)
-            if shape.id == 443: print(at.get_matrix(), image_box, rotation)
+                        binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
+                        png_name = f"{shape['id']} {shape['bitmaps'].index(bitmap)}.png"
 
-            # return it if u want it
-            #at.tx -= x_center + (w/2)
-            #at.ty -= y_center + (h/2)
+                        cv2.imwrite(f"{xfl.resources_dir}{png_name}", rotated)
+                        binary = Bitmap()
+                        with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
+                            file.write(binary.save(rotated))
 
-            # applying translation
-            #u_center, v_center = get_center(image_box) # reserve
-            x_center, y_center = get_center(bitmap.xy_coords)
+                        # including this media file to main scene library
+                        SubElement(xfl.media, "DOMBitmapItem",
+                                   name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}",
+                                   allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false",
+                                   quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
+                                   bitmapDataHRef=binary_name)
+            else:
+                bitmap_coords = swf.shapes[shape_index].bitmaps[bitmap].xy_coords
 
-            at.tx -= h / 2
-            at.ty -= w / 2
+                shape["colorFills"].append(shape["colorFills"][bitmap])
 
-            at.tx += x_center
-            at.ty += y_center
+                rotation, mirroring = calculate_rotation2(bitmap_coords, xy_coords)
+                rad_rot = radians(-rotation)
 
-            # applying mirror option
-            '''if not mirroring:
-                at.scale(-1, 1)
-                at.tx *= -1'''
+                sx, sy, w, h = calculate_scale(
+                    [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
+                      round(x * sin(rad_rot) + y * cos(rad_rot))]
+                     for x, y in bitmap_coords], xy_coords)
+
+                at.scale(sx, sy)  # apply scale
+                left = min(coord[0] for coord in xy_coords)
+                top = min(coord[1] for coord in xy_coords)
+                at.translate(top + -at.tx, left + -at.ty)
+
+
+            '''if mirroring:
+                at.scale(1, -1)
+                at.ty *= -1'''
 
             # adding matrix
-            prepared_shape["matrices"].append(at.get_matrix())
-
-            # checking for "color fill"
-            is_color_fill = bitmap.uv_coords.count(bitmap.uv_coords[0]) == len(bitmap.uv_coords)
-            prepared_shape["colorFills"].append(is_color_fill)
-
-            if is_color_fill:
-                prepared_bitmap["twips"] = bitmap.xy_coords # adding vertices for "color fill"
-
-            # checking for dublicate (instancing)
-            if prepared_bitmap not in prepared_shape["bitmaps"]:
-                prepared_shape["bitmaps"].append(prepared_bitmap)
-            else:
-                prepared_shape["bitmaps"].append(prepared_shape["bitmaps"].index(prepared_bitmap))
-            
-        prepared_shapes.append(prepared_shape)
-    
-    # saving prepared bitmaps to Adobe Animate image binary format
-    for shape in prepared_shapes:
-        for bitmap in shape["bitmaps"]:
-            # checking if it not dublicate
-            if not isinstance(bitmap, int) and not shape["colorFills"][shape["bitmaps"].index(bitmap)]:
-                # creating binary mask and cropping sprite
-                texture = swf.textures[bitmap["texture"]]
-                points = np.array(bitmap["uvCoords"], dtype=np.int32)
-                mask = np.zeros(texture.image.shape[:2], dtype=np.uint8)
-
-                cv2.drawContours(mask, [points], -1, (255, 255, 255), -1)
-                res = cv2.bitwise_and(texture.image, texture.image, mask=mask)
-                a, b, c, d = bitmap['rect']
-                cropped = res[b: b + d, a: a + c]
-
-                binary = Bitmap()
-                binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
-                with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
-                    file.write(binary.save(cropped))
-                
-                # for debug
-                #cv2.imwrite(f"{xfl.resources_dir}{shape['id']} {shape['bitmaps'].index(bitmap)}.png", cropped)
-                
-                # including this media file to main scene library
-                SubElement(xfl.media, "DOMBitmapItem", name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}", allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false", quality="100", bitmapDataHRef=binary_name)
+            prepared_shapes[shape_index]["matrices"].append(at.get_matrix())
 
         # creating graphic symbol
         symbol = Element("DOMSymbolItem")
@@ -341,14 +329,16 @@ def convert_shapes(swf, xfl):
         frame = SubElement(SubElement(layer, "frames"), "DOMFrame", index="0", keyMode=str(KEY_MODE_NORMAL))
         frame_elements = SubElement(frame, "elements")
 
-        for bitmap in shape["bitmaps"]:
+        for bitmap_index in range(len(shape["bitmaps"])):
+            bitmap = shape["bitmaps"][bitmap_index]
+
             if isinstance(bitmap, int):
                 index = bitmap
             else:
                 index = shape["bitmaps"].index(bitmap)
             
             # creating bitmap instance
-            if not shape["colorFills"][shape["bitmaps"].index(bitmap)]:
+            if not shape["colorFills"][bitmap_index]:
                 item_name = f"Resources/{shape['id']} {index}"
                 instance = SubElement(frame_elements, "DOMBitmapInstance", libraryItemName=item_name)
 
@@ -374,24 +364,32 @@ def convert_shapes(swf, xfl):
             
             # creating "color fill"
             else:
-                texture = swf.textures[bitmap["texture"]]
+                if isinstance(bitmap, int):
+                    texture = swf.textures[shape["bitmaps"][bitmap]["texture"]]
+                    color_coords = shape["bitmaps"][bitmap]["uvCoords"][0][0]
+                else:
+                    texture = swf.textures[bitmap["texture"]]
+                    color_coords = bitmap["uvCoords"][0][0]
 
                 fill_item = SubElement(frame_elements, "DOMShape")
 
                 fill = SubElement(SubElement(fill_item, "fills"), "FillStyle", index="1")
 
                 # fill color
-                color = texture.image[round(bitmap["simX"]), round(bitmap["simY"])]
+                try:
+                    color = texture.image[round(color_coords), round(color_coords)]
+                except IndexError:
+                    color = (0, 0, 0, 0)
                 final_color = hex(color[2])[2:] + hex(color[1])[2:] + hex(color[0])[2:]
                 SubElement(fill, "SolidColor", color="#" + final_color, alpha=str(color[3] / 255))
 
                 edges = SubElement(SubElement(fill_item, "edges"), "Edge", fillStyle1="1")
-
+                xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
                 # filling polygon coordinates
                 final_edges = ""
-                for x in range(len(bitmap["twips"])):
-                    curr = bitmap["twips"][x]
-                    nxt = bitmap["twips"][(x + 1) % len(bitmap["twips"])]
+                for x in range(len(xy_coords)):
+                    curr = xy_coords[x]
+                    nxt = xy_coords[(x + 1) % len(xy_coords)]
 
                     final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}" # converting pixels to twips (again.) (1 twip = 1/20 pixel)
                 

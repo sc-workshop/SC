@@ -255,7 +255,7 @@ class SWFTexture(Writable):
                 for x in range(self.width):
                     pixels.append(PIXEL_READ_FUNCTIONS[self.pixel_internal_format](swf))
             
-            self.image = np.array(pixels).reshape(self.height, self.width, 4)
+            self.image = np.array(pixels, dtype=np.uint8).reshape(self.height, self.width, 4)
 
             if not self.linear:
                 make_linear(self, pixels)

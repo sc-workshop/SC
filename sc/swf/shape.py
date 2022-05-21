@@ -79,12 +79,13 @@ class ShapeDrawBitmapCommand(Writable):
         for i in range(points_count):
             w = swf.reader.read_ushort() / 0xFFFF * swf.textures[self.texture_index].width
             h = swf.reader.read_ushort() / 0xFFFF * swf.textures[self.texture_index].height
-            
+
             u, v = [ceil(i) for i in [w, h]]
-            if int(w) == u:
-                u += 1
-            if int(h) == v:
-                v += 1
+            #if int(w) == u:
+                #u += 1
+            #if int(h) == v:
+                #v += 1
+            #?
             
             self.uv_coords.append([u, v])
     
@@ -134,10 +135,10 @@ def calculate_scale(uv_coords, xy_coords):
     if uv_width == 0: uv_width = 1
     if uv_height == 0: uv_height = 1
 
-    return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height, uv_width, uv_height
+    return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height
 
 
-def calculate_rotation2(bitmap):
+def calculate_rotation2(uv_coords, xy_coords):
     def is_clockwise(points):
         sum = 0
         for x in range(len(points)):
@@ -146,16 +147,16 @@ def calculate_rotation2(bitmap):
             sum += (x1 - x2) * (y1 + y2)
         return sum < 0
     
-    uv_cw = is_clockwise(bitmap.uv_coords)
-    xy_cw = is_clockwise(bitmap.xy_coords)
+    uv_cw = is_clockwise(uv_coords)
+    xy_cw = is_clockwise(xy_coords)
 
     mirroring = not (uv_cw == xy_cw)
 
-    mirrored_uv = bitmap.uv_coords if not mirroring else [[-coord[0], coord[1]] for coord in bitmap.uv_coords]
-    mirrored_xy = bitmap.xy_coords if not mirroring else [[coord[0], coord[1]] for coord in bitmap.xy_coords]
+    mirrored_uv = uv_coords if not mirroring else [[-coord[0], coord[1]] for coord in uv_coords]
+    mirrored_xy = xy_coords if not mirroring else [[coord[0], coord[1]] for coord in xy_coords]
 
-    dx = mirrored_xy[0][1] - mirrored_xy[0][0]
-    dy = mirrored_xy[1][1] - mirrored_xy[1][0]
+    dx = mirrored_xy[1][0] - mirrored_xy[0][0]
+    dy = mirrored_xy[1][1] - mirrored_xy[0][1]
     du = mirrored_uv[1][0] - mirrored_uv[0][0]
     dv = mirrored_uv[1][1] - mirrored_uv[0][1]
 
@@ -166,7 +167,7 @@ def calculate_rotation2(bitmap):
 
     nearest = round(angle / 90) * 90
 
-    if mirroring and not uv_cw and angle not in [90, 270]:
+    if not mirroring and not uv_cw and angle not in [90, 270]:
         nearest += 180
     
     return nearest, mirroring

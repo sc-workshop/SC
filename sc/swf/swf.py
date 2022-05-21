@@ -167,14 +167,14 @@ class SupercellSWF:
             elif tag == 9:
                 color = [0, 0, 0, 0, 1, 1, 1, 1]
 
-                color[0] = self.reader.read_char() / 127 # red addition
-                color[1] = self.reader.read_char() / 127  # green addition
-                color[2] = self.reader.read_char() / 127  # blue addition
+                color[0] = self.reader.read_uchar()  # red addition
+                color[1] = self.reader.read_uchar() # green addition
+                color[2] = self.reader.read_uchar() # blue addition
 
-                color[7] = self.reader.read_char() / 127  # alpha multiplier
-                color[4] = self.reader.read_char() / 127  # red multiplier
-                color[5] = self.reader.read_char() / 127  # green multiplier
-                color[6] = self.reader.read_char() / 127  # blue multiplier
+                color[7] = self.reader.read_uchar() / 255  # alpha multiplier
+                color[4] = self.reader.read_uchar() / 255  # red multiplier
+                color[5] = self.reader.read_uchar() / 255  # green multiplier
+                color[6] = self.reader.read_uchar() / 255  # blue multiplier
 
                 self.matrix_banks[matrix_bank_offset].color_transforms[color_transforms_loaded] = color
                 color_transforms_loaded += 1
