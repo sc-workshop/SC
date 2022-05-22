@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 
-from math import radians, sin, cos
+from math import radians, sin, cos, ceil
 
 from xml.etree.ElementTree import *
 
@@ -219,19 +219,24 @@ def convert_shapes(swf, xfl):
             # WHY NORMAL 90 DEGREES ROTATED MATRIX AND 90 DEGREES ROTATED MATRIX IN ADOBE IS DIFFERENT MF????
             # HOT TO F CREATE MATRIX LIKE IN ADOBE ANIMATE???
             # HELP. ~ from 31 and SV
-            
+
             if not isinstance(bitmap, int):
                 uv_coords = bitmap["uvCoords"]
                 xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
 
                 # building sprite bounding box
-                image_box = cv2.boundingRect(np.array(uv_coords))
+                rounded = []
+                for coord in uv_coords:
+                    x, y = coord
+                    rounded.append([ceil(x), ceil(y)])
+                
+                image_box = cv2.boundingRect(np.array(rounded))
                 a, b, c, d = image_box
-                if c - 1 > 1 and not prepared_bitmap['simX']:
-                    c -= 1
+                #if c - 1 > 1 and not prepared_bitmap['simX']:
+                    #c -= 1
 
-                if d - 1 > 1 and not prepared_bitmap['simY']:
-                    d -= 1
+                #if d - 1 > 1 and not prepared_bitmap['simY']:
+                    #d -= 1
 
                 # checking for "color fill"
                 is_color_fill = c + d < 3
@@ -259,41 +264,49 @@ def convert_shapes(swf, xfl):
 
                     #-----------------------------------------Bitmap image----------------------------------------------#
                     texture = swf.textures[bitmap["texture"]].image
-                    points = np.array(uv_coords, dtype=np.int32)
+
+                    rounded = []
+                    for coord in uv_coords:
+                        x, y = coord
+                        rounded.append([ceil(x), ceil(y)])
+                    
+                    points = np.array(rounded, dtype=np.int32)
                     mask = np.zeros(texture.shape[:2], dtype=np.uint8)
                     cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
                     res = cv2.bitwise_and(texture, texture, mask=mask)
                     res = res[b: b + d, a: a + c]
 
-                    if res.shape[0] > 1 and res.shape[1] > 1: # TODO: Fix 1px bitmaps
-                        uv_h, uv_w = res.shape[:2]
-                        uv_center = (uv_w / 2, uv_h / 2)
-                        rot = cv2.getRotationMatrix2D(uv_center, -rotation, 1)
+                    print(res.shape)
 
-                        s = sin(rad_rot)
-                        c = cos(rad_rot)
-                        b_w = int((uv_h * abs(s)) + (uv_w * abs(c)))
-                        b_h = int((uv_h * abs(c)) + (uv_w * abs(s)))
+                    # if res.shape[0] > 1 and res.shape[1] > 1: # TODO: Fix 1px bitmaps
+                    uv_h, uv_w = res.shape[:2]
+                    uv_center = (uv_w / 2, uv_h / 2)
+                    rot = cv2.getRotationMatrix2D(uv_center, -rotation, 1)
 
-                        rot[0, 2] += ((b_w / 2) - uv_center[0])
-                        rot[1, 2] += ((b_h / 2) - uv_center[1])
+                    s = sin(rad_rot)
+                    c = cos(rad_rot)
+                    b_w = int((uv_h * abs(s)) + (uv_w * abs(c)))
+                    b_h = int((uv_h * abs(c)) + (uv_w * abs(s)))
 
-                        rotated = cv2.warpAffine(res, rot, (b_w, b_h), flags=cv2.INTER_LINEAR)
+                    rot[0, 2] += ((b_w / 2) - uv_center[0])
+                    rot[1, 2] += ((b_h / 2) - uv_center[1])
 
-                        binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
-                        png_name = f"{shape['id']} {shape['bitmaps'].index(bitmap)}.png"
+                    rotated = cv2.warpAffine(res, rot, (b_w, b_h), flags=cv2.INTER_LINEAR)
 
-                        cv2.imwrite(f"{xfl.resources_dir}{png_name}", rotated)
-                        binary = Bitmap()
-                        with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
-                            file.write(binary.save(rotated))
+                    binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
+                    png_name = f"{shape['id']} {shape['bitmaps'].index(bitmap)}.png"
 
-                        # including this media file to main scene library
-                        SubElement(xfl.media, "DOMBitmapItem",
-                                   name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}",
-                                   allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false",
-                                   quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
-                                   bitmapDataHRef=binary_name)
+                    cv2.imwrite(f"{xfl.resources_dir}{png_name}", rotated)
+                    binary = Bitmap()
+                    with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
+                        file.write(binary.save(rotated))
+
+                    # including this media file to main scene library
+                    SubElement(xfl.media, "DOMBitmapItem",
+                                name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}",
+                                allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false",
+                                quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
+                                bitmapDataHRef=binary_name)
             else:
                 xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
                 uv_coords = swf.shapes[shape_index].bitmaps[bitmap].xy_coords
