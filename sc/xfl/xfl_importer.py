@@ -70,6 +70,9 @@ def convert_movieclips(swf, xfl):
                 if frame.name:
                     layer_frame.attrib["labelType"] = "name"
                     layer_frame.attrib["name"] = frame.name
+                
+                if bind["blend"]:
+                    layer_frame.attrib["blendMode"] = bind["blend"]
 
                 frame_elements = SubElement(layer_frame, "elements")
                 for element in frame.elements:
@@ -323,7 +326,7 @@ def convert_shapes(swf, xfl):
                 at.rotate(rad_rot) # apply rotation
 
                 sprite_box = [[0, 0], [0, h], [w, h], [w, 0]] # building sprite bounding box
-                
+
                 # rotating bounding box
                 sprite_box = [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
                                 round(x * sin(rad_rot) + y * cos(rad_rot))]
