@@ -12,7 +12,7 @@ from sc.xfl import convert_sc_to_xfl
 
 if __name__ == "__main__":
     sc = SupercellSWF()
-    sc.load("assets/ui.sc")
+    sc.load("assets/characters.sc")
 
     #print(sc.textures[0].image.shape)
 

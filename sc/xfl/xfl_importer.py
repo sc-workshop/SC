@@ -290,27 +290,46 @@ def convert_shapes(swf, xfl):
                                    quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
                                    bitmapDataHRef=binary_name)
             else:
-                bitmap_coords = swf.shapes[shape_index].bitmaps[bitmap].xy_coords
+                xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
+                uv_coords = swf.shapes[shape_index].bitmaps[bitmap].xy_coords
 
                 shape["colorFills"].append(shape["colorFills"][bitmap])
 
-                rotation, mirroring = calculate_rotation2(bitmap_coords, xy_coords)
+                rotation, mirroring = calculate_rotation2(uv_coords, xy_coords)
                 rad_rot = radians(-rotation)
 
                 sx, sy, w, h = calculate_scale(
                     [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
                       round(x * sin(rad_rot) + y * cos(rad_rot))]
-                     for x, y in bitmap_coords], xy_coords)
+                     for x, y in uv_coords], xy_coords)
 
                 at.scale(sx, sy)  # apply scale
+                at.rotate(rad_rot)
+                #Building sprite bounding box
+                sprite_box = [[0, 0], [0, h], [w, h], [w, 0]]
+                #Rotating bounding box
+                sprite_box = [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
+                                round(x * sin(rad_rot) + y * cos(rad_rot))]
+                                for x, y in sprite_box]
+
+                for point_index in range(4):
+                    x, y = sprite_box[point_index]
+
+                    if x < 0:
+                        sprite_box = [[x_b + -x, y_b]for x_b, y_b in sprite_box]
+                        at.tx += -x
+                    if y < 0:
+                        sprite_box = [[x_b, y_b + -y]for x_b, y_b in sprite_box]
+                        at.ty += -x
+
                 left = min(coord[0] for coord in xy_coords)
                 top = min(coord[1] for coord in xy_coords)
-                at.translate(top + -at.tx, left + -at.ty)
+                at.translate(top - sprite_box[0][0], left - sprite_box[0][1])
 
 
-            '''if mirroring:
-                at.scale(1, -1)
-                at.ty *= -1'''
+            if mirroring:
+                at.scale(-1, 1)
+                at.ty += w
 
             # adding matrix
             prepared_shapes[shape_index]["matrices"].append(at.get_matrix())
@@ -379,7 +398,7 @@ def convert_shapes(swf, xfl):
                 try:
                     color = texture.image[round(color_coords), round(color_coords)]
                 except IndexError:
-                    color = (0, 0, 0, 0)
+                    color = (255, 255, 255, 255)
                 final_color = hex(color[2])[2:] + hex(color[1])[2:] + hex(color[0])[2:]
                 SubElement(fill, "SolidColor", color="#" + final_color, alpha=str(color[3] / 255))
 
