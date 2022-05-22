@@ -232,11 +232,11 @@ def convert_shapes(swf, xfl):
                 
                 image_box = cv2.boundingRect(np.array(rounded))
                 a, b, c, d = image_box
-                #if c - 1 > 1 and not prepared_bitmap['simX']:
-                    #c -= 1
+                if c - 1 > 1 and not prepared_bitmap['simX']:
+                    c -= 1
 
-                #if d - 1 > 1 and not prepared_bitmap['simY']:
-                    #d -= 1
+                if d - 1 > 1 and not prepared_bitmap['simY']:
+                    d -= 1
 
                 # checking for "color fill"
                 is_color_fill = c + d < 3
@@ -276,37 +276,35 @@ def convert_shapes(swf, xfl):
                     res = cv2.bitwise_and(texture, texture, mask=mask)
                     res = res[b: b + d, a: a + c]
 
-                    print(res.shape)
+                    if res.shape[0] > 1 and res.shape[1] > 1: # TODO: fix 1px bitmaps
+                        uv_h, uv_w = res.shape[:2]
+                        uv_center = (uv_w / 2, uv_h / 2)
+                        rot = cv2.getRotationMatrix2D(uv_center, -rotation, 1)
 
-                    # if res.shape[0] > 1 and res.shape[1] > 1: # TODO: Fix 1px bitmaps
-                    uv_h, uv_w = res.shape[:2]
-                    uv_center = (uv_w / 2, uv_h / 2)
-                    rot = cv2.getRotationMatrix2D(uv_center, -rotation, 1)
+                        s = sin(rad_rot)
+                        c = cos(rad_rot)
+                        b_w = int((uv_h * abs(s)) + (uv_w * abs(c)))
+                        b_h = int((uv_h * abs(c)) + (uv_w * abs(s)))
 
-                    s = sin(rad_rot)
-                    c = cos(rad_rot)
-                    b_w = int((uv_h * abs(s)) + (uv_w * abs(c)))
-                    b_h = int((uv_h * abs(c)) + (uv_w * abs(s)))
+                        rot[0, 2] += ((b_w / 2) - uv_center[0])
+                        rot[1, 2] += ((b_h / 2) - uv_center[1])
 
-                    rot[0, 2] += ((b_w / 2) - uv_center[0])
-                    rot[1, 2] += ((b_h / 2) - uv_center[1])
+                        rotated = cv2.warpAffine(res, rot, (b_w, b_h), flags=cv2.INTER_LINEAR)
 
-                    rotated = cv2.warpAffine(res, rot, (b_w, b_h), flags=cv2.INTER_LINEAR)
+                        binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
+                        png_name = f"{shape['id']} {shape['bitmaps'].index(bitmap)}.png"
 
-                    binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
-                    png_name = f"{shape['id']} {shape['bitmaps'].index(bitmap)}.png"
+                        cv2.imwrite(f"{xfl.resources_dir}{png_name}", rotated)
+                        binary = Bitmap()
+                        with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
+                            file.write(binary.save(rotated))
 
-                    cv2.imwrite(f"{xfl.resources_dir}{png_name}", rotated)
-                    binary = Bitmap()
-                    with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
-                        file.write(binary.save(rotated))
-
-                    # including this media file to main scene library
-                    SubElement(xfl.media, "DOMBitmapItem",
-                                name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}",
-                                allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false",
-                                quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
-                                bitmapDataHRef=binary_name)
+                        # including this media file to main scene library
+                        SubElement(xfl.media, "DOMBitmapItem",
+                                    name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}",
+                                    allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false",
+                                    quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
+                                    bitmapDataHRef=binary_name)
             else:
                 xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
                 uv_coords = swf.shapes[shape_index].bitmaps[bitmap].xy_coords
@@ -321,10 +319,11 @@ def convert_shapes(swf, xfl):
                       round(x * sin(rad_rot) + y * cos(rad_rot))]
                      for x, y in uv_coords], xy_coords)
 
-                at.scale(sx, sy)  # apply scale
-                at.rotate(rad_rot)
-                # building sprite bounding box
-                sprite_box = [[0, 0], [0, h], [w, h], [w, 0]]
+                at.scale(sx, sy) # apply scale
+                at.rotate(rad_rot) # apply rotation
+
+                sprite_box = [[0, 0], [0, h], [w, h], [w, 0]] # building sprite bounding box
+                
                 # rotating bounding box
                 sprite_box = [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
                                 round(x * sin(rad_rot) + y * cos(rad_rot))]
