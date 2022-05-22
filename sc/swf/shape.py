@@ -40,12 +40,18 @@ class Shape(Writable):
         self.write_ushort(self.id)
         self.write_ushort(len(self.bitmaps))
 
-        # allocator?
         points_count = 0
+        max_rects_count = 0
         for bitmap in self.bitmaps:
             points_count += len(bitmap.xy_coords)
+            if bitmap.max_rects:
+                max_rects_count += 1
         
-        self.write_ushort(points_count)
+        tag = 2 if max_rects_count == len(self.bitmaps) else 18
+        
+        # allocator?
+        if tag == 18:
+            self.write_ushort(points_count)
         
         for bitmap in self.bitmaps:
             tag, buffer = bitmap.save(swf)
@@ -56,8 +62,7 @@ class Shape(Writable):
 
         self.write(bytes(5)) # end tag for bitmap tags array
 
-        # TODO: add support for tag 2 (maxRects in TexturePacker)
-        return 18, self.buffer
+        return tag, self.buffer
 
 
 class ShapeDrawBitmapCommand(Writable):
