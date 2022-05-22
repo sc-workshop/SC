@@ -77,15 +77,14 @@ class ShapeDrawBitmapCommand(Writable):
             self.xy_coords.append([x, y])
         
         for i in range(points_count):
-            w = swf.reader.read_ushort() / 0xFFFF * swf.textures[self.texture_index].width
-            h = swf.reader.read_ushort() / 0xFFFF * swf.textures[self.texture_index].height
+            w = swf.reader.read_ushort()
+            h = swf.reader.read_ushort()
+
+            if tag == 22:
+                w /= 0xFFFF * swf.textures[self.texture_index].width
+                h /= 0xFFFF * swf.textures[self.texture_index].height
 
             u, v = [ceil(i) for i in [w, h]]
-            #if int(w) == u:
-                #u += 1
-            #if int(h) == v:
-                #v += 1
-            #?
             
             self.uv_coords.append([u, v])
     
@@ -94,6 +93,10 @@ class ShapeDrawBitmapCommand(Writable):
 
         self.write_uchar(self.texture_index)
         self.write_uchar(len(self.xy_coords))
+
+        tag = 22
+        if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == ("GL_NEAREST", "GL_NEAREST"):
+            tag = 17
 
         for coord in self.xy_coords:
             x, y = coord
@@ -104,11 +107,15 @@ class ShapeDrawBitmapCommand(Writable):
         for coord in self.uv_coords:
             u, v = coord
 
-            self.write_ushort(int(round((u * 0xFFFF) / swf.textures[self.texture_index].width)))
-            self.write_ushort(int(round((v * 0xFFFF) / swf.textures[self.texture_index].height)))
+            if tag == 22:
+                u *= 0xFFFF / swf.textures[self.texture_index].width
+                v *= 0xFFFF / swf.textures[self.texture_index].height
+
+            self.write_ushort(int(round(u)))
+            self.write_ushort(int(round(v)))
         
-        # TODO: add tag 17 & 4 support (4 - maxRects, 17 - polygon but not normalized)
-        return 22, self.buffer
+        # TODO: add tag 4 support (maxRects)
+        return tag, self.buffer
 
 def get_center(coords):
     x_coords = [coord[0] for coord in coords]
