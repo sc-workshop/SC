@@ -219,6 +219,7 @@ def convert_shapes(swf, xfl):
             # WHY NORMAL 90 DEGREES ROTATED MATRIX AND 90 DEGREES ROTATED MATRIX IN ADOBE IS DIFFERENT MF????
             # HOT TO F CREATE MATRIX LIKE IN ADOBE ANIMATE???
             # HELP. ~ from 31 and SV
+            
             if not isinstance(bitmap, int):
                 uv_coords = bitmap["uvCoords"]
                 xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
@@ -251,6 +252,10 @@ def convert_shapes(swf, xfl):
                     left = min(coord[0] for coord in xy_coords)
                     top = min(coord[1] for coord in xy_coords)
                     at.translate(top, left)
+                    
+                    if mirroring:
+                        at.scale(-1, 1)
+                        at.ty += w
 
                     #-----------------------------------------Bitmap image----------------------------------------------#
                     texture = swf.textures[bitmap["texture"]].image
@@ -260,7 +265,7 @@ def convert_shapes(swf, xfl):
                     res = cv2.bitwise_and(texture, texture, mask=mask)
                     res = res[b: b + d, a: a + c]
 
-                    if res.shape[0] > 1 and res.shape[1] > 1: #TODO: Fix 1px bitmaps
+                    if res.shape[0] > 1 and res.shape[1] > 1: # TODO: Fix 1px bitmaps
                         uv_h, uv_w = res.shape[:2]
                         uv_center = (uv_w / 2, uv_h / 2)
                         rot = cv2.getRotationMatrix2D(uv_center, -rotation, 1)
@@ -305,9 +310,9 @@ def convert_shapes(swf, xfl):
 
                 at.scale(sx, sy)  # apply scale
                 at.rotate(rad_rot)
-                #Building sprite bounding box
+                # building sprite bounding box
                 sprite_box = [[0, 0], [0, h], [w, h], [w, 0]]
-                #Rotating bounding box
+                # rotating bounding box
                 sprite_box = [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
                                 round(x * sin(rad_rot) + y * cos(rad_rot))]
                                 for x, y in sprite_box]
@@ -326,10 +331,9 @@ def convert_shapes(swf, xfl):
                 top = min(coord[1] for coord in xy_coords)
                 at.translate(top - sprite_box[0][0], left - sprite_box[0][1])
 
-
-            if mirroring:
-                at.scale(-1, 1)
-                at.ty += w
+                if mirroring:
+                    at.scale(-1, 1)
+                    at.ty += w
 
             # adding matrix
             prepared_shapes[shape_index]["matrices"].append(at.get_matrix())
@@ -364,41 +368,42 @@ def convert_shapes(swf, xfl):
                 matrix_holder = SubElement(SubElement(instance, "matrix"), "Matrix")
 
                 matrix = shape["matrices"][shape["bitmaps"].index(bitmap)]
-                matrix_values = {}
-
-                if matrix[0] != 1:
-                    matrix_values["a"] = '%g'%(matrix[0])
+                
+                if matrix[0] != 1.0:
+                    matrix_holder.attrib["a"] = str(matrix[0])
+                
                 if matrix[1]:
-                    matrix_values["b"] = '%g'%(matrix[1])
+                    matrix_holder.attrib["b"] = str(matrix[1])
+                
                 if matrix[2]:
-                    matrix_values["c"] = '%g'%(matrix[2])
-                if matrix[3] != 1:
-                    matrix_values["d"] = '%g'%(matrix[3])
+                    matrix_holder.attrib["c"] = str(matrix[2])
+                
+                if matrix[3] != 1.0:
+                    matrix_holder.attrib["d"] = str(matrix[3])
+                
                 if matrix[4]:
-                    matrix_values["ty"] = round(matrix[4])
+                    matrix_holder.attrib["ty"] = str(round(matrix[4]))
+                
                 if matrix[5]:
-                    matrix_values["tx"] = round(matrix[5])
-
-                matrix_holder.attrib = {value:str(matrix_values[value]) for value in matrix_values}
+                    matrix_holder.attrib["tx"] = str(round(matrix[5]))
             
             # creating "color fill"
             else:
                 if isinstance(bitmap, int):
                     texture = swf.textures[shape["bitmaps"][bitmap]["texture"]]
-                    color_coords = shape["bitmaps"][bitmap]["uvCoords"][0][0]
+                    color_coords = shape["bitmaps"][bitmap]["uvCoords"][0]
                 else:
                     texture = swf.textures[bitmap["texture"]]
-                    color_coords = bitmap["uvCoords"][0][0]
+                    color_coords = bitmap["uvCoords"][0]
 
                 fill_item = SubElement(frame_elements, "DOMShape")
 
                 fill = SubElement(SubElement(fill_item, "fills"), "FillStyle", index="1")
 
                 # fill color
-                try:
-                    color = texture.image[round(color_coords), round(color_coords)]
-                except IndexError:
-                    color = (255, 255, 255, 255)
+                x, y = color_coords
+                color = texture.image[round(y), round(x)]
+                
                 final_color = hex(color[2])[2:] + hex(color[1])[2:] + hex(color[0])[2:]
                 SubElement(fill, "SolidColor", color="#" + final_color, alpha=str(color[3] / 255))
 
