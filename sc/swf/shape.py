@@ -65,11 +65,14 @@ class ShapeDrawBitmapCommand(Writable):
         self.texture_index: int = -1
         self.uv_coords: list = []
         self.xy_coords: list = []
+
+        self.max_rects: bool = False
     
     def load(self, swf, tag: int):
         self.texture_index = swf.reader.read_uchar()
 
-        points_count = 4 if tag == 4 else swf.reader.read_uchar()
+        self.max_rects = tag == 4
+        points_count = 4 if self.max_rects else swf.reader.read_uchar()
 
         for i in range(points_count):
             x = swf.reader.read_twip()
@@ -91,20 +94,24 @@ class ShapeDrawBitmapCommand(Writable):
     def save(self, swf):
         super().save()
 
-        self.write_uchar(self.texture_index)
-        self.write_uchar(len(self.xy_coords))
+        tag = 4 if self.max_rects else 22
+        points_count = 4 if self.max_rects else len(self.xy_coords)
 
-        tag = 22
-        if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == ("GL_NEAREST", "GL_NEAREST"):
+        self.write_uchar(self.texture_index)
+
+        if not self.max_rects:
+            self.write_uchar(points_count)
+
+        if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == ("GL_NEAREST", "GL_NEAREST") and not self.max_rects:
             tag = 17
 
-        for coord in self.xy_coords:
+        for coord in self.xy_coords[:points_count]:
             x, y = coord
 
             self.write_twip(x)
             self.write_twip(y)
         
-        for coord in self.uv_coords:
+        for coord in self.uv_coords[:points_count]:
             u, v = coord
 
             if tag == 22:
@@ -114,7 +121,6 @@ class ShapeDrawBitmapCommand(Writable):
             self.write_ushort(int(round(u)))
             self.write_ushort(int(round(v)))
         
-        # TODO: add tag 4 support (maxRects)
         return tag, self.buffer
 
 def get_center(coords):
