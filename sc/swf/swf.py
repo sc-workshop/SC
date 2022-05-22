@@ -287,14 +287,14 @@ class SupercellSWF:
                 self.writer.write_uchar(9)
                 self.writer.write_int(7)
 
-                self.writer.write_char(int(round(color_transform[1] * 127)))
-                self.writer.write_char(int(round(color_transform[0] * 127)))
-                self.writer.write_char(int(round(color_transform[2] * 127)))
+                self.writer.write_uchar(int(round(color_transform[0] * 255)))
+                self.writer.write_uchar(int(round(color_transform[1] * 255)))
+                self.writer.write_uchar(int(round(color_transform[2] * 255)))
 
-                self.writer.write_char(int(round(color_transform[7] * 127)))
-                self.writer.write_char(int(round(color_transform[4] * 127)))
-                self.writer.write_char(int(round(color_transform[5] * 127)))
-                self.writer.write_char(int(round(color_transform[6] * 127)))
+                self.writer.write_uchar(int(round(color_transform[7] * 255)))
+                self.writer.write_uchar(int(round(color_transform[4] * 255)))
+                self.writer.write_uchar(int(round(color_transform[5] * 255)))
+                self.writer.write_uchar(int(round(color_transform[6] * 255)))
 
         for movieclip in self.movieclips:
             tag, buffer = movieclip.save(self)
