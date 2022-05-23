@@ -163,11 +163,13 @@ def calculate_rotation2(uv_coords, xy_coords):
     angle_xy = degrees(atan2(dy, dx) + 360) % 360
     angle_uv = degrees(atan2(dv, du) + 360) % 360
 
-    angle = (angle_xy - angle_uv + 360) % 360
+    angle = round((angle_xy - angle_uv + 360) % 360)
 
     nearest = round(angle / 90) * 90
 
-    if not mirroring and not uv_cw and angle not in [90, 270]:
-        nearest += 180
-    
+    if not uv_cw:
+        if mirroring:
+            if angle in [90, 270]:
+                nearest += 180
+
     return nearest, mirroring

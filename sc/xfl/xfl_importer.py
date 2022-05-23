@@ -225,24 +225,21 @@ def convert_shapes(swf, xfl):
                 xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
 
                 # building sprite bounding box
-                rounded = []
-                for coord in uv_coords:
-                    x, y = coord
-                    rounded.append([ceil(x), ceil(y)])
-                
+                rounded = [[ceil(x), ceil(y)] for x, y in uv_coords]
+
                 image_box = cv2.boundingRect(np.array(rounded))
                 a, b, c, d = image_box
-                if c - 1 > 1 and not prepared_bitmap['simX']:
-                    c -= 1
-
-                if d - 1 > 1 and not prepared_bitmap['simY']:
-                    d -= 1
 
                 # checking for "color fill"
                 is_color_fill = c + d < 3
                 shape["colorFills"].append(is_color_fill)
 
                 if not is_color_fill:
+                    if c - 1 > 1 and not prepared_bitmap['simX']:
+                        c -= 1
+                    if d - 1 > 1 and not prepared_bitmap['simY']:
+                        d -= 1
+
                     #------------------------------------Bitmap matrix-------------------------------------------------#
                     # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
                     rotation, mirroring = calculate_rotation2(uv_coords, xy_coords)
@@ -253,31 +250,24 @@ def convert_shapes(swf, xfl):
                           round(x * sin(rad_rot) + y * cos(rad_rot))]
                          for x, y in uv_coords], xy_coords)
 
-                    at.scale(sx, sy)  # apply scale
                     left = min(coord[0] for coord in xy_coords)
                     top = min(coord[1] for coord in xy_coords)
                     at.translate(top, left)
-                    
-                    if mirroring:
-                        at.scale(-1, 1)
-                        at.ty += w
-
+                    at.scale(sx, sy)  # apply scale
                     #-----------------------------------------Bitmap image----------------------------------------------#
                     texture = swf.textures[bitmap["texture"]].image
-
-                    rounded = []
-                    for coord in uv_coords:
-                        x, y = coord
-                        rounded.append([ceil(x), ceil(y)])
                     
                     points = np.array(rounded, dtype=np.int32)
                     mask = np.zeros(texture.shape[:2], dtype=np.uint8)
                     cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
                     res = cv2.bitwise_and(texture, texture, mask=mask)
-                    res = res[b: b + d, a: a + c]
+                    cropped = res[b: b + d, a: a + c]
 
-                    if res.shape[0] > 1 and res.shape[1] > 1: # TODO: fix 1px bitmaps
-                        uv_h, uv_w = res.shape[:2]
+                    if cropped.shape[0] < 1 or cropped.shape[1] < 1:
+                        cropped = res[b - 1: b + d, a - 1: a + c]
+
+                    if rotation:
+                        uv_h, uv_w = cropped.shape[:2]
                         uv_center = (uv_w / 2, uv_h / 2)
                         rot = cv2.getRotationMatrix2D(uv_center, -rotation, 1)
 
@@ -288,23 +278,24 @@ def convert_shapes(swf, xfl):
 
                         rot[0, 2] += ((b_w / 2) - uv_center[0])
                         rot[1, 2] += ((b_h / 2) - uv_center[1])
+                        cropped = cv2.warpAffine(cropped, rot, (b_w, b_h))
+                    if mirroring:
+                        cropped = cv2.flip(cropped, 1)
 
-                        rotated = cv2.warpAffine(res, rot, (b_w, b_h), flags=cv2.INTER_LINEAR)
+                    binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
+                    png_name = f"{shape['id']} {shape['bitmaps'].index(bitmap)}.png"
 
-                        binary_name = f"M {shape['id']} {shape['bitmaps'].index(bitmap)}.dat"
-                        png_name = f"{shape['id']} {shape['bitmaps'].index(bitmap)}.png"
+                    cv2.imwrite(f"{xfl.resources_dir}{png_name}", cropped)
+                    binary = Bitmap()
+                    with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
+                        file.write(binary.save(cropped))
 
-                        cv2.imwrite(f"{xfl.resources_dir}{png_name}", rotated)
-                        binary = Bitmap()
-                        with open(f"{xfl.binary_dir}{binary_name}", 'wb') as file:
-                            file.write(binary.save(rotated))
-
-                        # including this media file to main scene library
-                        SubElement(xfl.media, "DOMBitmapItem",
-                                    name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}",
-                                    allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false",
-                                    quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
-                                    bitmapDataHRef=binary_name)
+                    # including this media file to main scene library
+                    SubElement(xfl.media, "DOMBitmapItem",
+                               name=f"Resources/{shape['id']} {shape['bitmaps'].index(bitmap)}",
+                               allowSmoothing="true", compressionType="lossless", useImportedJPEGData="false",
+                               quality="100", sourceExternalFilepath=f"./LIBRARY/Resources/{png_name}",
+                               bitmapDataHRef=binary_name)
             else:
                 xy_coords = swf.shapes[shape_index].bitmaps[bitmap_index].xy_coords
                 uv_coords = swf.shapes[shape_index].bitmaps[bitmap].xy_coords
@@ -478,6 +469,12 @@ def convert_sc_to_xfl(swf):
 
     # project director
     xfl.project_dir = os.path.splitext(swf.filename)[0]
+
+    try:
+        from shutil import rmtree
+        rmtree(xfl.project_dir)
+    except:
+        pass
 
     # initialize basic project things (like folders inside scene library etc.)
     init_dom(xfl)
