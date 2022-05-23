@@ -111,24 +111,23 @@ PIXEL_READ_FUNCTIONS = {
 
 
 def write_rgba8888(stream, pixel):
-    b, g, r, a = pixel
-    stream.write_int(r << 24 | g << 16 | b << 8 | a)
+    b, g, r, a = pixel.tolist()
+    stream.write_uint(r << 24 | g << 16 | b << 8 | a)
 
 def write_rgba4444(stream, pixel):
-    b, g, r, a = pixel
+    b, g, r, a = pixel.tolist()
     stream.write_ushort(a >> 4 | b >> 4 << 4 | g >> 4 << 8 | r >> 4 << 12)
 
 def write_rgba5551(stream, pixel):
-    b, g, r, a = pixel
+    b, g, r, a = pixel.tolist()
     stream.write_ushort(a >> 7 | b >> 3 << 1 | g >> 3 << 6 | r >> 3 << 11)
 
 def write_rgb565(stream, pixel):
-    b, g, r = pixel
-    #print(b, g, r)
+    b, g, r = pixel.tolist()
     stream.write_ushort(int(b >> 3 | g >> 2 << 5 | r >> 3 << 11))
 
 def write_la8(stream, pixel):
-    l, a = pixel
+    l, a = pixel.tolist()
     stream.write_ushort(a << 8 | l)
 
 def write_l8(stream, pixel):

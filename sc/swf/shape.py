@@ -40,24 +40,29 @@ class Shape(Writable):
         self.write_ushort(self.id)
         self.write_ushort(len(self.bitmaps))
 
-        # allocator?
         points_count = 0
+        max_rects_count = 0
         for bitmap in self.bitmaps:
             points_count += len(bitmap.xy_coords)
+            if bitmap.max_rects:
+                max_rects_count += 1
         
-        self.write_ushort(points_count)
+        tag = 2 if max_rects_count == len(self.bitmaps) else 18
+        
+        # allocator?
+        if tag == 18:
+            self.write_ushort(points_count)
         
         for bitmap in self.bitmaps:
-            tag, buffer = bitmap.save(swf)
+            tag_bitmap, buffer = bitmap.save(swf)
 
-            self.write_uchar(tag)
+            self.write_uchar(tag_bitmap)
             self.write_int(len(buffer))
             self.write(buffer)
 
         self.write(bytes(5)) # end tag for bitmap tags array
 
-        # TODO: add support for tag 2 (maxRects in TexturePacker)
-        return 18, self.buffer
+        return tag, self.buffer
 
 
 class ShapeDrawBitmapCommand(Writable):
@@ -65,11 +70,14 @@ class ShapeDrawBitmapCommand(Writable):
         self.texture_index: int = -1
         self.uv_coords: list = []
         self.xy_coords: list = []
+
+        self.max_rects: bool = False
     
     def load(self, swf, tag: int):
         self.texture_index = swf.reader.read_uchar()
 
-        points_count = 4 if tag == 4 else swf.reader.read_uchar()
+        self.max_rects = tag == 4
+        points_count = 4 if self.max_rects else swf.reader.read_uchar()
 
         for i in range(points_count):
             x = swf.reader.read_twip()
@@ -77,38 +85,48 @@ class ShapeDrawBitmapCommand(Writable):
             self.xy_coords.append([x, y])
         
         for i in range(points_count):
-            w = swf.reader.read_ushort() / 0xFFFF * swf.textures[self.texture_index].width
-            h = swf.reader.read_ushort() / 0xFFFF * swf.textures[self.texture_index].height
+            w = swf.reader.read_ushort()
+            h = swf.reader.read_ushort()
+
+            if tag == 22:
+                w /= 0xFFFF * swf.textures[self.texture_index].width
+                h /= 0xFFFF * swf.textures[self.texture_index].height
 
             u, v = [ceil(i) for i in [w, h]]
-            #if int(w) == u:
-                #u += 1
-            #if int(h) == v:
-                #v += 1
-            #?
             
             self.uv_coords.append([u, v])
     
     def save(self, swf):
         super().save()
 
-        self.write_uchar(self.texture_index)
-        self.write_uchar(len(self.xy_coords))
+        tag = 4 if self.max_rects else 22
+        points_count = 4 if self.max_rects else len(self.xy_coords)
 
-        for coord in self.xy_coords:
+        self.write_uchar(self.texture_index)
+
+        if not self.max_rects:
+            self.write_uchar(points_count)
+
+        if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == ("GL_NEAREST", "GL_NEAREST") and not self.max_rects:
+            tag = 17
+
+        for coord in self.xy_coords[:points_count]:
             x, y = coord
 
             self.write_twip(x)
             self.write_twip(y)
         
-        for coord in self.uv_coords:
+        for coord in self.uv_coords[:points_count]:
             u, v = coord
 
-            self.write_ushort(int(round((u * 0xFFFF) / swf.textures[self.texture_index].width)))
-            self.write_ushort(int(round((v * 0xFFFF) / swf.textures[self.texture_index].height)))
+            if tag == 22:
+                u *= 0xFFFF / swf.textures[self.texture_index].width
+                v *= 0xFFFF / swf.textures[self.texture_index].height
+
+            self.write_ushort(int(round(u)))
+            self.write_ushort(int(round(v)))
         
-        # TODO: add tag 17 & 4 support (4 - maxRects, 17 - polygon but not normalized)
-        return 22, self.buffer
+        return tag, self.buffer
 
 def get_center(coords):
     x_coords = [coord[0] for coord in coords]

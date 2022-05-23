@@ -2,15 +2,15 @@ from .writable import Writable
 
 
 BLENDMODES = [
-    "Mix",
-    "Mix",
-    "Layer",
-    "Multipliy",
-    "Screen",
-    "Lighten",
-    "Darken",
-    "Difference",
-    "Add"
+    None, # "mix" by default
+    None,
+    None, # "layer"
+    "multiply",
+    "screen",
+    None, # "lighten"
+    None, # "darken"
+    None, # "difference"
+    "add"
 ]
 
 
@@ -86,7 +86,9 @@ class MovieClip(Writable):
         
         if tag in [12, 35]:
             for x in range(binds_count):
-                self.binds[x]["blend"] = BLENDMODES[swf.reader.read_uchar() & 0x3F]
+                blend_index = swf.reader.read_uchar() & 0x3F
+                reversed = (bind_index >> 6) & 1
+                self.binds[x]["blend"] = BLENDMODES[blend_index]
         
         for x in range(binds_count):
             self.binds[x]["name"] = swf.reader.read_ascii()
@@ -161,9 +163,9 @@ class MovieClip(Writable):
             self.write_uchar(self.matrix_bank)
         
         for frame in self.frames:
-            tag, buffer = frame.save()
+            tag_frame, buffer = frame.save()
 
-            self.write_uchar(tag)
+            self.write_uchar(tag_frame)
             self.write_int(len(buffer))
             self.write(buffer)
         

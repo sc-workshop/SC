@@ -287,9 +287,9 @@ class SupercellSWF:
                 self.writer.write_uchar(9)
                 self.writer.write_int(7)
 
-                self.writer.write_uchar(int(round(color_transform[0] * 255)))
-                self.writer.write_uchar(int(round(color_transform[1] * 255)))
-                self.writer.write_uchar(int(round(color_transform[2] * 255)))
+                self.writer.write_uchar(int(round(color_transform[0])))
+                self.writer.write_uchar(int(round(color_transform[1])))
+                self.writer.write_uchar(int(round(color_transform[2])))
 
                 self.writer.write_uchar(int(round(color_transform[7] * 255)))
                 self.writer.write_uchar(int(round(color_transform[4] * 255)))
