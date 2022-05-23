@@ -163,9 +163,9 @@ class MovieClip(Writable):
             self.write_uchar(self.matrix_bank)
         
         for frame in self.frames:
-            tag, buffer = frame.save()
+            tag_frame, buffer = frame.save()
 
-            self.write_uchar(tag)
+            self.write_uchar(tag_frame)
             self.write_int(len(buffer))
             self.write(buffer)
         

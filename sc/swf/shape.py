@@ -54,9 +54,9 @@ class Shape(Writable):
             self.write_ushort(points_count)
         
         for bitmap in self.bitmaps:
-            tag, buffer = bitmap.save(swf)
+            tag_bitmap, buffer = bitmap.save(swf)
 
-            self.write_uchar(tag)
+            self.write_uchar(tag_bitmap)
             self.write_int(len(buffer))
             self.write(buffer)
 
