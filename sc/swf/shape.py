@@ -89,8 +89,8 @@ class ShapeDrawBitmapCommand(Writable):
             h = swf.reader.read_ushort()
 
             if tag == 22:
-                w /= 0xFFFF * swf.textures[self.texture_index].width
-                h /= 0xFFFF * swf.textures[self.texture_index].height
+                w = w / 0xFFFF * swf.textures[self.texture_index].width
+                h = h / 0xFFFF * swf.textures[self.texture_index].height
 
             u, v = [ceil(i) for i in [w, h]]
             
