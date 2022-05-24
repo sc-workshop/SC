@@ -203,13 +203,16 @@ class SupercellSWF:
         
         return has_external_texture, has_highres_texture, has_lowres_texture
     
+    def save_tag(self, tag, buffer):
+        self.writer.write_uchar(tag)
+        self.writer.write_int(len(buffer))
+        self.writer.write(buffer)
+    
     def save_texture(self):
         for texture in self.textures:
-            tag, buffer = texture.save(self, False)
+            tag, buffer = texture.save(False)
 
-            self.writer.write_uchar(tag)
-            self.writer.write_int(len(buffer))
-            self.writer.write(buffer)
+            self.save_tag(tag, buffer)
         
         self.writer.write(bytes(5))
     
@@ -220,90 +223,79 @@ class SupercellSWF:
             postfix_tag.write_ascii(self.highres_asset_postfix)
             postfix_tag.write_ascii(self.lowres_asset_postfix)
 
-            self.writer.write_uchar(32)
-            self.writer.write_int(len(postfix_tag.buffer))
-            self.writer.write(postfix_tag.buffer)
+            self.save_tag(32, postfix_tag.buffer)
         
         if not has_lowres_texture:
-            self.writer.write_uchar(23)
-            self.writer.write_int(0)
+            self.save_tag(23, bytes())
 
         if has_external_texture:
-            self.writer.write_uchar(26)
-            self.writer.write_int(0)
+            self.save_tag(26, bytes())
         
         if not has_highres_texture:
-            self.writer.write_uchar(30)
-            self.writer.write_int(0)
+            self.save_tag(30, bytes())
         
         for texture in self.textures:
-            tag, buffer = texture.save(self, has_external_texture)
-
-            self.writer.write_uchar(tag)
-            self.writer.write_int(len(buffer))
-            self.writer.write(buffer)
+            tag, buffer = texture.save(has_external_texture)
+            
+            self.save_tag(tag, buffer)
         
         for movieclip_modifier in self.movieclip_modifiers:
             tag, buffer = movieclip_modifier.save()
 
-            self.writer.write_uchar(tag)
-            self.writer.write_int(len(buffer))
-            self.writer.write(buffer)
+            self.save_tag(tag, buffer)
 
         for shape in self.shapes:
             tag, buffer = shape.save(self)
 
-            self.writer.write_uchar(tag)
-            self.writer.write_int(len(buffer))
-            self.writer.write(buffer)
+            self.save_tag(tag, buffer)
 
         for text_field in self.text_fields:
             tag, buffer = text_field.save()
 
-            self.writer.write_uchar(tag)
-            self.writer.write_int(len(buffer))
-            self.writer.write(buffer)
+            self.save_tag(tag, buffer)
 
         for matrix_bank in self.matrix_banks:
             if self.matrix_banks.index(matrix_bank):
-                self.writer.write_uchar(42)
-                self.writer.write_int(4)
-                self.writer.write_ushort(len(matrix_bank.matrices))
-                self.writer.write_ushort(len(matrix_bank.color_transforms))
+                matrix_bank_tag = BinaryWriter()
+
+                matrix_bank_tag.write_ushort(len(matrix_bank.matrices))
+                matrix_bank_tag.write_ushort(len(matrix_bank.color_transforms))
+
+                self.save_tag(42, matrix_bank_tag.buffer)
             
             for matrix in matrix_bank.matrices:
-                self.writer.write_uchar(8)
-                self.writer.write_int(24)
+                matrix_tag = BinaryWriter()
 
-                self.writer.write_int(int(round(matrix[0] * 1024)))
-                self.writer.write_int(int(round(matrix[1] * 1024)))
-                self.writer.write_int(int(round(matrix[2] * 1024)))
-                self.writer.write_int(int(round(matrix[3] * 1024)))
+                matrix_tag.write_int(int(round(matrix[0] * 1024)))
+                matrix_tag.write_int(int(round(matrix[1] * 1024)))
+                matrix_tag.write_int(int(round(matrix[2] * 1024)))
+                matrix_tag.write_int(int(round(matrix[3] * 1024)))
 
-                self.writer.write_twip(matrix[4])
-                self.writer.write_twip(matrix[5])
+                matrix_tag.write_twip(matrix[4])
+                matrix_tag.write_twip(matrix[5])
+
+                self.save_tag(8, matrix_tag.buffer)
 
             for color_transform in matrix_bank.color_transforms:
-                self.writer.write_uchar(9)
-                self.writer.write_int(7)
+                color_transform_tag = BinaryWriter()
 
-                self.writer.write_uchar(int(round(color_transform[0])))
-                self.writer.write_uchar(int(round(color_transform[1])))
-                self.writer.write_uchar(int(round(color_transform[2])))
+                color_transform_tag.write_uchar(int(round(color_transform[0])))
+                color_transform_tag.write_uchar(int(round(color_transform[1])))
+                color_transform_tag.write_uchar(int(round(color_transform[2])))
 
-                self.writer.write_uchar(int(round(color_transform[7] * 255)))
-                self.writer.write_uchar(int(round(color_transform[4] * 255)))
-                self.writer.write_uchar(int(round(color_transform[5] * 255)))
-                self.writer.write_uchar(int(round(color_transform[6] * 255)))
+                color_transform_tag.write_uchar(int(round(color_transform[7] * 255)))
+                color_transform_tag.write_uchar(int(round(color_transform[4] * 255)))
+                color_transform_tag.write_uchar(int(round(color_transform[5] * 255)))
+                color_transform_tag.write_uchar(int(round(color_transform[6] * 255)))
+
+                self.save_tag(9, color_transform_tag.buffer)
 
         for movieclip in self.movieclips:
             tag, buffer = movieclip.save(self)
 
-            self.writer.write_uchar(tag)
-            self.writer.write_int(len(buffer))
-            self.writer.write(buffer)
+            self.save_tag(tag, buffer)
 
-        self.writer.write(bytes(5))
+        self.writer.write(bytes(5)) # end tag
 
     def save_internal(self, filepath: str, is_texture: bool, has_external_texture: bool, has_highres_texture: bool, has_lowres_texture: bool):
         self.writer = BinaryWriter()
@@ -321,7 +313,7 @@ class SupercellSWF:
             self.writer.write_ushort(len(matrix_bank.matrices))
             self.writer.write_ushort(len(matrix_bank.color_transforms))
 
-            self.writer.write(bytes(5))
+            self.writer.write(bytes(5)) # unused
 
             self.writer.write_ushort(len(self.exports))
 

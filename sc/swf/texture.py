@@ -3,211 +3,7 @@ import numpy as np
 
 from .writable import Writable
 
-
-PIXEL_FORMATS = [
-    "GL_RGBA",
-    "GL_RGBA",
-    "GL_RGBA",
-    "GL_RGBA",
-    "GL_RGB",
-    "GL_RGBA",
-    "GL_LUMINANCE_ALPHA",
-    "GL_RGBA",
-    "GL_RGBA",
-    "GL_RGBA",
-    "GL_RGBA",
-    "GL_LUMINANCE"
-]
-
-PIXEL_INTERNAL_FORMATS = [
-    "GL_RGBA8",
-    "GL_RGBA8",
-    "GL_RGBA4",
-    "GL_RGB5_A1",
-    "GL_RGB565",
-    "GL_RGBA8",
-    "GL_LUMINANCE8_ALPHA8",
-    "GL_RGBA8",
-    "GL_RGBA8",
-    "GL_RGBA4",
-    "GL_LUMINANCE8"
-]
-
-PIXEL_TYPES = [
-    "GL_UNSIGNED_BYTE",
-    "GL_UNSIGNED_BYTE",
-    "GL_UNSIGNED_SHORT_4_4_4_4",
-    "GL_UNSIGNED_SHORT_5_5_5_1",
-    "GL_UNSIGNED_SHORT_5_6_5",
-    "GL_UNSIGNED_BYTE",
-    "GL_UNSIGNED_BYTE",
-    "GL_UNSIGNED_BYTE",
-    "GL_UNSIGNED_BYTE",
-    "GL_UNSIGNED_SHORT_4_4_4_4",
-    "GL_UNSIGNED_BYTE",
-]
-
-PIXEL_SIZES = [
-    4,
-    4,
-    2,
-    2,
-    2,
-    4,
-    2,
-    4,
-    4,
-    2,
-    1
-]
-
-def read_rgba8888(swf):
-    r = swf.reader.read_uchar()
-    g = swf.reader.read_uchar()
-    b = swf.reader.read_uchar()
-    a = swf.reader.read_uchar()
-    return b, g, r, a
-
-def read_rgba4444(swf):
-    p = swf.reader.read_ushort()
-    r = ((p >> 12) & 15) << 4
-    g = ((p >> 8) & 15) << 4
-    b = ((p >> 4) & 15) << 4
-    a = (p & 15) << 4
-    return b, g, r, a
-
-def read_rgba5551(swf):
-    p = swf.reader.read_ushort()
-    r = ((p >> 11) & 31) << 3
-    g = ((p >> 6) & 31) << 3
-    b = ((p >> 1) & 31) << 3
-    a = (p & 255) << 7
-    return b, g, r, a
-
-def read_rgb565(swf):
-    p = swf.reader.read_ushort()
-    r = ((p >> 11) & 31) << 3
-    g = ((p >> 5) & 63) << 2
-    b = (p & 31) << 3
-    return b, g, r, 255
-
-def read_la88(swf):
-    a = swf.reader.read_uchar()
-    l = swf.reader.read_uchar()
-    return l, l, l, a
-
-def read_l8(swf):
-    l = swf.reader.read_uchar()
-    return l, l, l, 255
-
-PIXEL_READ_FUNCTIONS = {
-    "GL_RGBA8": read_rgba8888,
-    "GL_RGBA4": read_rgba4444,
-    "GL_RGB5_A1": read_rgba5551,
-    "GL_RGB565": read_rgb565,
-    "GL_LUMINANCE8_ALPHA8": read_la88,
-    "GL_LUMINANCE8": read_l8
-}
-
-
-def write_rgba8888(stream, pixel):
-    b, g, r, a = pixel.tolist()
-    stream.write_uint(r << 24 | g << 16 | b << 8 | a)
-
-def write_rgba4444(stream, pixel):
-    b, g, r, a = pixel.tolist()
-    stream.write_ushort(a >> 4 | b >> 4 << 4 | g >> 4 << 8 | r >> 4 << 12)
-
-def write_rgba5551(stream, pixel):
-    b, g, r, a = pixel.tolist()
-    stream.write_ushort(a >> 7 | b >> 3 << 1 | g >> 3 << 6 | r >> 3 << 11)
-
-def write_rgb565(stream, pixel):
-    b, g, r = pixel.tolist()
-    stream.write_ushort(int(b >> 3 | g >> 2 << 5 | r >> 3 << 11))
-
-def write_la8(stream, pixel):
-    l, a = pixel.tolist()
-    stream.write_ushort(a << 8 | l)
-
-def write_l8(stream, pixel):
-    stream.write_uchar(pixel)
-
-PIXEL_WRITE_FUNCTIONS = {
-    "GL_RGBA8": write_rgba8888,
-    "GL_RGBA4": write_rgba4444,
-    "GL_RGB5_A1": write_rgba5551,
-    "GL_RGB565": write_rgb565,
-    "GL_LUMINANCE8_ALPHA8": write_la8,
-    "GL_LUMINANCE8": write_l8
-}
-
-
-def make_linear(texture, pixels):
-    block_size = 32
-
-    x_blocks = texture.width // block_size
-    y_blocks = texture.height // block_size
-
-    x_rest = texture.width % block_size
-    y_rest = texture.height % block_size
-
-    i = 0
-    for y_block in range(y_blocks):
-        for x_block in range(x_blocks):
-            for y in range(block_size):
-                for x in range(block_size):
-                    texture.image[y_block * block_size + y, x_block * block_size + x] = pixels[i]
-                    i += 1
-        
-        for y in range(block_size):
-            for x in range(x_rest):
-                texture.image[y_block * block_size + y, (texture.width - x_rest) + x] = pixels[i]
-                i += 1
-    
-    for x_block in range(x_blocks):
-        for y in range(y_rest):
-            for x in range(block_size):
-                texture.image[(texture.height - y_rest) + y, x_block * block_size + x] = pixels[i]
-                i += 1
-    
-    for y in range(y_rest):
-        for x in range(x_rest):
-            texture.image[y + (texture.height - y_rest), x + (texture.width - x_rest)] = pixels[i]
-            i += 1
-
-
-def make_blocks(texture):
-    height, width, channels = texture.image.shape
-    block_size = 32
-
-    x_blocks_count = width // block_size
-    y_blocks_count = height // block_size
-    x_rest = width % block_size
-    y_rest = height % block_size
-    
-    pixels = []
-
-    for y_block in range(y_blocks_count):
-        for x_block in range(x_blocks_count):
-            for y in range(block_size):
-                for x in range(block_size):
-                    pixels.append(texture.image[y + (y_block * block_size), x + (x_block * block_size)])
-
-        for y in range(block_size):
-            for x in range(x_rest):
-                    pixels.append(texture.image[y + (y_block * block_size), x + (width - x_rest)])
-
-    for x_block in range(width // block_size):
-        for y in range(y_rest):
-            for x in range(block_size):
-                    pixels.append(texture.image[y + (height - y_rest), x + (x_block * block_size)])
-
-    for y in range(y_rest):
-        for x in range(x_rest):
-                    pixels.append(texture.image[y + (height - y_rest), x + (width - x_rest)])
-    
-    texture.image = np.array(pixels).reshape(height, width, channels)
+from sc.utils.images import *
 
 
 class SWFTexture(Writable):
@@ -249,17 +45,9 @@ class SWFTexture(Writable):
         self.height = swf.reader.read_ushort()
 
         if not has_external_texture:
-            pixels = []
-            for y in range(self.height):
-                for x in range(self.width):
-                    pixels.append(PIXEL_READ_FUNCTIONS[self.pixel_internal_format](swf))
-            
-            self.image = np.array(pixels, dtype=np.uint8).reshape(self.height, self.width, 4)
-
-            if not self.linear:
-                make_linear(self, pixels)
+            load_image(self, swf)
     
-    def save(self, swf, has_external_texture: bool):
+    def save(self, has_external_texture: bool):
         super().save()
 
         height, width, channels = self.image.shape
@@ -267,19 +55,34 @@ class SWFTexture(Writable):
         self.width = width
         self.height = height
 
-        if channels == 4:
+        if channels == 4 and (self.pixel_format, self.pixel_internal_format) != ("GL_LUMINANCE_ALPHA", "GL_LUMINANCE8_ALPHA8"):
             self.pixel_format = "GL_RGBA"
+
+            if self.pixel_type == "GL_UNSIGNED_BYTE":
+                self.pixel_internal_format = "GL_RGBA8"
+            
+            elif self.pixel_type == "GL_UNSIGNED_SHORT_4_4_4_4":
+                self.pixel_internal_format = "GL_RGBA4"
+            
+            else:
+                self.pixel_internal_format = "GL_RGB5_A1"
+        
         elif channels == 3:
             self.pixel_format = "GL_RGB"
-        elif channels == 2:
+            self.pixel_type = "GL_UNSIGNED_SHORT_5_6_5"
+            self.pixel_internal_format = "GL_RGB565"
+        
+        elif channels == 4 and (self.pixel_format, self.pixel_internal_format) == ("GL_LUMINANCE_ALPHA", "GL_LUMINANCE8_ALPHA8"): # OpenCV doesn't support LUMINANCE_ALPHA :(((
             self.pixel_format = "GL_LUMINANCE_ALPHA"
+            self.pixel_type = "GL_UNSIGNED_BYTE"
+            self.pixel_internal_format = "GL_LUMINANCE8_ALPHA8"
+        
         else:
             self.pixel_format = "GL_LUMINANCE"
+            self.pixel_type = "GL_UNSIGNED_BYTE"
+            self.pixel_internal_format = "GL_LUMINANCE8"
 
-        pixel_type_index = PIXEL_FORMATS.index(self.pixel_format)
-
-        self.pixel_type = PIXEL_TYPES[pixel_type_index]
-        self.pixel_internal_format = PIXEL_INTERNAL_FORMATS[pixel_type_index]
+        pixel_type_index = PIXEL_INTERNAL_FORMATS.index(self.pixel_internal_format)
 
         tag = 1
         if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_NEAREST"):
@@ -303,11 +106,6 @@ class SWFTexture(Writable):
         self.write_ushort(self.height)
 
         if not has_external_texture:
-            if not self.linear:
-                make_blocks(self)
-            
-            for y in range(self.height):
-                for x in range(self.width):
-                    PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format](self, self.image[y, x])
+            save_image(self)
 
         return tag, self.buffer

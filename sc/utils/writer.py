@@ -30,9 +30,6 @@ class BinaryWriter(BytesIO):
     def write_int(self, data: int):
         self.write(data.to_bytes(4, "little", signed=True))
     
-    def write_uint(self, data: int):
-        self.write(data.to_bytes(4, "little", signed=False))
-    
     def write_ascii(self, data: str = None):
         if not data:
             self.write_uchar(0xFF)

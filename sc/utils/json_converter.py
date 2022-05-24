@@ -3,17 +3,10 @@ import os
 import json
 
 import cv2
-import numpy as np
 
 from struct import unpack
 
-from sc.swf import SupercellSWF
-from sc.swf.texture import SWFTexture
-from sc.swf.shape import Shape, ShapeDrawBitmapCommand
-from sc.swf.text_field import TextField
-from sc.swf.matrix_bank import MatrixBank
-from sc.swf.movieclip import MovieClipModifier, MovieClip, MovieClipFrame
-
+from sc.swf import *
 
 
 def convert_sc_to_json(filepath):
@@ -50,6 +43,8 @@ def convert_sc_to_json(filepath):
 
         inlib["width"] = texture.width
         inlib["height"] = texture.height
+
+        print(texture.image.shape[2])
 
         cv2.imwrite(f"{os.path.splitext(swf.filename)[0]}_{swf.textures.index(texture)}.png", texture.image)
         inlib["uri"] = os.path.splitext(swf.filename)[0] + f"_{swf.textures.index(texture)}.png"
