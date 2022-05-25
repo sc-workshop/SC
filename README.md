@@ -58,7 +58,9 @@ Animations from Clash Royale and Brawl Stars in Adobe Animate for example.
         <td></td>
     </tr>
     <tr>
-        <td></td>
+        <td>
+            <video style="width:100%" controls src="assets/8bit_event.mp4" type="video/mp4"></video>
+        </td>
     </tr>
 </table>
 
