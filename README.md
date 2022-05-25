@@ -53,7 +53,7 @@ Some screenshots from Adobe Animate 2022.
 
 Animations from Clash Royale and Brawl Stars in Adobe Animate for example.
 
-<video style="width:100%" controls src="assets/8bit_event.mp4" type="video/mp4"></video>
+[8-Bit event](assets/8bit_event.mp4)
 
 ## About SC Files
 
