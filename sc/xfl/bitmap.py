@@ -44,3 +44,6 @@ class Bitmap:
             stream.write(sliced)
         
         return b"\x03\x05" + stream.buffer + b"\x00\x00"
+    
+    def load(self, filepath: str):
+        pass
