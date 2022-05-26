@@ -239,6 +239,9 @@ class SupercellSWF:
             
             self.save_tag(tag, buffer)
         
+        if self.movieclip_modifiers:
+            self.save_tag(37, len(self.movieclip_modifiers).to_bytes(2, "little"))
+        
         for movieclip_modifier in self.movieclip_modifiers:
             tag, buffer = movieclip_modifier.save()
 
