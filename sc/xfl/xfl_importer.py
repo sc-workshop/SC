@@ -8,10 +8,10 @@ from math import radians, sin, cos, ceil
 from xml.etree.ElementTree import *
 
 from sc.utils import AffineTransform
-from sc.swf.shape import  get_center, calculate_rotation2, calculate_scale
+from sc.swf.shape import calculate_rotation, calculate_scale
 
-from sc.xfl.xfl import XFL
-from sc.xfl.bitmap import Bitmap
+from .xfl import XFL
+from .bitmap import Bitmap
 
 
 # for use
@@ -281,7 +281,7 @@ def convert_shapes(swf, xfl):
 
                     # ------------------------------------Bitmap matrix-------------------------------------------------#
                     # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
-                    rotation, mirroring = calculate_rotation2(uv_coords, xy_coords)
+                    rotation, mirroring = calculate_rotation(uv_coords, xy_coords)
                     rad_rot = radians(-rotation)
 
                     sx, sy, w, h = calculate_scale(
@@ -341,12 +341,12 @@ def convert_shapes(swf, xfl):
 
                     shape["colorFills"].append(shape["colorFills"][bitmap])
 
-                    #Calculate rotation for bitmap image
-                    rotation, mirroring = calculate_rotation2(pivot_coords, xy_coords)
+                    # calculate rotation for bitmap image
+                    rotation, mirroring = calculate_rotation(pivot_coords, xy_coords)
                     rad_rot = radians(-rotation)
 
-                    #Calculate rotation for uv
-                    uv_rotation, uv_mirroring = calculate_rotation2(uv_coords, xy_coords)
+                    # calculate rotation for uv
+                    uv_rotation, uv_mirroring = calculate_rotation(uv_coords, xy_coords)
                     uv_rad_rot = radians(uv_rotation)
 
                     sx, sy, w, h = calculate_scale(
@@ -378,13 +378,14 @@ def convert_shapes(swf, xfl):
                             sprite_box = [[x_b, y_b - y] for x_b, y_b in sprite_box]
                             at.tx -= y
 
+                    # apply translation
                     left = min(coord[0] for coord in xy_coords)
                     top = min(coord[1] for coord in xy_coords)
 
                     at.tx = top + sprite_box[0][1]
                     at.ty = left + sprite_box[0][0]
 
-                    at.scale(sx, sy)  # apply scale
+                    at.scale(sx, sy) # apply scale
                     #print(f"Bitmap index: {bitmap_index}, Rotation: {rotation}, Translate: {left, top}, Mirror: {mirroring}, Box: {sprite_box}")
 
             # adding matrix
