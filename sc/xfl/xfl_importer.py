@@ -25,7 +25,7 @@ text_field_alignment = ["left", "right", "center", "justify"] # for future
 
 text_field_actions = {}
 movieclip_ids = []
-modifers_ids = []
+modifiers_ids = []
 shape_ids = []
 
 
@@ -37,8 +37,8 @@ def convert_text_fields(swf):
 
 # proceed movies
 def convert_movieclips(swf, xfl):
-    for modifer in swf.movieclip_modifiers:
-        modifers_ids.append(modifer.id)
+    for modifier in swf.movieclip_modifiers:
+        modifiers_ids.append(modifier.id)
 
     for movieclip in swf.movieclips:
         movieclip_ids.append(movieclip.id)
@@ -57,7 +57,8 @@ def convert_movieclips(swf, xfl):
         timeline = SubElement(SubElement(symbol, "timeline"), "DOMTimeline", name=movie_name)
         layers = SubElement(timeline, "layers")
 
-        mask = False #Boolean for modifers(masks)
+        mask = False # boolean for modifiers (masks)
+        # mask_current_idx = -1 # current mask layer index for adding mask child's
         mask_child = False
 
         layer_idx = 0
@@ -68,22 +69,27 @@ def convert_movieclips(swf, xfl):
                 layer_name = bind["name"]
 
             layer = Element("DOMLayer")
-            if bind['id'] in modifers_ids:
-                modifer = swf.movieclip_modifiers[modifers_ids.index(bind['id'])].stencil
-                if modifer == 2:
+
+            if bind['id'] in modifiers_ids:
+                modifier = swf.movieclip_modifiers[modifiers_ids.index(bind['id'])].stencil
+
+                if modifier == 2:
                     mask = True
-                elif modifer == 3:
+                    # mask_current_idx = layer_idx
+                elif modifier == 3:
                     mask_child = True
-                elif modifer == 4:
-                    mask_child == False
+                elif modifier == 4:
+                    mask_child = False
 
             else:
                 layer_attribs = {"name": layer_name, "autoNamed": "false", "color": "#000000"}
+                
                 if mask:
                     layer_attribs["layerType"] = "mask"
                     mask = False
+                
                 elif mask_child:
-                    layer_attribs["parentLayerIndex"] = str(len(movieclip.binds) - layer_idx - 1) #bind count - layer index - modifer bind
+                    layer_attribs["parentLayerIndex"] = str(len(movieclip.binds) - layer_idx - 1) # binds count - layer index - modifier bind
 
                 layer.attrib = layer_attribs
                 layer_frames = SubElement(layer, "frames")
@@ -180,7 +186,7 @@ def convert_movieclips(swf, xfl):
             layer_idx += 1
 
 
-        # reversing layers (because Adobe Animate says YES.) #TODO
+        # reversing layers (because Adobe Animate says YES.) # TODO: improve that
         for layer in layers_list[::-1]:
             layers.append(layer)
         
@@ -226,7 +232,7 @@ def convert_shapes(swf, xfl):
                 "uvCoords": bitmap.uv_coords,
                 "simX": uv_x.count(uv_x[0]) == len(uv_x),
                 # finding similiar X coordinates for calculating "color fill"
-                "simY": uv_y.count(uv_y[0]) == len(uv_y)  # and also Y coordinates for it
+                "simY": uv_y.count(uv_y[0]) == len(uv_y) # and also Y coordinates for it
             }
 
             # checking for dublicate (instancing)
@@ -285,8 +291,9 @@ def convert_shapes(swf, xfl):
 
                     left = min(coord[0] for coord in xy_coords)
                     top = min(coord[1] for coord in xy_coords)
-                    at.translate(top, left)
-                    at.scale(sx, sy)  # apply scale
+                    at.translate(top, left) # apply translation
+                    at.scale(sx, sy) # apply scale
+
                     # -----------------------------------------Bitmap image----------------------------------------------#
                     texture = swf.textures[bitmap["texture"]].image
 
@@ -347,8 +354,8 @@ def convert_shapes(swf, xfl):
                           ceil(x * sin(uv_rad_rot) + y * cos(uv_rad_rot))]
                          for x, y in uv_coords], xy_coords)
 
-                    at.rotate(rad_rot)  # apply rotation
-                    sprite_box = [[0, 0], [w, 0], [w, h], [0, h]]  # building sprite bounding box
+                    at.rotate(rad_rot) # apply rotation
+                    sprite_box = [[0, 0], [w, 0], [w, h], [0, h]] # building sprite bounding box
 
                     # mirroring bounding box
                     if mirroring:
@@ -426,6 +433,7 @@ def convert_shapes(swf, xfl):
                 if matrix[3] != 1.0:
                     matrix_holder.attrib["d"] = str(matrix[3])
 
+                # idk why x is y and y is x here
                 if matrix[5]:
                     matrix_holder.attrib["tx"] = str(matrix[5])
 
@@ -477,7 +485,7 @@ def init_dom(xfl):
     xfl.symbols = SubElement(xfl.dom, "symbols") # all included symbols in scene
     xfl.timelines = SubElement(xfl.dom, "timelines") # and timelines (also unused by default)
 
-    SubElement(xfl.folders, "DOMFolderItem", name="Resources", isExpanded="ture") # unused (for sprites debug)
+    SubElement(xfl.folders, "DOMFolderItem", name="Resources", isExpanded="ture") # folder for sprites png's
     SubElement(xfl.folders, "DOMFolderItem", name="Shapes", isExpanded="ture") # folder for our graphic symbols
 
     os.mkdir(xfl.project_dir)
