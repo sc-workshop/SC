@@ -8,7 +8,7 @@ from math import radians, sin, cos, ceil
 from xml.etree.ElementTree import *
 
 from sc.utils import AffineTransform
-from sc.swf.shape import  get_center, calculate_rotation2, calculate_scale
+from sc.swf.shape import  get_center, calculate_rotation, calculate_scale
 
 from sc.xfl.xfl import XFL
 from sc.xfl.bitmap import Bitmap
@@ -162,7 +162,7 @@ def convert_movieclips(swf, xfl):
 
                         # adding color transformation to frame element from matrix bank
                         if element["color"] != 0xFFFF:
-                            color_holder = SubElement(SubElement(frame_element, "color"), "Color")
+                            color_holder = SubElement(SubElement(frame_elements, "frameColor"), "Color")
 
                             color = swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
 
@@ -277,7 +277,7 @@ def convert_shapes(swf, xfl):
 
                     # ------------------------------------Bitmap matrix-------------------------------------------------#
                     # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
-                    rotation, mirroring = calculate_rotation2(uv_coords, xy_coords)
+                    rotation, mirroring = calculate_rotation(uv_coords, xy_coords)
                     rad_rot = radians(-rotation)
 
                     sx, sy, w, h = calculate_scale(
@@ -337,11 +337,11 @@ def convert_shapes(swf, xfl):
                     shape["colorFills"].append(shape["colorFills"][bitmap])
 
                     #Calculate rotation for bitmap image
-                    rotation, mirroring = calculate_rotation2(pivot_coords, xy_coords)
+                    rotation, mirroring = calculate_rotation(pivot_coords, xy_coords)
                     rad_rot = radians(-rotation)
 
                     #Calculate rotation for uv
-                    uv_rotation, uv_mirroring = calculate_rotation2(uv_coords, xy_coords)
+                    uv_rotation, uv_mirroring = calculate_rotation(uv_coords, xy_coords)
                     uv_rad_rot = radians(uv_rotation)
 
                     sx, sy, w, h = calculate_scale(

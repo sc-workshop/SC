@@ -26,7 +26,6 @@ class Bitmap:
                     r, g, b = image[x, y]
                     image_binary.append(r << 24 | g << 16 | b << 8)
 
-
         image_binary = compress(np.array(image_binary, dtype="<i").tobytes())[2:]
 
         stream = BinaryWriter()
