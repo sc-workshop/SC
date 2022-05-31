@@ -156,7 +156,7 @@ def calculate_scale(uv_coords, xy_coords):
     return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height
 
 
-def calculate_rotation2(uv_coords, xy_coords):
+def calculate_rotation(uv_coords, xy_coords):
     def is_clockwise(points):
         sum = 0
         for x in range(len(points)):

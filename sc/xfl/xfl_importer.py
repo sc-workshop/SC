@@ -25,7 +25,7 @@ text_field_alignment = ["left", "right", "center", "justify"] # for future
 
 text_field_actions = {}
 movieclip_ids = []
-modifer_ids = []
+modifers_ids = []
 shape_ids = []
 
 
@@ -38,7 +38,7 @@ def convert_text_fields(swf):
 # proceed movies
 def convert_movieclips(swf, xfl):
     for modifer in swf.movieclip_modifiers:
-        modifer_ids.append(modifer.id)
+        modifers_ids.append(modifer.id)
 
     for movieclip in swf.movieclips:
         movieclip_ids.append(movieclip.id)
@@ -68,10 +68,12 @@ def convert_movieclips(swf, xfl):
                 layer_name = bind["name"]
 
             layer = Element("DOMLayer")
-            if bind['id'] in modifer_ids:
-                modifer = swf.movieclip_modifiers[modifer_ids.index(bind['id'])].stencil
+
+            if bind['id'] in modifers_ids:
+                modifer = swf.movieclip_modifiers[modifers_ids.index(bind['id'])].stencil
                 if modifer == 2:
                     mask = True
+                    # mask_current_idx = layer_idx
                 elif modifer == 3:
                     mask_child = True
                 elif modifer == 4:
@@ -160,7 +162,7 @@ def convert_movieclips(swf, xfl):
 
                         # adding color transformation to frame element from matrix bank
                         if element["color"] != 0xFFFF:
-                            color_holder = SubElement(SubElement(layer_frame, "frameColor"), "Color")
+                            color_holder = SubElement(SubElement(frame_element, "color"), "Color")
 
                             color = swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
 

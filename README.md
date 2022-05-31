@@ -32,7 +32,7 @@ Link here...
 
 Why not? You can convert .sc files to .json and vice versa (Not recommended as it is very difficult to edit. Also .json files can be very large!) So use this at your own risk...
 
-## Screenshots and Video
+## Screenshots
 
 Some screenshots from Adobe Animate 2022.
 
@@ -51,14 +51,6 @@ Some screenshots from Adobe Animate 2022.
     </tr>
 </table>
 
-Animations from Clash Royale and Brawl Stars in Adobe Animate for example.
-
-
-
-https://user-images.githubusercontent.com/62141407/170351593-e8b561cb-75bf-41f0-906a-00f168c6af39.mp4
-
-
-
 ## About SC Files
 
 All basic information about the asset is stored in a *.sc file (not *_tex.sc!) It contains shapes (graphic symbols with bitmap instances), text fields (for text input/output, also sometimes used for buttons in UI), movieclips ("animation tables" with shapes, text fields and other movieclips animations)
@@ -69,5 +61,4 @@ Nothing more to say, I think.
 ## TODO List
 - Find a way to add LUMINANCE_ALPHA textures support (for OpenCV)
 - Rewrite it on C++ or C# (because Python is **very** slow)
-
-:)
+- Create SC export (from XFL)
