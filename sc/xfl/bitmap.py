@@ -11,12 +11,21 @@ from sc.utils import BinaryReader, BinaryWriter
 class Bitmap:
     def save(self, image):
         height, width, channels = image.shape
-
+        alpha = 0
         image_binary = []
-        for x in range(height):
-            for y in range(width):
-                r, g, b, a = image[x, y]
-                image_binary.append(r << 24 | g << 16 | b << 8 | a)
+        if channels == 4:
+            alpha = 1
+            for x in range(height):
+                for y in range(width):
+                    r, g, b, a = image[x, y]
+                    image_binary.append(r << 24 | g << 16 | b << 8 | a)
+
+        elif channels == 3:
+            for x in range(height):
+                for y in range(width):
+                    r, g, b = image[x, y]
+                    image_binary.append(r << 24 | g << 16 | b << 8)
+
 
         image_binary = compress(np.array(image_binary, dtype="<i").tobytes())[2:]
 
@@ -29,7 +38,7 @@ class Bitmap:
         stream.write_int(width * 20)
         stream.write_int(0)
         stream.write_int(height * 20)
-        stream.write_uchar(1)
+        stream.write_uchar(alpha)
         stream.write_uchar(1)
         stream.write_ushort(2)
         stream.write_ushort(376)
