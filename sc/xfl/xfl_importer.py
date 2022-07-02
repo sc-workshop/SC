@@ -37,12 +37,10 @@ def convert_text_fields(swf):
 
 # proceed movies
 def convert_movieclips(swf, xfl):
-    for modifer in swf.movieclip_modifiers:
-        modifers_ids.append(modifer.id)
+    modifers_ids = [ids.id for ids in swf.movieclip_modifiers]
+    movieclip_ids = [ids.id for ids in swf.movieclips]
 
     for movieclip in swf.movieclips:
-        movieclip_ids.append(movieclip.id)
-
         movie_name = f"{movieclip.id}"
         if movieclip.id in swf.exports:
             movie_name = swf.exports[movieclip.id]
@@ -54,15 +52,14 @@ def convert_movieclips(swf, xfl):
             "name": movie_name
         }
 
-        timeline = SubElement(SubElement(symbol, "timeline"), "DOMTimeline", name=movie_name)
+        timeline = SubElement(SubElement(symbol, "timeline"), "DOMTimeline", name=movie_name, layerDepthEnabled="true")
         layers = SubElement(timeline, "layers")
 
         mask = False #Boolean for modifers(masks)
         mask_child = False
 
-        layer_idx = 0
         layers_list = [] # for layers reversing
-        for bind in movieclip.binds:
+        for layer_idx, bind in enumerate(movieclip.binds):
             layer_name = f"Layer_{layer_idx}"
             if bind["name"]:
                 layer_name = bind["name"]
@@ -90,8 +87,10 @@ def convert_movieclips(swf, xfl):
                 layer.attrib = layer_attribs
                 layer_frames = SubElement(layer, "frames")
 
-                for frame in movieclip.frames:
-                    layer_frame = SubElement(layer_frames, "DOMFrame", index=str(movieclip.frames.index(frame)),
+                for frame_index in range(len(movieclip.frames)):
+                    frame = movieclip.frames[frame_index]
+
+                    layer_frame = SubElement(layer_frames, "DOMFrame", index=str(frame_index),
                                              keyMode=str(KEY_MODE_NORMAL))
 
                     if frame.name:
@@ -102,13 +101,15 @@ def convert_movieclips(swf, xfl):
                         layer_frame.attrib["blendMode"] = bind["blend"]
 
                     frame_elements = SubElement(layer_frame, "elements")
-                    for element in frame.elements:
+
+                    for element_index, element in enumerate(frame.elements):
                         if element["bind"] != layer_idx:
                             continue
 
                         # adding shape or another movie instance as frame element from main scene
                         if bind["id"] in shape_ids or bind["id"] in movieclip_ids:
-                            frame_element_name = f"Shapes/{bind['id']}" if bind["id"] in shape_ids else str(bind["id"])
+                            frame_element_name = f"Shapes/{bind['id']}" if bind["id"] in shape_ids else str(
+                                bind["id"])
                             frame_element = SubElement(frame_elements, "DOMSymbolInstance",
                                                        libraryItemName=frame_element_name, loop="loop")
 
@@ -117,7 +118,8 @@ def convert_movieclips(swf, xfl):
                             text_field = text_field_actions[bind["id"]]
 
                             # must be Dynamic, but I think SupercellSWF also contains Static and Input (just find correct tag)
-                            frame_element = SubElement(frame_elements, "DOMDynamicText", fontRenderingMode="standard")
+                            frame_element = SubElement(frame_elements, "DOMDynamicText",
+                                                           fontRenderingMode="standard")
 
                             frame_element.attrib["width"] = str(text_field.right_corner - text_field.left_corner)
                             frame_element.attrib["height"] = str(text_field.bottom_corner - text_field.top_corner)
@@ -129,20 +131,22 @@ def convert_movieclips(swf, xfl):
 
                             text_attrs = SubElement(SubElement(text_run, "textAttrs"), "DOMTextAttrs")
                             text_attrs.attrib = {
-                                "face": text_field.font_name,
-                                "size": str(text_field.font_size),
-                                "bitmapSize": str(text_field.font_size),
-                                "leftMargin": str(text_field.left_corner),
-                                "rightMargin": str(text_field.right_corner),
-                                # "alignment": text_field_alignment[text_field.font_align], # it is not alignment... (maybe margin)
-                                "fillColor": "#" + hex(text_field.font_color & 0x00FFFFFF)[2:],
-                                "alpha": str(((text_field.font_color & 0xFF000000) >> 24) / 255)
+                                    "face": text_field.font_name,
+                                    "size": str(text_field.font_size),
+                                    "bitmapSize": str(text_field.font_size),
+                                    "leftMargin": str(text_field.left_corner),
+                                    "rightMargin": str(text_field.right_corner),
+                                    # "alignment": text_field_alignment[text_field.font_align], # it is not alignment... (maybe margin)
+                                    "fillColor": "#" + hex(text_field.font_color & 0x00FFFFFF)[2:],
+                                    "alpha": str(((text_field.font_color & 0xFF000000) >> 24) / 255)
                             }
 
                             if text_field.text:
                                 SubElement(text_run, "characters").text = text_field.text
 
                         else:
+                            print(bind['id'])
+                            print(movie_name)
                             continue
 
                         # adding matrix to frame element from matrix bank
@@ -152,34 +156,33 @@ def convert_movieclips(swf, xfl):
                             matrix = swf.matrix_banks[movieclip.matrix_bank].matrices[element["matrix"]]
 
                             matrix_holder.attrib = {
-                                "a": str(matrix[0]),
-                                "b": str(matrix[1]),
-                                "c": str(matrix[2]),
-                                "d": str(matrix[3]),
-                                "tx": str(matrix[4]),
-                                "ty": str(matrix[5])
+                                    "a": str(matrix[0]),
+                                    "b": str(matrix[1]),
+                                    "c": str(matrix[2]),
+                                    "d": str(matrix[3]),
+                                    "tx": str(matrix[4]),
+                                    "ty": str(matrix[5])
                             }
 
                         # adding color transformation to frame element from matrix bank
                         if element["color"] != 0xFFFF:
-                            color_holder = SubElement(SubElement(frame_elements, "frameColor"), "Color")
+                            color_holder = SubElement(SubElement(frame_element, "color"), "Color")
 
                             color = swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
 
                             color_holder.attrib = {
-                                "redOffset": str(color[0]),
-                                "greenOffset": str(color[1]),
-                                "blueOffset": str(color[2]),
-                                "alphaOffset": str(color[3]),
-                                "redMultiplier": str(color[4]),
-                                "greenMultiplier": str(color[5]),
-                                "blueMultiplier": str(color[6]),
-                                "alphaMultiplier": str(color[7]),
+                                    "redOffset": str(color[0]),
+                                    "greenOffset": str(color[1]),
+                                    "blueOffset": str(color[2]),
+                                    "alphaOffset": str(color[3]),
+                                    "redMultiplier": str(color[4]),
+                                    "greenMultiplier": str(color[5]),
+                                    "blueMultiplier": str(color[6]),
+                                    "alphaMultiplier": str(color[7]),
                             }
 
                 layers_list.append(layer)
 
-            layer_idx += 1
 
 
         # reversing layers (because Adobe Animate says YES.) #TODO
@@ -394,8 +397,8 @@ def convert_shapes(swf, xfl):
             "name": f"Shapes/{shape['id']}"
         }
 
-        timeline = SubElement(SubElement(symbol, "timeline"), "DOMTimeline", name=str(shape["id"]))
-        layer = SubElement(SubElement(timeline, "layers"), "DOMLayer", name=str(shape["id"]), backgroundColor="#000000", current="true", isSelected="true")
+        timeline = SubElement(SubElement(symbol, "timeline"), "DOMTimeline", name=str(shape["id"]), layerDepthEnabled="true")
+        layer = SubElement(SubElement(timeline, "layers"), "DOMLayer", name=str(f"Bitmaps_{shape['id']}"), color="#000000", current="true", isSelected="true")
         frame = SubElement(SubElement(layer, "frames"), "DOMFrame", index="0", keyMode=str(KEY_MODE_NORMAL))
         frame_elements = SubElement(frame, "elements")
 

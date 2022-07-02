@@ -33,7 +33,8 @@ class SupercellSWF:
         self.matrix_banks: list = []
         self.movieclips: list = []
 
-        self.highres_asset_postfix: str = "_tex.sc"
+        self.texture_asset_postfix: str = "_tex.sc"
+        self.highres_asset_postfix: str = "_highres_tex.sc"
         self.lowres_asset_postfix: str = "_lowres_tex.sc"
 
         self.reader: BinaryReader = None
@@ -195,11 +196,13 @@ class SupercellSWF:
         has_external_texture, has_highres_texture, has_lowres_texture = self.load_internal(filepath, False)
 
         if has_external_texture:
-            if has_highres_texture:
-                self.load_internal(os.path.splitext(filepath)[0] + self.highres_asset_postfix, True)
-            
             if has_lowres_texture:
                 self.load_internal(os.path.splitext(filepath)[0] + self.lowres_asset_postfix, True)
+                if has_highres_texture:
+                    self.load_internal(os.path.splitext(filepath)[0] + self.highres_asset_postfix, True)
+            else:
+                self.load_internal(os.path.splitext(filepath)[0] + self.texture_asset_postfix, True)
+
         
         return has_external_texture, has_highres_texture, has_lowres_texture
     
@@ -344,6 +347,6 @@ class SupercellSWF:
         if has_external_texture:
             if has_highres_texture:
                 self.save_internal(os.path.splitext(filepath)[0] + self.highres_asset_postfix, True, False, True, True)
-            
+
             if has_lowres_texture:
                 self.save_internal(os.path.splitext(filepath)[0] + self.lowres_asset_postfix, True, False, True, True)
