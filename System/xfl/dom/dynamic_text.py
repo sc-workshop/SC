@@ -1,0 +1,91 @@
+from xml.etree.ElementTree import *
+
+from .text_run import DOMTextRun
+
+from ..geom.matrix import Matrix
+from ..geom.color import Color
+
+from . import NAMESPACES
+
+
+class DOMDynamicText:
+    def __init__(self, name: str = None) -> None:
+        # attributes
+        self.name = name
+
+        self.width: float = None
+        self.height: float = None
+
+        self.is_selectable: bool = None
+
+        # elements
+        self.text_runs: list = []
+
+        self.matrix: Matrix = None
+        self.color: Color = None
+
+        self.line_type = None
+    
+    def load(self, xml: Element):
+        if "name" in xml.attrib:
+            self.name = xml.attrib["name"]
+
+        if "width" in xml.attrib:
+            self.width = float(xml.attrib["width"])
+        
+        if "height" in xml.attrib:
+            self.height = float(xml.attrib["height"])
+        
+        if "isSelectable" in xml.attrib:
+            self.is_selectable = xml.attrib["isSelectable"] == "true"
+
+        if "lineType" in xml.attrib:
+            self.line_type = xml.attrib["lineType"]
+        
+        text_runs = xml.find("./xfl:textRuns", NAMESPACES)
+        if text_runs is not None:
+            for text_run_element in text_runs:
+                text_run = DOMTextRun()
+                text_run.load(text_run_element)
+                self.text_runs.append(text_run)
+        
+        matrix = xml.find("./xfl:matrix", NAMESPACES)
+        if matrix is not None:
+            for matrix_element in matrix:
+                self.matrix = Matrix()
+                self.matrix.load(matrix_element)
+        
+        color = xml.find("./xfl:color", NAMESPACES)
+        if color is not None:
+            for color_element in color:
+                self.color = Color()
+                self.color.load(color_element)
+    
+    def save(self):
+        xml = Element("DOMDynamicText")
+
+        if self.name is not None:
+            xml.attrib["name"] = str(self.name)
+
+        if self.width is not None:
+            xml.attrib["width"] = str(self.width)
+        
+        if self.height is not None:
+            xml.attrib["height"] = str(self.height)
+        
+        if self.is_selectable is not None:
+            xml.attrib["isSelectable"] = "true" if self.is_selectable else "false"
+        
+        text_runs = SubElement(xml, "textRuns")
+        for text_run in self.text_runs:
+            text_runs.append(text_run.save())
+
+        if self.matrix is not None:
+            matrix = SubElement(xml, "matrix")
+            matrix.append(self.matrix.save())
+
+        if self.color is not None:
+            color = SubElement(xml, "color")
+            color.append(self.color.save())
+
+        return xml

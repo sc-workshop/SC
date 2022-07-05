@@ -1,14 +1,11 @@
-from math import radians
 import cv2
-import numpy as np
 
-from sc.swf import SupercellSWF
+from System.sc.swf import SupercellSWF
 
-from sc.swf.texture import SWFTexture
-from sc.swf.shape import Shape, ShapeDrawBitmapCommand
-from sc.swf.text_field import TextField
-from sc.swf.matrix_bank import MatrixBank
-from sc.swf.movieclip import MovieClipModifier, MovieClip, MovieClipFrame
+from System.sc.swf.texture import SWFTexture
+from System.sc.swf import Shape, ShapeDrawBitmapCommand
+from System.sc.swf import MatrixBank
+from System.sc.swf.movieclip import MovieClip, MovieClipFrame
 
 
 
