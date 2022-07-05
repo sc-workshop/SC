@@ -1,11 +1,11 @@
 import cv2
 
-from System.sc.swf import SupercellSWF
+from lib.sc.swf import SupercellSWF
 
-from System.sc.swf.texture import SWFTexture
-from System.sc.swf import Shape, ShapeDrawBitmapCommand
-from System.sc.swf import MatrixBank
-from System.sc.swf.movieclip import MovieClip, MovieClipFrame
+from lib.sc.swf.texture import SWFTexture
+from lib.sc.swf import Shape, ShapeDrawBitmapCommand
+from lib.sc.swf import MatrixBank
+from lib.sc.swf.movieclip import MovieClip, MovieClipFrame
 
 
 

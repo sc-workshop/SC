@@ -1,6 +1,6 @@
 from .writable import Writable
 
-from System.sc.utils.images import *
+from lib.utils import *
 
 
 class SWFTexture(Writable):

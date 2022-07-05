@@ -1,4 +1,4 @@
-from System.sc.utils import BinaryWriter
+from lib.utils import BinaryWriter
 
 
 class Writable(BinaryWriter):

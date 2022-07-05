@@ -1,6 +1,6 @@
 import os
 
-from System.sc.utils import BinaryReader, BinaryWriter
+from lib.utils import BinaryReader, BinaryWriter
 
 from .texture import SWFTexture
 from .shape import Shape

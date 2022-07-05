@@ -1,56 +1,55 @@
 import copy
-from shutil import rmtree
 
 import cv2
 import numpy as np
 
-from System.sc.utils.affinetransform import AffineTransform
+from lib.utils import AffineTransform
 # Affine matrix class for calculate bitmap transforms
 
-from System.sc.swf.shape import calculate_rotation, calculate_scale
+from lib.sc.swf.shape import calculate_rotation, calculate_scale
 
 from math import radians, sin, cos, ceil
 
-from System.xfl import *
-from System.xfl.dom.folder_item import DOMFolderItem
+from lib.xfl import *
+from lib.xfl.dom.folder_item import DOMFolderItem
 # Folder class for.. folders. just for better interaction with different types of symbols
 
-from System.xfl.dom.symbol_item import DOMSymbolItem
+from lib.xfl.dom.symbol_item import DOMSymbolItem
 # Symboll item for shape and movieclip in DomDocument
 
-from System.xfl.dom.symbol_instance import DOMSymbolInstance
+from lib.xfl.dom.symbol_instance import DOMSymbolInstance
 # Symboll instance class for using in movieclip or shape frames
 
-from System.xfl.dom.layer import DOMLayer
+from lib.xfl.dom.layer import DOMLayer
 # Layer class. Used in all symboll types
 
-from System.xfl.dom.bitmap_item import DOMBitmapItem
+from lib.xfl.dom.bitmap_item import DOMBitmapItem
 # Bitmap item class for using in DomDocument
 
-from System.xfl.dom.bitmap_instance import DOMBitmapInstance
+from lib.xfl.dom.bitmap_instance import DOMBitmapInstance
 
-from System.xfl.dom.layer import DOMFrame
+from lib.xfl.dom.layer import DOMFrame
 
-from System.xfl.dom.dynamic_text import DOMDynamicText
+from lib.xfl.dom.dynamic_text import DOMDynamicText
 # Text instance. Contain text position and some other things
 
-from System.xfl.dom.text_run import DOMTextRun, DOMTextAttrs
+from lib.xfl.dom.text_run import DOMTextRun, DOMTextAttrs
 # Subclass of DOMStaticText. Contain text and its settings
 
-from System.xfl.dom.shape import DOMShape
+from lib.xfl.dom.shape import DOMShape
 # Shape class for ColorFill
 
-from System.xfl.fill.fill_style import FillStyle
-from System.xfl.fill.solid_color import SolidColor
+from lib.xfl.fill.fill_style import FillStyle
+from lib.xfl.fill.solid_color import SolidColor
 # Subclass for DomShape (color)
 
-from System.xfl.edge.edge import Edge
+from lib.xfl.edge.edge import Edge
 # Subclass for DomShape (shape)
 
-from System.xfl.geom.matrix import Matrix
+from lib.xfl.geom.matrix import Matrix
 # Transform matrix class
 
-from System.xfl.geom.color import Color
+from lib.xfl.geom.color import Color
 
 # Color transfrom class
 
@@ -76,9 +75,7 @@ def sc_to_xfl(swf):
 
     # some pretty functions
     def add_shape(shape, name):
-        shape_symboll = DOMSymbolItem()
-        shape_symboll.symbol_type = "graphic"
-        shape_symboll.name = name
+        shape_symboll = DOMSymbolItem(name, "graphic")
         shape_symboll.timeline.name = name.split("/")[-1]
 
         prepared_shape = {
@@ -107,11 +104,9 @@ def sc_to_xfl(swf):
             else:
                 prepared_shape["bitmaps"].append(prepared_shape["bitmaps"].index(prepared_bitmap))
 
-        bitmap_layer = DOMLayer()
-        bitmap_layer.name = "Bitmaps"
-        bitmap_frame = DOMFrame()
+        bitmap_layer = DOMLayer("Bitmaps")
+        bitmap_frame = DOMFrame(index=0)
         bitmap_layer.frames.append(bitmap_frame)
-        bitmap_frame.index = 0
 
         shape_symboll.timeline.layers.append(bitmap_layer)
 
@@ -132,27 +127,29 @@ def sc_to_xfl(swf):
 
             if not is_color_fill:
                 bitmap_name = f"Resources/{name.split('/')[-1]} {bitmap_index}"
+                image_name = f"{name.split('/')[-1]} {bitmap_index}.png"
+
                 if not isinstance(bitmap, int):
                     if c - 1 > 1 and not prepared_bitmap['simX']:
                         c -= 1
                     if d - 1 > 1 and not prepared_bitmap['simY']:
                         d -= 1
 
-                    # ------------------------------------Bitmap matrix-------------------------------------------------#
+                    # ------------------------------------Bitmap matrix------------------------------------------------#
                     # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
                     rotation, mirroring = calculate_rotation(uv_coords, xy_coords)
                     rad_rot = radians(-rotation)
 
                     sx, sy, w, h = calculate_scale(
                         [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
-                        round(x * sin(rad_rot) + y * cos(rad_rot))]
-                        for x, y in uv_coords], xy_coords)
+                          round(x * sin(rad_rot) + y * cos(rad_rot))]
+                         for x, y in uv_coords], xy_coords)
 
                     left = min(coord[0] for coord in xy_coords)
                     top = min(coord[1] for coord in xy_coords)
                     at.translate(top, left)
                     at.scale(sx, sy)  # apply scale
-                    # -----------------------------------------Bitmap image----------------------------------------------#
+                    # -----------------------------------------Bitmap image--------------------------------------------#
                     texture = swf.textures[bitmap["texture"]].image
 
                     points = np.array(uv_coords, dtype=np.int32)
@@ -180,13 +177,13 @@ def sc_to_xfl(swf):
                     if mirroring:
                         cropped = cv2.flip(cropped, 1)
 
-                    dom_bitmap = DOMBitmapItem()
+                    dom_bitmap = DOMBitmapItem(bitmap_name, f"M {name.split('/')[-1]} {bitmap_index}.dat")
                     dom_bitmap.use_imported_jpeg_data = False
                     dom_bitmap.compression_type = "lossless"
                     dom_bitmap.image = cropped
                     dom_bitmap.allow_smoothing = True if not swf.textures[bitmap["texture"]].linear else False
-                    dom_bitmap.name = bitmap_name
-                    dom_bitmap.bitmap_data_href = f"M {name.split('/')[-1]} {bitmap_index}.dat"
+                    dom_bitmap.source_external_filepath = f"Resources/{image_name}"
+                    cv2.imwrite(f"{image_path}{image_name}", cropped)
 
                     sc_xfl.media.update({dom_bitmap.name: dom_bitmap})
                 else:
@@ -241,13 +238,7 @@ def sc_to_xfl(swf):
                     at.scale(sx, sy)  # apply scale
 
                 a, b, c, d, tx, ty = at.get_matrix()
-                bitmap_matrix = Matrix()
-                bitmap_matrix.a = a
-                bitmap_matrix.b = b
-                bitmap_matrix.c = c
-                bitmap_matrix.d = d
-                bitmap_matrix.tx = ty
-                bitmap_matrix.ty = tx
+                bitmap_matrix = Matrix(a, b, c, d, ty, tx)
 
                 bitmap_instance = DOMBitmapInstance()
                 bitmap_instance.library_item_name = bitmap_name
@@ -274,12 +265,8 @@ def sc_to_xfl(swf):
                     # converting pixels to twips (again.) (1 twip = 1/20 pixel)
 
                 # Colorfill color
-                colorfill_color = FillStyle()
-                colorfill_color.index = 1
-                dom_color = SolidColor()
-                dom_color.color = final_color
-                dom_color.alpha = color[3] / 255
-                colorfill_color.data = dom_color
+                colorfill_color = FillStyle(1)
+                colorfill_color.data = SolidColor(final_color, color[3] / 255)
 
                 # Colorfill shape
                 colorfill_edge = Edge()
@@ -294,14 +281,14 @@ def sc_to_xfl(swf):
         sc_xfl.symbols.update({name: shape_symboll})
 
     # Folders initialization
-    Resources = DOMFolderItem()
-    Resources.name = "Resources"
+    Resources = DOMFolderItem("Resources")
 
-    Shapes = DOMFolderItem()
-    Shapes.name = "Shapes"
+    image_path = f"{sc_xfl.librarypath}/Resources/"
+    os.makedirs(image_path, exist_ok=True)
 
-    Exports = DOMFolderItem()
-    Exports.name = "Exports"
+    Shapes = DOMFolderItem("Shapes")
+
+    Exports = DOMFolderItem("Exports")
 
     sc_xfl.folders.append(Resources)
     sc_xfl.folders.append(Shapes)
@@ -326,16 +313,12 @@ def sc_to_xfl(swf):
         prepared_bind_layers = {}
         bind_layers = []
         movie_bind_instances = []  # bind instances for using in frames
-        mask_count = 0 #TODO move to frame
-        mask_active = False
         for i, bind in enumerate(movieclip.binds):
             if bind['id'] not in modifers_storage:
                 # Layers
-                bind_layer = DOMLayer()
-                bind_layer.name = f"Layer_{i}"
+                bind_layer = DOMLayer(f"Layer_{i}")
                 for f_i in range(len(movieclip.frames)):
-                    empty_frame = DOMFrame()
-                    empty_frame.index = f_i
+                    empty_frame = DOMFrame(f_i)
                     bind_layer.frames.append(empty_frame)
 
                 bind_layers.append(bind_layer)
@@ -386,19 +369,12 @@ def sc_to_xfl(swf):
                 instance.name = bind['name']
                 movie_bind_instances.append(instance)
             else:
-                modifer_value = modifers_storage[bind['id']].stencil
-                if modifer_value in [2, 3]:
-                    mask_active = True
-                elif modifer_value == 4:
-                    mask_active = False
-
-                if mask_active:
-                    mask_count += 1
-
                 bind_layers.append(None)
                 movie_bind_instances.append(None)
         # TODO framerate
 
+        parent_layers = []
+        added_bind_layer = {}
         for i, frame in enumerate(movieclip.frames):
             mask = False
             mask_child = False
@@ -409,51 +385,37 @@ def sc_to_xfl(swf):
                     if modifer_value == 2:
                         mask = True
                     elif modifer_value == 3:
-                        #mask = False
                         mask_child = True
                     elif modifer_value == 4:
                         mask_child = False
+                        mask_idx = 0
                 else:
                     if element['bind'] not in prepared_bind_layers:
-                            added_layers = [(el['bind'] in prepared_bind_layers) for el in frame.elements]
-                            if True in added_layers and added_layers.index(True) < i:
-                                layer_list = [{key: prepared_bind_layers[key]} for key in prepared_bind_layers]
-                                layer_list.insert([key for key in prepared_bind_layers].index(frame.elements[added_layers.index(True)]['bind']), {element['bind']: bind_layers[element['bind']]})
-                                prepared_bind_layers = {key: layer[key] for layer in layer_list for key in layer}
-                            else:
-                                prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
+                        layer_is_prepared = [(el['bind'] in prepared_bind_layers) for el in frame.elements]
+                        if True in layer_is_prepared and layer_is_prepared.index(True) > element['bind']:
+                            layer_list = [{key: prepared_bind_layers[key]} for key in prepared_bind_layers]
+                            layer_list.insert([key for key in prepared_bind_layers].index(frame.elements[layer_is_prepared.index(True)]['bind']), {element['bind']: bind_layers[element['bind']]})
+                            prepared_bind_layers = {key: layer[key] for layer in layer_list for key in layer}
+
+                        else:
+                            prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
 
                     bind_layer = bind_layers[element['bind']]
-
-                    if mask:
-                        bind_layer.layer_type = "mask"
-                        bind_layer.is_locked = True
-                        mask_idx = (len([layer for layer in bind_layers if layer is not None]) - mask_count) - [key for key in prepared_bind_layers].index(element['bind'])
-                        mask = False
-                    if mask_child:
-                        bind_layer.parent_layer_index = mask_idx
-                        bind_layer.is_locked = True
 
                     bind_frame = bind_layer.frames[i]
                     bind_frame.name = frame.name
                     bind_frame.key_mode = KEY_MODE_NORMAL
                     bind_frame.blend_mode = movieclip.binds[element['bind']]['blend']
 
-                    instance = movie_bind_instances[element['bind']]
+                    instance = copy.deepcopy(movie_bind_instances[element['bind']])
+
                     if element["matrix"] != 0xFFFF:
                         a, b, c, d, tx, ty = swf.matrix_banks[movieclip.matrix_bank].matrices[element["matrix"]]
-                        bind_transform = Matrix()
-                        bind_transform.a = a
-                        bind_transform.b = b
-                        bind_transform.c = c
-                        bind_transform.d = d
-                        bind_transform.tx = tx
-                        bind_transform.ty = ty
-                        instance.matrix = bind_transform
+                        instance.matrix = Matrix(a, b, c, d, tx, ty)
 
                     if element["color"] != 0xFFFF:
                         r_add, g_add, b_add, a_add, r_multi, g_multi, b_multi, a_multi = \
-                        swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
+                            swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
                         bind_color = Color()
                         bind_color.red_offset = r_add
                         bind_color.green_offset = g_add
@@ -465,23 +427,39 @@ def sc_to_xfl(swf):
                         bind_color.alpha_multiplier = a_multi
                         instance.color = bind_color
 
-                    bind_frame.elements.append(copy.deepcopy(instance))
+                    bind_frame.elements.append(instance)
+
+                    if mask:
+                        bind_layer.layer_type = "mask"
+                        bind_layer.is_locked = True
+                        mask_idx = element['bind']
+                        mask = False
+                    if mask_child:
+                        parent_layers.append({mask_idx: bind_layer})
+                        bind_layer.parent_layer_index = mask_idx
+                        bind_layer.is_locked = True
 
                     bind_layers[element['bind']] = bind_layer
-        
-        parent_layers = []
 
-        for layer_key in reversed(prepared_bind_layers):
+        for layer_key in prepared_bind_layers:
             bind_layer = prepared_bind_layers[layer_key]
 
-            if bind_layer.parent_layer_index is not None:
-                parent_layers.append(bind_layer)
-            else:
+            if bind_layer.parent_layer_index is None:
+                added_bind_layer.update({layer_key: bind_layer})
                 movie_symbol.timeline.layers.append(bind_layer)
 
-        for parent in parent_layers:
-            movie_symbol.timeline.layers.insert(parent.parent_layer_index + 1, parent)
+        for parent_layer in parent_layers:
+            for layer_idx in parent_layer:
+                parent_idx = list(added_bind_layer).index(layer_idx)
+                parent_layer[layer_idx].parent_layer_index = parent_idx
+                movie_symbol.timeline.layers.insert(parent_idx + 1, parent_layer[layer_idx])
 
+                add_index = list(added_bind_layer)
+                add_index.insert(parent_idx + 1, bind_layers.index(parent_layer[layer_idx]))
+                add_layer = [added_bind_layer[key] for key in added_bind_layer]
+                add_layer.insert(parent_idx + 1, parent_layer[layer_idx])
+
+                added_bind_layer = {add_index[i]: add_layer[i] for i in range(len(add_index))}
 
         movie_symbol.name = movie_name
         sc_xfl.symbols.update({movie_save_name: movie_symbol})

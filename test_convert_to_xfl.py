@@ -1,6 +1,6 @@
-from System.sc.swf import SupercellSWF
+from lib.sc.swf import SupercellSWF
 
-from System.sc_import import sc_to_xfl
+from lib.sc_import import sc_to_xfl
 
 
 if __name__ == "__main__":
