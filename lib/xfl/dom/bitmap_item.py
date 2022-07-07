@@ -12,7 +12,7 @@ class DOMBitmapItem:
         self.quality: int = None
         self.use_imported_jpeg_data: bool = None
         self.compression_type: str = None
-        self.allow_smoothing: bool = None
+        self.allow_smoothing: bool = True
     
     def load(self, xml: Element):
         if "name" in xml.attrib:
@@ -57,7 +57,7 @@ class DOMBitmapItem:
         if self.compression_type is not None:
             xml.attrib["compressionType"] = str(self.compression_type)
         
-        if self.allow_smoothing is not None:
+        if self.allow_smoothing:
             xml.attrib["allowSmoothing"] = "true" if self.allow_smoothing else "false"
         
         return xml

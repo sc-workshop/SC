@@ -73,86 +73,107 @@ def sc_to_xfl(swf):
     sc_xfl = DOMDocument()
     sc_xfl.filepath = projectdir
 
+    shapes_uvs = []  # Shapes coordinates
+    shapes_pivot = []  # list, with xy coordinates, to search for transformations
+
+    prepared_shapes = {}  # Dictionary of shapes, with ids and bitmaps
+
+    for shape in swf.shapes:
+        bitmaps = []
+        for bitmap in shape.bitmaps:
+            if bitmap.uv_coords not in shapes_uvs:
+                shapes_uvs.append(bitmap.uv_coords)
+                shapes_pivot.append(None)
+
+            _, _, w, h = cv2.boundingRect(np.array(bitmap.uv_coords))
+            # Color fills check (they are usually 1 px)
+            colorfill = w + h <= 2
+
+            prepared_bitmap = {"tex": bitmap.texture_index, "uv": shapes_uvs.index(bitmap.uv_coords),
+                               "xy": bitmap.xy_coords, "is_colorfill": colorfill}
+            if colorfill:
+                uv = shapes_uvs[prepared_bitmap['uv']]
+                xy = prepared_bitmap['xy']
+                x, y = uv[-1]
+                color = swf.textures[prepared_bitmap['tex']].image[y, x]
+
+                final_color = "#" + hex(color[2])[2:] + hex(color[1])[2:] + hex(color[0])[2:]
+
+                final_edges = ""
+                for x, curr in enumerate(xy):
+                    nxt = xy[(x + 1) % len(xy)]
+                    final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}"
+                    # converting pixels to twips (again.) (1 twip = 1/20 pixel)
+
+                # Colorfill color
+                colorfill_color = FillStyle(1)
+                colorfill_color.data = SolidColor(final_color, color[3] / 255)
+
+                # Colorfill shape
+                colorfill_edge = Edge()
+                colorfill_edge.edges = final_edges
+                colorfill_edge.fill_style1 = 1
+
+                colorfill = DOMShape()
+                colorfill.fills.append(colorfill_color)
+                colorfill.edges.append(colorfill_edge)
+                prepared_bitmap.update({'colorfill': colorfill})
+
+            bitmaps.append(prepared_bitmap)
+
+        prepared_shapes.update({shape.id: bitmaps})
+
     # some pretty functions
-    def add_shape(shape, name):
+    def add_shape(id, name):
         shape_symboll = DOMSymbolItem(name, "graphic")
         shape_symboll.timeline.name = name.split("/")[-1]
 
-        prepared_shape = {
-            "bitmaps": [],  # bitmap instances
-            "colorFills": [],  # "color fill commands"
-            "matrices": []
-        }
+        for i, bitmap in enumerate(prepared_shapes[id]):
+            bitmap_layer = DOMLayer(f"Bitmap_{i}")
+            bitmap_frame = DOMFrame(index=0)
 
-        # Searching duplicate bitmaps and colorfills
-        for bitmap in shape.bitmaps:
-            # X and Y uv coords for calculating "color fill"
-            uv_x = [coord[0] for coord in bitmap.uv_coords]
-            uv_y = [coord[1] for coord in bitmap.xy_coords]
+            if not bitmap['is_colorfill']:
+                pivot = shapes_pivot[bitmap['uv']]
+                xy = bitmap['xy']
+                uv = shapes_uvs[bitmap['uv']]
 
-            prepared_bitmap = {
-                "texture": bitmap.texture_index,
-                "uvCoords": bitmap.uv_coords,
-                "simX": uv_x.count(uv_x[0]) == len(uv_x),
-                # finding similiar X coordinates for calculating "color fill"
-                "simY": uv_y.count(uv_y[0]) == len(uv_y)  # and also Y coordinates for it
-            }
+                # building sprite bounding box
+                image_box = cv2.boundingRect(np.array(uv))
+                a, b, c, d = image_box
 
-            # checking for dublicate (instancing)
-            if prepared_bitmap not in prepared_shape["bitmaps"]:
-                prepared_shape["bitmaps"].append(prepared_bitmap)
-            else:
-                prepared_shape["bitmaps"].append(prepared_shape["bitmaps"].index(prepared_bitmap))
+                # Initialize Affine matrix
+                at = AffineTransform()
 
-        bitmap_layer = DOMLayer("Bitmaps")
-        bitmap_frame = DOMFrame(index=0)
-        bitmap_layer.frames.append(bitmap_frame)
+                resource_name = f"M {bitmap['uv']}"
 
-        shape_symboll.timeline.layers.append(bitmap_layer)
+                if not pivot:
+                    shapes_pivot[bitmap['uv']] = xy
 
-        for bitmap_index, bitmap in enumerate(prepared_shape['bitmaps']):
-            # creating main affine matrix
-            at = AffineTransform()
+                    image_name = f"{bitmap['uv']}.png"
 
-            uv_coords = shape.bitmaps[bitmap_index].uv_coords
-            xy_coords = shape.bitmaps[bitmap_index].xy_coords
-
-            # building sprite bounding box
-            image_box = cv2.boundingRect(np.array(uv_coords))
-            a, b, c, d = image_box
-
-            # checking for "color fill"
-            is_color_fill = c + d <= 2
-            prepared_shape["colorFills"].append(is_color_fill)
-
-            if not is_color_fill:
-                bitmap_name = f"Resources/{name.split('/')[-1]} {bitmap_index}"
-                image_name = f"{name.split('/')[-1]} {bitmap_index}.png"
-
-                if not isinstance(bitmap, int):
-                    if c - 1 > 1 and not prepared_bitmap['simX']:
+                    if c - 1 > 1:
                         c -= 1
-                    if d - 1 > 1 and not prepared_bitmap['simY']:
+                    if d - 1 > 1:
                         d -= 1
 
                     # ------------------------------------Bitmap matrix------------------------------------------------#
                     # getting rotation angle (in degrees) of bitmap vertices (xy_coords) and mirror option
-                    rotation, mirroring = calculate_rotation(uv_coords, xy_coords)
+                    rotation, mirroring = calculate_rotation(uv, xy)
                     rad_rot = radians(-rotation)
 
                     sx, sy, w, h = calculate_scale(
                         [[round(x * cos(rad_rot) + -y * sin(rad_rot)),
                           round(x * sin(rad_rot) + y * cos(rad_rot))]
-                         for x, y in uv_coords], xy_coords)
+                         for x, y in uv], xy)
 
-                    left = min(coord[0] for coord in xy_coords)
-                    top = min(coord[1] for coord in xy_coords)
+                    left = min(coord[0] for coord in xy)
+                    top = min(coord[1] for coord in xy)
                     at.translate(top, left)
                     at.scale(sx, sy)  # apply scale
                     # -----------------------------------------Bitmap image--------------------------------------------#
-                    texture = swf.textures[bitmap["texture"]].image
+                    texture = swf.textures[bitmap["tex"]].image
 
-                    points = np.array(uv_coords, dtype=np.int32)
+                    points = np.array(uv, dtype=np.int32)
                     mask = np.zeros(texture.shape[:2], dtype=np.uint8)
                     cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
                     res = cv2.bitwise_and(texture, texture, mask=mask)
@@ -177,33 +198,28 @@ def sc_to_xfl(swf):
                     if mirroring:
                         cropped = cv2.flip(cropped, 1)
 
-                    dom_bitmap = DOMBitmapItem(bitmap_name, f"M {name.split('/')[-1]} {bitmap_index}.dat")
+                    dom_bitmap = DOMBitmapItem(f"Resources/{bitmap['uv']}", f"{resource_name}.dat")
                     dom_bitmap.use_imported_jpeg_data = False
                     dom_bitmap.compression_type = "lossless"
                     dom_bitmap.image = cropped
-                    dom_bitmap.allow_smoothing = True if not swf.textures[bitmap["texture"]].linear else False
+                    # dom_bitmap.allow_smoothing = True if not swf.textures[bitmap["tex"]].linear else False
                     dom_bitmap.source_external_filepath = f"Resources/{image_name}"
                     cv2.imwrite(f"{image_path}{image_name}", cropped)
 
                     sc_xfl.media.update({dom_bitmap.name: dom_bitmap})
                 else:
-                    bitmap_name = f"Resources/{name.split('/')[-1]} {bitmap}"
-                    pivot_coords = shape.bitmaps[bitmap].xy_coords
-
-                    prepared_shape["colorFills"].append(prepared_shape["colorFills"][bitmap])
-
                     # Calculate rotation for bitmap image
-                    rotation, mirroring = calculate_rotation(pivot_coords, xy_coords)
+                    rotation, mirroring = calculate_rotation(pivot, xy)
                     rad_rot = radians(-rotation)
 
                     # Calculate rotation for uv
-                    uv_rotation, uv_mirroring = calculate_rotation(uv_coords, xy_coords)
+                    uv_rotation, uv_mirroring = calculate_rotation(uv, xy)
                     uv_rad_rot = radians(uv_rotation)
 
                     sx, sy, w, h = calculate_scale(
                         [[ceil(x * cos(uv_rad_rot) + y * sin(uv_rad_rot)),
                           ceil(x * sin(uv_rad_rot) + y * cos(uv_rad_rot))]
-                         for x, y in uv_coords], xy_coords)
+                         for x, y in uv], xy)
 
                     at.rotate(rad_rot)  # apply rotation
                     sprite_box = [[0, 0], [w, 0], [w, h], [0, h]]  # building sprite bounding box
@@ -211,13 +227,12 @@ def sc_to_xfl(swf):
                     # mirroring bounding box
                     if mirroring:
                         at.scale(-1, 1)
-                        sprite_box = [[-x, y]
-                                      for x, y in sprite_box]
+                        sprite_box = [[-x, y] for x, y in sprite_box]
 
                     # rotating bounding box
                     sprite_box = [[ceil(x * cos(rad_rot) + y * sin(rad_rot)),
-                                   ceil(x * sin(rad_rot) + y * cos(rad_rot))]
-                                  for x, y in sprite_box]
+                                ceil(x * sin(rad_rot) + y * cos(rad_rot))]
+                                for x, y in sprite_box]
 
                     for point_index in range(4):
                         x, y = sprite_box[point_index]
@@ -229,8 +244,8 @@ def sc_to_xfl(swf):
                             sprite_box = [[x_b, y_b - y] for x_b, y_b in sprite_box]
                             at.tx -= y
 
-                    left = min(coord[0] for coord in xy_coords)
-                    top = min(coord[1] for coord in xy_coords)
+                    left = min(coord[0] for coord in xy)
+                    top = min(coord[1] for coord in xy)
 
                     at.tx = top + sprite_box[0][1]
                     at.ty = left + sprite_box[0][0]
@@ -241,42 +256,16 @@ def sc_to_xfl(swf):
                 bitmap_matrix = Matrix(a, b, c, d, ty, tx)
 
                 bitmap_instance = DOMBitmapInstance()
-                bitmap_instance.library_item_name = bitmap_name
+                bitmap_instance.library_item_name = f"Resources/{bitmap['uv']}"
                 bitmap_instance.matrix = bitmap_matrix
 
                 bitmap_frame.elements.append(bitmap_instance)
+
             else:
-                if isinstance(bitmap, int):
-                    texture = swf.textures[prepared_shape["bitmaps"][bitmap]["texture"]].image
-                    color_coords = prepared_shape["bitmaps"][bitmap]["uvCoords"][0]
-                else:
-                    texture = swf.textures[bitmap["texture"]].image
-                    color_coords = bitmap["uvCoords"][0]
+                bitmap_frame.elements.append(bitmap['colorfill'])
 
-                x, y = color_coords
-                color = texture[y, x]
-
-                final_color = "#" + hex(color[2])[2:] + hex(color[1])[2:] + hex(color[0])[2:]
-
-                final_edges = ""
-                for x, curr in enumerate(xy_coords):
-                    nxt = xy_coords[(x + 1) % len(xy_coords)]
-                    final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}"
-                    # converting pixels to twips (again.) (1 twip = 1/20 pixel)
-
-                # Colorfill color
-                colorfill_color = FillStyle(1)
-                colorfill_color.data = SolidColor(final_color, color[3] / 255)
-
-                # Colorfill shape
-                colorfill_edge = Edge()
-                colorfill_edge.edges = final_edges
-                colorfill_edge.fill_style1 = 1
-
-                colorfill = DOMShape()
-                colorfill.fills.append(colorfill_color)
-                colorfill.edges.append(colorfill_edge)
-                bitmap_frame.elements.append(colorfill)
+            bitmap_layer.frames.append(bitmap_frame)
+            shape_symboll.timeline.layers.append(bitmap_layer)
 
         sc_xfl.symbols.update({name: shape_symboll})
 
@@ -296,7 +285,6 @@ def sc_to_xfl(swf):
 
     # Some storages for using in frames
     text_field_storage = {text_field.id: text_field for text_field in swf.text_fields}
-    shapes_storage = {shape.id: shape for shape in swf.shapes}
     modifers_storage = {modifer.id: modifer for modifer in swf.movieclip_modifiers}
 
     for movieclip in swf.movieclips:
@@ -333,7 +321,7 @@ def sc_to_xfl(swf):
                     if bind["id"] in swf.shapes_ids:
                         instance.library_item_name = f"Shapes/{bind['id']}"
                         if instance.library_item_name not in sc_xfl.symbols:
-                            add_shape(shapes_storage[bind['id']], instance.library_item_name)
+                            add_shape(bind['id'], instance.library_item_name)
 
                     elif bind["id"] in swf.movieclips_ids and bind['id'] in swf.exports:
                         instance.library_item_name = f"Exports/{swf.exports[bind['id']]}"
@@ -391,11 +379,14 @@ def sc_to_xfl(swf):
                         mask_idx = 0
                 else:
                     if element['bind'] not in prepared_bind_layers:
-                        layer_is_prepared = [(el['bind'] in prepared_bind_layers) for el in frame.elements]
-                        if True in layer_is_prepared and layer_is_prepared.index(True) > element['bind']:
-                            layer_list = [{key: prepared_bind_layers[key]} for key in prepared_bind_layers]
-                            layer_list.insert([key for key in prepared_bind_layers].index(frame.elements[layer_is_prepared.index(True)]['bind']), {element['bind']: bind_layers[element['bind']]})
-                            prepared_bind_layers = {key: layer[key] for layer in layer_list for key in layer}
+                        layer_is_prepared = [el['bind'] in prepared_bind_layers for el in frame.elements]
+                        if i and element['bind'] not in prepared_bind_layers and False in layer_is_prepared:
+                            element_ids = list(prepared_bind_layers)
+                            element_layers = [prepared_bind_layers[key] for key in prepared_bind_layers]
+
+                            element_ids.insert(layer_is_prepared.index(False) + 1, element['bind'])
+                            element_layers.insert(layer_is_prepared.index(False) + 1, bind_layers[element['bind']])
+                            prepared_bind_layers = {element_ids[i]: element_layers[i] for i in range(len(element_ids))}
 
                         else:
                             prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
@@ -441,7 +432,7 @@ def sc_to_xfl(swf):
 
                     bind_layers[element['bind']] = bind_layer
 
-        for layer_key in prepared_bind_layers:
+        for layer_key in reversed(prepared_bind_layers):
             bind_layer = prepared_bind_layers[layer_key]
 
             if bind_layer.parent_layer_index is None:
