@@ -1,6 +1,11 @@
-from math import atan2, ceil, degrees
+from math import atan2, ceil, degrees, radians
+
+import numpy as np
+import cv2
+from scipy.ndimage import rotate
 
 from .writable import Writable
+from lib.utils.affinetransform import AffineTransform
 
 
 class Shape(Writable):
@@ -138,25 +143,27 @@ def get_center(coords):
 
     return sum(x_coords) / size, sum(y_coords) / size
 
+def get_bounding_box(coords):
+    left = min(coord[0] for coord in coords)
+    top = min(coord[1] for coord in coords)
+    right = max(coord[0] for coord in coords)
+    bottom = max(coord[1] for coord in coords)
+
+    return [[left, top], [left, bottom], [right, bottom], [right, top]]
+
 def calculate_scale(uv_coords, xy_coords):
-    uv_left = min(coord[0] for coord in uv_coords)
-    uv_top = min(coord[1] for coord in uv_coords)
-    uv_right = max(coord[0] for coord in uv_coords)
-    uv_bottom = max(coord[1] for coord in uv_coords)
+    uv_width, uv_height = calculate_size(uv_coords)
+    xy_width, xy_height = calculate_size(xy_coords)
 
-    xy_left = min(coord[0] for coord in xy_coords)
-    xy_top = min(coord[1] for coord in xy_coords)
-    xy_right = max(coord[0] for coord in xy_coords)
-    xy_bottom = max(coord[1] for coord in xy_coords)
+    return xy_width / uv_width, xy_height / uv_height
 
-    uv_width, uv_height = uv_right - uv_left, uv_bottom - uv_top
-    xy_width, xy_height = xy_right - xy_left, xy_bottom - xy_top
+def calculate_size(coords):
+    left = min(coord[0] for coord in coords)
+    top = min(coord[1] for coord in coords)
+    right = max(coord[0] for coord in coords)
+    bottom = max(coord[1] for coord in coords)
 
-    if uv_width == 0: uv_width = 1
-    if uv_height == 0: uv_height = 1
-
-    return xy_width / uv_width, xy_height / uv_height, xy_width, xy_height
-
+    return right - left or 1, bottom - top or 1
 
 def calculate_rotation(uv_coords, xy_coords):
     def is_clockwise(points):
@@ -185,11 +192,125 @@ def calculate_rotation(uv_coords, xy_coords):
 
     angle = (angle_xy - angle_uv + 360) % 360
 
-    #nearest = round(angle / 90) * 90
+    nearest = round(angle / 90) * 90
 
-    if not uv_cw:
-        if mirroring:
-            if angle in [90, 270]:
-                angle += 180
+    if nearest in [90, 270] and mirroring:
+        angle += 180
 
-    return angle, mirroring
+    return angle, nearest, mirroring
+
+def get_matrix(uv, xy, use_nearest = False, raw_data = False):
+    def rotate(points, angle):
+        rotate_matrix = np.array(((np.cos(angle), np.sin(angle)),
+                                (-np.sin(angle), np.cos(angle))))
+
+        return [[round(p, 3) for p in rotate_matrix.dot(vec).tolist()] for vec in points]
+    at = AffineTransform()
+
+    rotation, nearest, mirroring = calculate_rotation(uv, xy)
+    nearest_rad = radians(-nearest)
+    rad_rot = radians(-rotation)
+    if use_nearest: rad_rot -= nearest_rad
+
+    sprite_mesh = rotate(uv, nearest_rad) if use_nearest else uv
+    sprite_box = []
+
+    # rebulding mesh to corner
+    for p_i, p in enumerate(sprite_mesh):
+        if p_i == 0:
+            sprite_box.append([0, 0])
+        else:
+            x_distance = sprite_mesh[p_i][0] - sprite_mesh[p_i - 1][0]
+            y_distance = sprite_mesh[p_i][1] - sprite_mesh[p_i - 1][1]
+
+            sprite_box.append([sprite_box[p_i - 1][0] + x_distance,
+                               sprite_box[p_i - 1][1] + y_distance])
+        if sprite_box[p_i][0] < 0:
+            sprite_box = [[x - sprite_box[p_i][0], y] for x, y in sprite_box]
+        if sprite_box[p_i][1] < 0:
+            sprite_box = [[x, y - sprite_box[p_i][1]] for x, y in sprite_box]
+
+    sx, sy = calculate_scale(sprite_box, rotate(xy, -rad_rot))  # calculate scale
+    # TODO skew
+
+    at.scale(sx, sy)  # apply scale
+    sprite = [[round(x * sx, 3), round(y * sy, 3)] for x, y in sprite_box]
+
+    if mirroring:
+        at.scale(-1, 1)
+        sprite = [[-x, y] for x, y in sprite]
+
+    # rotating bounding box and matrix
+    sprite = rotate(sprite, rad_rot)
+
+    at.rotate(rad_rot)  # apply rotation
+
+    s_center_x, s_center_y = get_center(get_bounding_box(sprite))
+    xy_center_x, xy_center_y = get_center(get_bounding_box(xy))
+
+    translition_x = round(xy_center_x - s_center_x)
+    translition_y = round(xy_center_y - s_center_y)
+
+    at.ty = translition_x
+    at.tx = translition_y
+
+    if raw_data:
+        return (rotation, mirroring), (sx, sy), (translition_x, translition_y)
+
+    return at.get_matrix(), sprite_box, nearest if use_nearest else 0,
+
+def get_bitmap(textures, uv, tex_id):
+    image_box = cv2.boundingRect(np.array(uv))
+    a, b, _, _ = image_box
+
+    texture = textures[tex_id].image
+    points = np.array(uv, dtype=np.int32)
+    mask = np.zeros(texture.shape[:2], dtype=np.uint8)
+    cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
+    res = cv2.bitwise_and(texture, texture, mask=mask)
+
+    img_w, img_h = calculate_size(uv)
+    return res[b: b + int(img_h), a: a + int(img_w)]
+
+def render_shape(shape, textures):
+    def add(back, fore, x, y):
+        rows, cols, channels = fore.shape
+        trans_indices = fore[..., 3] != 0
+        overlay_copy = back[y:y + rows, x:x + cols]
+        overlay_copy[trans_indices] = fore[trans_indices]
+        back[y:y + rows, x:x + cols] = overlay_copy
+
+    box = get_bounding_box([p for bitmap in shape.bitmaps for p in bitmap.xy_coords])
+    min_x = min([p[0] for p in box])
+    min_y = min([p[1] for p in box])
+    box = [[x - min_x, y - min_y] for x, y in box]
+
+    width = int(max([p[0] for p in box]))
+    x_offset = ceil(width/2)
+    height = int(max([p[1] for p in box]))
+    y_offset = ceil(height/2)
+
+    img = np.zeros((height, width, 4), np.uint8)
+    img[:,:] = (255, 0, 0, 0)
+
+    for bitmap in reversed(shape.bitmaps):
+        (rotation, mirror), (scale_x, scale_y), (tr_y, tr_x) = get_matrix(bitmap.uv_coords, bitmap.xy_coords, raw_data=True)
+
+        bitmap_image = get_bitmap(textures, bitmap.uv_coords, bitmap.texture_index)
+
+        bitmap_image = rotate(bitmap_image, rotation)
+        if mirror:
+            bitmap_image = cv2.flip(bitmap_image, 1)
+
+        bitmap_width = int(bitmap_image.shape[1] * scale_x)
+        bitmap_height = int(bitmap_image.shape[0] * scale_y)
+        if tr_x < 0:
+            tr_x = -tr_x * 2
+        if tr_y < 0:
+            tr_y = -tr_y * 2
+
+        bitmap_image = cv2.resize(bitmap_image, (bitmap_width, bitmap_height))
+        add(img, bitmap_image, x_offset - tr_x, y_offset - tr_y)
+
+
+    return img
