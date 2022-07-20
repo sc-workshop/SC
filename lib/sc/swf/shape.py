@@ -13,7 +13,7 @@ class Shape(Writable):
         self.id: int = -1
 
         self.bitmaps: list = []
-    
+
     def load(self, swf, tag: int):
         self.id = swf.reader.read_ushort()
 
@@ -25,7 +25,7 @@ class Shape(Writable):
         points_count = 4 * bitmaps_count
         if tag == 18:
             points_count = swf.reader.read_ushort()
-        
+
         bitmaps_loaded = 0
         while True:
             bitmap_tag = swf.reader.read_uchar()
@@ -40,7 +40,7 @@ class Shape(Writable):
                 continue
 
             swf.reader.skip(bitmap_tag_length)
-    
+
     def save(self, swf):
         super().save()
 
@@ -53,13 +53,13 @@ class Shape(Writable):
             points_count += len(bitmap.xy_coords)
             if bitmap.max_rects:
                 max_rects_count += 1
-        
+
         tag = 2 if max_rects_count == len(self.bitmaps) else 18
-        
+
         # allocator?
         if tag == 18:
             self.write_ushort(points_count)
-        
+
         for bitmap in self.bitmaps:
             tag_bitmap, buffer = bitmap.save(swf)
 
@@ -67,7 +67,7 @@ class Shape(Writable):
             self.write_int(len(buffer))
             self.write(buffer)
 
-        self.write(bytes(5)) # end tag for bitmap tags array
+        self.write(bytes(5))  # end tag for bitmap tags array
 
         return tag, self.buffer
 
@@ -79,7 +79,7 @@ class ShapeDrawBitmapCommand(Writable):
         self.xy_coords: list = []
 
         self.max_rects: bool = False
-    
+
     def load(self, swf, tag: int):
         self.texture_index = swf.reader.read_uchar()
 
@@ -90,7 +90,7 @@ class ShapeDrawBitmapCommand(Writable):
             x = swf.reader.read_twip()
             y = swf.reader.read_twip()
             self.xy_coords.append([x, y])
-        
+
         for i in range(points_count):
             w = swf.reader.read_ushort()
             h = swf.reader.read_ushort()
@@ -100,9 +100,9 @@ class ShapeDrawBitmapCommand(Writable):
                 h = h / 0xFFFF * swf.textures[self.texture_index].height
 
             u, v = [ceil(i) for i in [w, h]]
-            
+
             self.uv_coords.append([u, v])
-    
+
     def save(self, swf):
         super().save()
 
@@ -114,7 +114,8 @@ class ShapeDrawBitmapCommand(Writable):
         if not self.max_rects:
             self.write_uchar(points_count)
 
-        if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == ("GL_NEAREST", "GL_NEAREST") and not self.max_rects:
+        if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == (
+        "GL_NEAREST", "GL_NEAREST") and not self.max_rects:
             tag = 17
 
         for coord in self.xy_coords[:points_count]:
@@ -122,7 +123,7 @@ class ShapeDrawBitmapCommand(Writable):
 
             self.write_twip(x)
             self.write_twip(y)
-        
+
         for coord in self.uv_coords[:points_count]:
             u, v = coord
 
@@ -132,8 +133,9 @@ class ShapeDrawBitmapCommand(Writable):
 
             self.write_ushort(int(round(u)))
             self.write_ushort(int(round(v)))
-        
+
         return tag, self.buffer
+
 
 def get_center(coords):
     x_coords = [coord[0] for coord in coords]
@@ -143,6 +145,7 @@ def get_center(coords):
 
     return sum(x_coords) / size, sum(y_coords) / size
 
+
 def get_bounding_box(coords):
     left = min(coord[0] for coord in coords)
     top = min(coord[1] for coord in coords)
@@ -151,11 +154,13 @@ def get_bounding_box(coords):
 
     return [[left, top], [left, bottom], [right, bottom], [right, top]]
 
+
 def calculate_scale(uv_coords, xy_coords):
     uv_width, uv_height = calculate_size(uv_coords)
     xy_width, xy_height = calculate_size(xy_coords)
 
     return xy_width / uv_width, xy_height / uv_height
+
 
 def calculate_size(coords):
     left = min(coord[0] for coord in coords)
@@ -165,6 +170,7 @@ def calculate_size(coords):
 
     return right - left or 1, bottom - top or 1
 
+
 def calculate_rotation(uv_coords, xy_coords):
     def is_clockwise(points):
         sum = 0
@@ -173,7 +179,7 @@ def calculate_rotation(uv_coords, xy_coords):
             x2, y2 = points[x]
             sum += (x1 - x2) * (y1 + y2)
         return sum < 0
-    
+
     uv_cw = is_clockwise(uv_coords)
     xy_cw = is_clockwise(xy_coords)
 
@@ -199,12 +205,14 @@ def calculate_rotation(uv_coords, xy_coords):
 
     return angle, nearest, mirroring
 
-def get_matrix(uv, xy, use_nearest = False, raw_data = False):
+
+def get_matrix(uv, xy, use_nearest=False, raw_data=False):
     def rotate(points, angle):
         rotate_matrix = np.array(((np.cos(angle), np.sin(angle)),
-                                (-np.sin(angle), np.cos(angle))))
+                                  (-np.sin(angle), np.cos(angle))))
 
         return [[round(p, 3) for p in rotate_matrix.dot(vec).tolist()] for vec in points]
+
     at = AffineTransform()
 
     rotation, nearest, mirroring = calculate_rotation(uv, xy)
@@ -259,11 +267,11 @@ def get_matrix(uv, xy, use_nearest = False, raw_data = False):
 
     return at.get_matrix(), sprite_box, nearest if use_nearest else 0,
 
-def get_bitmap(textures, uv, tex_id):
+
+def get_bitmap(texture, uv):
     image_box = cv2.boundingRect(np.array(uv))
     a, b, _, _ = image_box
 
-    texture = textures[tex_id].image
     points = np.array(uv, dtype=np.int32)
     mask = np.zeros(texture.shape[:2], dtype=np.uint8)
     cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
@@ -271,6 +279,7 @@ def get_bitmap(textures, uv, tex_id):
 
     img_w, img_h = calculate_size(uv)
     return res[b: b + int(img_h), a: a + int(img_w)]
+
 
 def render_shape(shape, textures):
     def add(back, fore, x, y):
@@ -286,31 +295,36 @@ def render_shape(shape, textures):
     box = [[x - min_x, y - min_y] for x, y in box]
 
     width = int(max([p[0] for p in box]))
-    x_offset = ceil(width/2)
+    x_offset = ceil(width / 2)
     height = int(max([p[1] for p in box]))
-    y_offset = ceil(height/2)
+    y_offset = ceil(height / 2)
 
     img = np.zeros((height, width, 4), np.uint8)
-    img[:,:] = (255, 0, 0, 0)
+    img[:, :] = (0, 0, 0, 255)
 
     for bitmap in reversed(shape.bitmaps):
-        (rotation, mirror), (scale_x, scale_y), (tr_y, tr_x) = get_matrix(bitmap.uv_coords, bitmap.xy_coords, raw_data=True)
+        (rotation, mirror), (scale_x, scale_y), (tr_x, tr_y) = get_matrix(bitmap.uv_coords, bitmap.xy_coords,
+                                                                          raw_data=True)
 
         bitmap_image = get_bitmap(textures, bitmap.uv_coords, bitmap.texture_index)
 
-        bitmap_image = rotate(bitmap_image, rotation)
+        bitmap_image = rotate(bitmap_image, -rotation)
+        print(mirror)
         if mirror:
+            tr_y *= 2
             bitmap_image = cv2.flip(bitmap_image, 1)
 
         bitmap_width = int(bitmap_image.shape[1] * scale_x)
         bitmap_height = int(bitmap_image.shape[0] * scale_y)
         if tr_x < 0:
             tr_x = -tr_x * 2
-        if tr_y < 0:
-            tr_y = -tr_y * 2
+        if tr_x < 0:
+            tr_x = -tr_x * 2
 
+        print(tr_x, tr_y)
         bitmap_image = cv2.resize(bitmap_image, (bitmap_width, bitmap_height))
-        add(img, bitmap_image, x_offset - tr_x, y_offset - tr_y)
-
+        add(img, bitmap_image, tr_x, tr_y)
+        cv2.imshow("deb", img)
+        cv2.waitKey(0)
 
     return img

@@ -197,7 +197,7 @@ def sc_to_xfl(swf):
                                         matrix, sprite_box, nearest = get_matrix(uv, xy, True)
                                         shapes_pivot[bitmap['uv']] = sprite_box
 
-                                        img = get_bitmap(swf.textures, uv, bitmap["tex"])
+                                        img = get_bitmap(swf.textures[bitmap["tex"]].image, uv)
 
                                         if nearest == 270:
                                             img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
@@ -367,5 +367,5 @@ def sc_to_xfl(swf):
         movie_symbol.name = movie_name
         sc_xfl.symbols.update({movie_save_name: movie_symbol})
 
-    # XFL.save(projectdir, sc_xfl)
-    sc_xfl.save(projectdir)  # save as xfl
+    XFL.save(f"{projectdir}.fla", sc_xfl)
+    #sc_xfl.save(projectdir)  # save as xfl

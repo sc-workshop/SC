@@ -5,6 +5,7 @@ from lib.utils import *
 
 class SWFTexture(Writable):
     def __init__(self) -> None:
+        self.channels = 4
         self.pixel_format: str = "GL_RGBA"
         self.pixel_internal_format: str = "GL_RGBA8"
         self.pixel_type: str = "GL_UNSIGNED_BYTE"
@@ -47,12 +48,10 @@ class SWFTexture(Writable):
     def save(self, has_external_texture: bool):
         super().save()
 
-        height, width, channels = self.image.shape
+        if self.image is not None:
+            self.height, self.width, self.channels = self.image.shape
 
-        self.width = width
-        self.height = height
-
-        if channels == 4 and (self.pixel_format, self.pixel_internal_format) != ("GL_LUMINANCE_ALPHA", "GL_LUMINANCE8_ALPHA8"):
+        if self.channels == 4 and (self.pixel_format, self.pixel_internal_format) != ("GL_LUMINANCE_ALPHA", "GL_LUMINANCE8_ALPHA8"):
             self.pixel_format = "GL_RGBA"
 
             if self.pixel_type == "GL_UNSIGNED_BYTE":
@@ -64,12 +63,12 @@ class SWFTexture(Writable):
             else:
                 self.pixel_internal_format = "GL_RGB5_A1"
         
-        elif channels == 3:
+        elif self.channels == 3:
             self.pixel_format = "GL_RGB"
             self.pixel_type = "GL_UNSIGNED_SHORT_5_6_5"
             self.pixel_internal_format = "GL_RGB565"
         
-        elif channels == 4 and (self.pixel_format, self.pixel_internal_format) == ("GL_LUMINANCE_ALPHA", "GL_LUMINANCE8_ALPHA8"): # OpenCV doesn't support LUMINANCE_ALPHA :(((
+        elif self.channels == 4 and (self.pixel_format, self.pixel_internal_format) == ("GL_LUMINANCE_ALPHA", "GL_LUMINANCE8_ALPHA8"): # OpenCV doesn't support LUMINANCE_ALPHA :(((
             self.pixel_format = "GL_LUMINANCE_ALPHA"
             self.pixel_type = "GL_UNSIGNED_BYTE"
             self.pixel_internal_format = "GL_LUMINANCE8_ALPHA8"

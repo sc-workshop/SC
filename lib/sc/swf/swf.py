@@ -18,6 +18,10 @@ class SupercellSWF:
 
         self.exports: dict = {}
 
+        self.has_external_texture = False
+        self.has_highres_texture = False
+        self.has_lowres_texture = True
+
         self.shapes_count: int = 0
         self.movieclips_count: int = 0
         self.textures_count: int = 0
@@ -78,9 +82,7 @@ class SupercellSWF:
         return self.load_tags()
     
     def load_tags(self):
-        has_external_texture = False
-        has_highres_texture = True
-        has_lowres_texture = True
+        has_textures = False
 
         shapes_loaded = 0
         movieclips_loaded = 0
@@ -100,13 +102,14 @@ class SupercellSWF:
                 break
 
             if tag == 23:
-                has_lowres_texture = False
+                self.has_lowres_texture = False
 
             elif tag == 26:
-                has_external_texture = True
+                has_textures = True
+                self.has_external_texture = True
 
             elif tag == 30:
-                has_highres_texture = False
+                self.has_highres_texture = True
 
             elif tag == 32:
                 self.highres_asset_postfix = self.reader.read_ascii()
@@ -114,7 +117,7 @@ class SupercellSWF:
                 continue
 
             elif tag in [1, 16, 19, 24, 27, 28, 29, 34]:
-                self.textures[textures_loaded].load(self, tag, has_external_texture)
+                self.textures[textures_loaded].load(self, tag, has_textures)
                 textures_loaded += 1
                 continue
 
@@ -192,24 +195,20 @@ class SupercellSWF:
                 continue
 
             self.reader.skip(tag_length)
-        
-        return has_external_texture, has_highres_texture, has_lowres_texture
 
-    def load(self, filepath: str):
+
+    def load(self, filepath: str, load_textures: bool = True):
         self.filename = filepath
         
-        has_external_texture, has_highres_texture, has_lowres_texture = self.load_internal(filepath, False)
+        self.load_internal(filepath, False)
 
-        if has_external_texture:
-            if has_lowres_texture:
-                self.load_internal(os.path.splitext(filepath)[0] + self.lowres_asset_postfix, True)
-                if has_highres_texture:
+        if load_textures:
+            if self.has_external_texture:
+                if self.has_highres_texture:
                     self.load_internal(os.path.splitext(filepath)[0] + self.highres_asset_postfix, True)
-            else:
-                self.load_internal(os.path.splitext(filepath)[0] + self.texture_asset_postfix, True)
+                else:
+                    self.load_internal(os.path.splitext(filepath)[0] + self.texture_asset_postfix, True)
 
-        
-        return has_external_texture, has_highres_texture, has_lowres_texture
     
     def save_tag(self, tag, buffer):
         self.writer.write_uchar(tag)
@@ -224,8 +223,8 @@ class SupercellSWF:
         
         self.writer.write(bytes(5))
     
-    def save_tags(self, has_external_texture: bool, has_highres_texture: bool, has_lowres_texture: bool):
-        if self.highres_asset_postfix != "_tex.sc" or self.lowres_asset_postfix != "_lowres_tex.sc":
+    def save_tags(self, enable_postfix: bool = False):
+        if enable_postfix:
             postfix_tag = BinaryWriter()
 
             postfix_tag.write_ascii(self.highres_asset_postfix)
@@ -233,17 +232,17 @@ class SupercellSWF:
 
             self.save_tag(32, postfix_tag.buffer)
         
-        if not has_lowres_texture:
+        if not self.has_lowres_texture:
             self.save_tag(23, bytes())
 
-        if has_external_texture:
+        if self.has_highres_texture:
+            self.save_tag(30, bytes())
+
+        if self.has_external_texture:
             self.save_tag(26, bytes())
         
-        if not has_highres_texture:
-            self.save_tag(30, bytes())
-        
         for texture in self.textures:
-            tag, buffer = texture.save(has_external_texture)
+            tag, buffer = texture.save(self.has_external_texture)
             
             self.save_tag(tag, buffer)
         
@@ -308,7 +307,7 @@ class SupercellSWF:
 
         self.writer.write(bytes(5)) # end tag
 
-    def save_internal(self, filepath: str, is_texture: bool, has_external_texture: bool, has_highres_texture: bool, has_lowres_texture: bool):
+    def save_internal(self, filepath: str, is_texture: bool, enable_postfix: bool = False):
         self.writer = BinaryWriter()
         
         if not is_texture:
@@ -334,7 +333,7 @@ class SupercellSWF:
             for export_id in self.exports:
                 self.writer.write_ascii(self.exports[export_id])
 
-            self.save_tags(has_external_texture, has_highres_texture, has_lowres_texture)
+            self.save_tags(enable_postfix)
         
         else:
             self.save_texture()
@@ -344,14 +343,35 @@ class SupercellSWF:
             file.write(compressor.compress(self.writer.buffer, Signatures.SC, 1))
             #file.write(self.writer.buffer)
 
-    def save(self, filepath: str, has_external_texture: bool = True, has_highres_texture: bool = True, has_lowres_texture: bool = False):
+    def save(self, filepath: str, save_textures: bool = True, custom_postfix = ("_highres_tex.sc", "_lowres_tex.sc")):
         self.filename = filepath
 
-        self.save_internal(filepath, False, has_external_texture, has_highres_texture, has_lowres_texture)
+        postfix_enable = False
 
-        if has_external_texture:
-            if has_highres_texture:
-                self.save_internal(os.path.splitext(filepath)[0] + self.highres_asset_postfix, True, False, True, True)
+        highres_postfix, lowres_postfix = custom_postfix
 
-            if has_lowres_texture:
-                self.save_internal(os.path.splitext(filepath)[0] + self.lowres_asset_postfix, True, False, True, True)
+        if self.has_highres_texture or self.has_lowres_texture:
+            if highres_postfix != self.highres_asset_postfix or lowres_postfix != self.lowres_asset_postfix:
+                postfix_enable = True
+                self.highres_asset_postfix = highres_postfix
+                self.lowres_asset_postfix = lowres_postfix
+
+        self.save_internal(filepath, False, postfix_enable)
+
+        if save_textures:
+            if self.has_external_texture:
+                if self.has_highres_texture and not self.has_lowres_texture:
+                    self.save_internal(os.path.splitext(filepath)[0] + self.texture_asset_postfix, True)
+                    return
+
+                # TODO auto generate lowres
+                '''if has_highres_texture:
+                    self.save_internal(os.path.splitext(filepath)[0] + self.highres_asset_postfix, True, False, True, True)
+                    return
+    
+                if has_lowres_texture:
+                    self.save_internal(os.path.splitext(filepath)[0] + self.lowres_asset_postfix, True, False, True, True)
+                    return'''
+
+                self.save_internal(os.path.splitext(filepath)[0] + self.texture_asset_postfix, True)
+

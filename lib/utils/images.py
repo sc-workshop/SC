@@ -213,6 +213,7 @@ def load_image(texture, swf):
             pixels.append(PIXEL_READ_FUNCTIONS[texture.pixel_internal_format](swf))
     
     texture.image = np.array(pixels, dtype=np.uint8).reshape(texture.height, texture.width, CHANNLES_TABLE[texture.pixel_format])
+    texture.channels = texture.image.shape[2]
 
     if not texture.linear:
         make_linear(texture, pixels)
@@ -221,7 +222,7 @@ def load_image(texture, swf):
 def save_image(texture):
     if not texture.linear:
         make_blocks(texture)
-    
+
     for y in range(texture.height):
         for x in range(texture.width):
             PIXEL_WRITE_FUNCTIONS[texture.pixel_internal_format](texture, texture.image[y, x])
