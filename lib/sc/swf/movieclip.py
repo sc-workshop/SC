@@ -17,18 +17,18 @@ BLENDMODES = [
 class MovieClipModifier(Writable):
     def __init__(self) -> None:
         self.id: int = -1
-        self.stencil: int = 2
+        self.type: int = 2
     
     def load(self, swf, tag: int):
         self.id = swf.reader.read_ushort()
 
         swf.movieclip_modifiers_ids.append(self.id)
 
-        self.stencil = 2
+        self.type = "MASK"
         if tag == 39:
-            self.stencil = 3
+            self.type = "MASK_CHILDREN_START"
         elif tag == 40:
-            self.stencil = 4
+            self.type = "MASK_CHILDREN_END"
     
     def save(self):
         super().save()
@@ -36,9 +36,9 @@ class MovieClipModifier(Writable):
         self.write_ushort(self.id)
 
         tag = 38
-        if self.stencil == 3:
+        if self.type == 3:
             tag = 39
-        elif self.stencil == 4:
+        elif self.type == 4:
             tag = 40
         
         return tag, self.buffer
@@ -91,7 +91,7 @@ class MovieClip(Writable):
         if tag in [12, 35]:
             for x in range(binds_count):
                 blend_index = swf.reader.read_uchar() & 0x3F
-                reversed = (bind_index >> 6) & 1
+                #reversed = (bind_index >> 6) & 1
                 self.binds[x]["blend"] = BLENDMODES[blend_index]
         
         for x in range(binds_count):
@@ -188,6 +188,14 @@ class MovieClip(Writable):
         # TODO: add support for tag 35 (idk where difference, but it's also used in games)
         return 12, self.buffer
 
+    def __eq__(self, instance):
+        if (isinstance(instance, MovieClip)):
+            return self.frame_rate == instance.frame_rate\
+                   and self.binds == instance.binds\
+                   and self.frames == instance.frames\
+                    and (len(instance.frames) != self.frames and False not in [self.frames[i] == instance.frames[i] for i in range(len(self.frames))])
+        return False
+
 
 class MovieClipFrame(Writable):
     def __init__(self) -> None:
@@ -207,3 +215,6 @@ class MovieClipFrame(Writable):
         self.write_ascii(self.name)
 
         return 11, self.buffer
+
+    def __eq__(self, instance):
+        return self.elements == instance.elements and self.name == instance.name

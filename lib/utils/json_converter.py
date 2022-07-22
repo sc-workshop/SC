@@ -6,19 +6,22 @@ import cv2
 
 from struct import unpack
 
+from lib.sc.swf import *
+
 
 def convert_sc_to_json(filepath):
     swf = SupercellSWF()
-    has_external_texture, has_highres_texture, has_lowres_texture = swf.load(filepath)
+    swf.load(filepath)
 
     library = {}
 
-    library["hasExternalTextureFile"] = has_external_texture
-    library["hasHighResTexture"] = has_highres_texture
-    library["hasLowResTexture"] = has_lowres_texture
+    library["hasExternalTextureFile"] = swf.has_external_texture
+    library["hasHighResTexture"] = swf.has_highres_texture
+    library["hasLowResTexture"] = swf.has_lowres_texture
 
     library["highResTextureFilePostfix"] = swf.highres_asset_postfix
     library["lowResTextureFilePostfix"] = swf.lowres_asset_postfix
+    library["compression"] = swf.compression
 
     library["textures"] = []
     library["movieclipModifiers"] = []
@@ -53,7 +56,7 @@ def convert_sc_to_json(filepath):
         inlib = {} # in library movieclip modifier
 
         inlib["id"] = movieclip_modifier.id
-        inlib["stencil"] = movieclip_modifier.stencil
+        inlib["stencil"] = movieclip_modifier.type
 
         library["movieclipModifiers"].append(inlib)
     
@@ -199,6 +202,9 @@ def convert_json_to_sc(filepath):
     
     if "lowResTextureFilePostfix" in library:
         swf.lowres_asset_postfix = library["lowResTextureFilePostfix"]
+
+    if "compression" in library:
+        swf.compression = library["compression"]
     
     if "textures" in library:
         for texture in library["textures"]:
@@ -293,7 +299,7 @@ def convert_json_to_sc(filepath):
                 continue
 
             if "stencil" in modifier:
-                tag.stencil = modifier["stencil"]
+                tag.type = modifier["stencil"]
             
             tag.id = modifier["id"]
             swf.movieclip_modifiers.append(tag)

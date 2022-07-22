@@ -33,22 +33,22 @@ class Matrix:
     def save(self):
         xml = Element("Matrix")
 
-        if self.a is not None:
+        if float(self.a) != 1.0:
             xml.attrib["a"] = str(self.a)
         
-        if self.b is not None:
+        if self.b:
             xml.attrib["b"] = str(self.b)
         
-        if self.c is not None:
+        if self.c:
             xml.attrib["c"] = str(self.c)
         
-        if self.d is not None:
+        if float(self.d) != 1.0:
             xml.attrib["d"] = str(self.d)
         
-        if self.tx is not None :
+        if self.tx:
             xml.attrib["tx"] = str(self.tx)
         
-        if self.ty is not None :
+        if self.ty:
             xml.attrib["ty"] = str(self.ty)
 
         return xml

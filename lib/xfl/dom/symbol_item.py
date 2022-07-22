@@ -1,4 +1,5 @@
 from xml.etree.ElementTree import *
+import xml.dom.minidom as md
 
 from . import NAMESPACES
 from .timeline import DOMTimeline
@@ -81,5 +82,5 @@ class DOMSymbolItem:
         if self.timeline is not None:
             timeline.append(self.timeline.save())
 
-        with open(filepath, 'wb') as file:
-            file.write(tostring(xml))
+        with open(filepath, 'w') as file:
+            file.write(md.parseString(tostring(xml)).toprettyxml())

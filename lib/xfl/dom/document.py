@@ -1,6 +1,7 @@
 import os
 
 from xml.etree.ElementTree import *
+import xml.dom.minidom as md
 
 from .folder_item import DOMFolderItem
 from .bitmap_item import DOMBitmapItem
@@ -111,7 +112,7 @@ class DOMDocument:
                 timeline = DOMTimeline()
                 timeline.load(timeline_element)
                 self.timelines.append(timeline)
-    
+
     def save(self, filepath: str):
         self.filepath = filepath
 
@@ -131,8 +132,8 @@ class DOMDocument:
 
         xml = Element("DOMDocument")
 
-        xml.attrib["xmlns"] = NAMESPACES["xfl"]
         xml.attrib["xmlns:xsi"] = NAMESPACES["xsi"]
+        xml.attrib["xmlns"] = NAMESPACES["xfl"]
         
         if self.xfl_version is not None:
             xml.attrib["xflVersion"] = str(self.xfl_version)
@@ -188,15 +189,15 @@ class DOMDocument:
             if symbol.symbol_type is not None and symbol.symbol_type == "graphic":
                 include.attrib["itemIcon"] = "1"
             
-            include.attrib["loadImmediate"] = "true"
+            include.attrib["loadImmediate"] = "false"
 
             symbols.append(include)
 
         for timeline in self.timelines:
             timelines.append(timeline.save())
         
-        with open(os.path.join(self.filepath, "DOMDocument.xml"), 'wb') as file:
-            file.write(tostring(xml))
+        with open(os.path.join(self.filepath, "DOMDocument.xml"), 'w') as file:
+            file.write(md.parseString(tostring(xml)).toprettyxml())
         
         with open(os.path.join(self.filepath, os.path.basename(self.filepath) + ".xfl"), 'w') as file:
             file.write("PROXY-CS5")

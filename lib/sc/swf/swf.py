@@ -9,11 +9,17 @@ from .matrix_bank import MatrixBank
 from .movieclip import MovieClipModifier, MovieClip
 
 from sc_compression import Decompressor, Compressor
-from sc_compression.signatures import Signatures
+
+from itertools import groupby
+
+signature_list = [1, 2, 4, 8, 16, 32]
+compression_list = ["LZMA", "SC", "SCLZ", "SIG", "ZSTD", "NONE"]
 
 
 class SupercellSWF:
     def __init__(self) -> None:
+        self.compression: str = "NONE"
+
         self.filename: str = None
 
         self.exports: dict = {}
@@ -51,8 +57,12 @@ class SupercellSWF:
     
     def load_internal(self, filepath: str, is_texture: bool):
         with open(filepath, 'rb') as file:
+            file_buffer = file.read()
+
             decompressor = Decompressor()
-            self.reader = BinaryReader(decompressor.decompress(file.read()))
+            self.reader = BinaryReader(decompressor.decompress(file_buffer))
+
+            self.compression = compression_list[signature_list.index(decompressor.signatures.get_signature(file_buffer))]
         
         if not is_texture:
             self.shapes_count = self.reader.read_ushort()
@@ -66,8 +76,12 @@ class SupercellSWF:
 
             exports_count = self.reader.read_ushort()
 
-            self.exports = [_function() for _function in [self.reader.read_ushort] * exports_count]
-            self.exports = {export_id: self.reader.read_ascii() for export_id in self.exports}
+            exports = [_function() for _function in [self.reader.read_ushort] * exports_count]
+            for export_id in exports:
+                if export_id not in self.exports:
+                    self.exports[export_id] = []
+                self.exports[export_id].append(self.reader.read_ascii())
+
             
             self.shapes = [_class() for _class in [Shape] * self.shapes_count]
             self.movieclips = [_class() for _class in [MovieClip] * self.movieclips_count]
@@ -325,13 +339,15 @@ class SupercellSWF:
 
             self.writer.write(bytes(5)) # unused
 
-            self.writer.write_ushort(len(self.exports))
+            self.writer.write_ushort(len([export for expord_id in self.exports for export in self.exports[expord_id] if self.exports[expord_id]]))
 
             for export_id in self.exports:
-                self.writer.write_ushort(export_id)
+                for _ in self.exports[export_id]:
+                    self.writer.write_ushort(export_id)
             
             for export_id in self.exports:
-                self.writer.write_ascii(self.exports[export_id])
+                for export in self.exports[export_id]:
+                    self.writer.write_ascii(export)
 
             self.save_tags(enable_postfix)
         
@@ -340,8 +356,8 @@ class SupercellSWF:
 
         with open(filepath, 'wb') as file:
             compressor = Compressor()
-            file.write(compressor.compress(self.writer.buffer, Signatures.SC, 1))
-            #file.write(self.writer.buffer)
+            compress_signature = signature_list[compression_list.index(self.compression.upper())]
+            file.write(compressor.compress(self.writer.buffer, compress_signature, 1))
 
     def save(self, filepath: str, save_textures: bool = True, custom_postfix = ("_highres_tex.sc", "_lowres_tex.sc")):
         self.filename = filepath
@@ -355,6 +371,46 @@ class SupercellSWF:
                 postfix_enable = True
                 self.highres_asset_postfix = highres_postfix
                 self.lowres_asset_postfix = lowres_postfix
+
+        #Id generator
+        ids = {}
+        
+        #duplicate movieclips
+        replacement = {}
+
+        movie_duplicates = [x for n, x in enumerate(self.movieclips) if x in self.movieclips[:n]]
+
+        for movie_instance in movie_duplicates:
+            orig = None
+            for movie in self.movieclips:
+                if movie == movie_instance and orig is not None:
+                    replacement.update({movie.id: orig.id})
+                    if movie.id in self.exports:
+                        if orig.id not in self.exports:
+                            self.exports[orig.id] = []
+
+                        self.exports[orig.id] += self.exports[movie.id]
+                        del self.exports[movie.id]
+                else:
+                    orig = movie
+
+        self.movieclips = [x for x, _ in groupby(self.movieclips)]
+
+        # collecting all names
+        for i, obj in enumerate(self.shapes + self.text_fields + self.movieclip_modifiers + self.movieclips):
+            ids.update({obj.id: i})
+            obj.id = i
+
+        #apply ids for export names
+        for export_id in self.exports.copy():
+            self.exports[ids[export_id]] = self.exports.pop(export_id)
+
+        #apply ids for movieclip binds
+        for movie in self.movieclips:
+            for bind in movie.binds:
+                if bind['id'] in replacement:
+                    bind['id'] = replacement[bind['id']]
+                bind['id'] = ids[bind['id']]
 
         self.save_internal(filepath, False, postfix_enable)
 

@@ -12,6 +12,7 @@ class DOMSymbolInstance:
         # attributes
         self.name = name
         self.library_item_name = library_item_name
+        self.blend_mode: str = None
 
         self.loop = loop
 
@@ -26,6 +27,9 @@ class DOMSymbolInstance:
         
         if "libraryItemName" in xml.attrib:
             self.library_item_name = xml.attrib["libraryItemName"]
+
+        if "blendMode" in xml.attrib:
+            self.blend_mode = xml.attrib["blendMode"]
         
         if "loop" in xml.attrib:
             self.loop = xml.attrib["loop"]
@@ -56,6 +60,9 @@ class DOMSymbolInstance:
 
         if self.library_item_name is not None:
             xml.attrib["libraryItemName"] = str(self.library_item_name)
+
+        if self.blend_mode is not None:
+            xml.attrib["blendMode"] = str(self.blend_mode)
         
         if self.loop is not None:
             xml.attrib["loop"] = str(self.loop)

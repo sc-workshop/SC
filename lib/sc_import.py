@@ -70,6 +70,7 @@ def sc_to_xfl(swf):
     shapes_uvs = []  # Shapes coordinates
     shapes_pivot = []  # list, with xy coordinates, to search for transformations
 
+    dom_shapes = {}
     prepared_shapes = {}  # Dictionary of shapes, with ids and bitmaps
 
     for shape in swf.shapes:
@@ -89,9 +90,17 @@ def sc_to_xfl(swf):
                 uv = shapes_uvs[prepared_bitmap['uv']]
                 xy = prepared_bitmap['xy']
                 x, y = uv[-1]
-                color = swf.textures[prepared_bitmap['tex']].image[y, x]
+                tex = swf.textures[prepared_bitmap['tex']].image
+                px = tex[y, x]
 
-                final_color = "#" + hex(color[2])[2:] + hex(color[1])[2:] + hex(color[0])[2:]
+                alpha = 0
+                if tex.shape[2] == 4:
+                    color = "#" + hex(px[2])[2:] + hex(px[1])[2:] + hex(px[0])[2:]
+                    alpha = px[3]/255
+                elif tex.shape[2] == 3:
+                    color = "#" + hex(px[2])[2:] + hex(px[1])[2:] + hex(px[0])[2:]
+                elif tex.shape[1] == 1:
+                    color = "#" + hex(px[0])[2:] + hex(px[0])[2:] + hex(px[0])[2:]
 
                 final_edges = ""
                 for x, curr in enumerate(xy):
@@ -101,7 +110,7 @@ def sc_to_xfl(swf):
 
                 # Colorfill color
                 colorfill_color = FillStyle(1)
-                colorfill_color.data = SolidColor(final_color, color[3] / 255)
+                colorfill_color.data = SolidColor(color, alpha)
 
                 # Colorfill shape
                 colorfill_edge = Edge()
@@ -138,13 +147,6 @@ def sc_to_xfl(swf):
     for movieclip in swf.movieclips:
         movie_symbol = DOMSymbolItem()
         movie_symbol.timeline.name = movieclip.id
-
-        movie_name = movieclip.id
-        movie_save_name = movieclip.id
-        if movieclip.id in swf.exports:
-            movie_symbol.timeline.name = swf.exports[movieclip.id]
-            movie_name = f"Exports/{swf.exports[movieclip.id]}"
-            movie_save_name = f"Exports/{movieclip.id}"
 
         prepared_bind_layers = {}
         bind_layers = []
@@ -233,10 +235,10 @@ def sc_to_xfl(swf):
                                 bitmap_layer.frames.append(bitmap_frame)
                                 shape_symboll.timeline.layers.append(bitmap_layer)
 
-                            sc_xfl.symbols.update({name: shape_symboll})
+                            dom_shapes.update({name: shape_symboll})
 
                     elif bind["id"] in swf.movieclips_ids and bind['id'] in swf.exports:
-                        instance.library_item_name = f"Exports/{swf.exports[bind['id']]}"
+                        instance.library_item_name = f"Exports/{swf.exports[bind['id']][0]}"
 
                     elif bind["id"] in swf.movieclips_ids:
                         instance.library_item_name = bind['id']
@@ -281,12 +283,12 @@ def sc_to_xfl(swf):
             mask_idx = 0
             for element in frame.elements:
                 if movieclip.binds[element['bind']]['id'] in modifers_storage:
-                    modifer_value = modifers_storage[movieclip.binds[element['bind']]['id']].stencil
-                    if modifer_value == 2:
+                    modifer_value = modifers_storage[movieclip.binds[element['bind']]['id']].type
+                    if modifer_value == "MASK":
                         mask = True
-                    elif modifer_value == 3:
+                    elif modifer_value == "MASK_CHILDREN_START":
                         mask_child = True
-                    elif modifer_value == 4:
+                    elif modifer_value == "MASK_CHILDREN_END":
                         mask_child = False
                         mask_idx = 0
                 else:
@@ -364,8 +366,21 @@ def sc_to_xfl(swf):
 
                 added_bind_layer = {add_index[i]: add_layer[i] for i in range(len(add_index))}
 
-        movie_symbol.name = movie_name
-        sc_xfl.symbols.update({movie_save_name: movie_symbol})
 
-    XFL.save(f"{projectdir}.fla", sc_xfl)
-    #sc_xfl.save(projectdir)  # save as xfl
+        if movieclip.id in swf.exports:
+            for export in swf.exports[movieclip.id]:
+                export_instance = copy.deepcopy(movie_symbol)
+                symbol_name = f"Exports/{export}"
+                export_instance.timeline.name = export
+                export_instance.name = symbol_name
+
+                sc_xfl.symbols.update({symbol_name: export_instance})
+        else:
+            movie_symbol.timeline.name = movieclip.id
+            movie_symbol.name = movieclip.id
+            sc_xfl.symbols.update({movieclip.id: movie_symbol})
+
+    sc_xfl.symbols = sc_xfl.symbols | dom_shapes
+
+    #XFL.save(f"{projectdir}.fla", sc_xfl)
+    sc_xfl.save(projectdir)  # save as xfl

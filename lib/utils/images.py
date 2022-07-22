@@ -7,7 +7,7 @@ import numpy as np
 CHANNLES_TABLE = {
     "GL_RGBA": 4,
     "GL_RGB": 3,
-    "GL_LUMINANCE_ALPHA": 4, # OpenCV doesn't support LUMINANCE_ALPHA :(((
+    "GL_LUMINANCE_ALPHA": 4,
     "GL_LUMINANCE": 1
 }
 
@@ -158,7 +158,7 @@ def write_rgb565(swf, pixel):
 
 def write_luminance8_alpha8(swf, pixel):
     l, a = int(pixel[0]), int(pixel[3])
-    swf.write_ushort(a << 8 | l)
+    swf.write_ushort(l << 8 | a)
 
 def write_luminance8(swf, pixel):
     swf.write_uchar(int(pixel))
@@ -211,8 +211,9 @@ def load_image(texture, swf):
     for y in range(texture.height):
         for x in range(texture.width):
             pixels.append(PIXEL_READ_FUNCTIONS[texture.pixel_internal_format](swf))
-    
-    texture.image = np.array(pixels, dtype=np.uint8).reshape(texture.height, texture.width, CHANNLES_TABLE[texture.pixel_format])
+
+    texture.image = np.array(pixels, dtype=np.uint8).reshape(texture.height, texture.width,
+                                                             CHANNLES_TABLE[texture.pixel_format])
     texture.channels = texture.image.shape[2]
 
     if not texture.linear:

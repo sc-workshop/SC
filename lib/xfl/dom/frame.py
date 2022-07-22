@@ -7,6 +7,7 @@ from .symbol_instance import DOMSymbolInstance
 from .shape import DOMShape
 from .static_text import DOMStaticText
 from .dynamic_text import DOMDynamicText
+from ..geom.color import Color
 
 
 class DOMFrame:
@@ -27,6 +28,8 @@ class DOMFrame:
 
         # elements
         self.elements: list = []
+
+        self.frame_color: Color = None
     
     def load(self, xml: Element):
         if "name" in xml.attrib:
@@ -78,6 +81,12 @@ class DOMFrame:
                     dynamic_text = DOMDynamicText()
                     dynamic_text.load(element)
                     self.elements.append(dynamic_text)
+
+        self.frame_color = xml.find("./xfl:frameColor", NAMESPACES)
+        if self.frame_color is not None:
+            for color_element in self.frame_color:
+                self.color = Color()
+                self.color.load(color_element)
     
     def save(self):
         xml = Element("DOMFrame")

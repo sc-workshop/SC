@@ -15,7 +15,6 @@ class DOMBitmapInstance:
 
         # elements
         self.matrix: Matrix = None
-        self.color: Color = None
         self.transformation_point: Point = None
     
     def load(self, xml: Element):
@@ -30,12 +29,6 @@ class DOMBitmapInstance:
             for matrix_element in matrix:
                 self.matrix = Matrix()
                 self.matrix.load(matrix_element)
-        
-        color = xml.find("./xfl:color", NAMESPACES)
-        if color is not None:
-            for color_element in color:
-                self.color = Color()
-                self.color.load(color_element)
         
         transformation_point = xml.find("./xfl:transformationPoint", NAMESPACES)
         if transformation_point is not None:
@@ -55,10 +48,6 @@ class DOMBitmapInstance:
         if self.matrix is not None:
             matrix = SubElement(xml, "matrix")
             matrix.append(self.matrix.save())
-
-        if self.color is not None:
-            color = SubElement(xml, "color")
-            color.append(self.color.save())
 
         if self.transformation_point is not None:
             transformation_point = SubElement(xml, "transformationPoint")
