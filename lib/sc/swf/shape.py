@@ -1,4 +1,4 @@
-from math import ceil, degrees, radians
+from math import ceil, atan2, degrees, radians
 
 import numpy as np
 import cv2
@@ -75,19 +75,13 @@ class Shape(Writable):
         nearest = 0
         if use_nearest:
             # calculate base rotation
-            try:
-                rot = affine6p.estimate(uv, xy)
-                rot = rot.get_rotation_x() + rot.get_rotation_y()
-            except:
-                rot = 0
+            nearest = calculate_nearest(uv ,xy)
 
             # getting nearest
-            nearest = round(degrees(rot) / 90) * 90
             near_rad = radians(nearest)
             # rotating uv
             uv = [np.array(((np.cos(near_rad), -np.sin(near_rad)),
-                            (-np.sin(near_rad), np.cos(near_rad)))).dot(point).tolist() for point in uv]
-
+                            (np.sin(near_rad), np.cos(near_rad)))).dot(point).tolist() for point in uv]
 
         sprite_box = []
 
@@ -105,10 +99,24 @@ class Shape(Writable):
                 sprite_box = [[x - sprite_box[p_i][0], y] for x, y in sprite_box]
             if sprite_box[p_i][1] < 0:
                 sprite_box = [[x, y - sprite_box[p_i][1]] for x, y in sprite_box]
-        try:
-            transf = affine6p.estimate(sprite_box, xy)
-        except:
-            return [[0,0,0], [0,0,0]], sprite_box, 0
+
+        s_x, s_y = calculate_size(sprite_box)
+        sx, sy = calculate_size(xy)
+        x1 = s_x == 1
+        y1 = s_y == 1
+        if x1 or y1:
+            #print(sprite_box)
+            points_sum = [sum(point) for point in sprite_box]
+            if y1:
+                sprite_box[points_sum.index(min(points_sum))][0] = sy
+                sprite_box[points_sum.index(max(points_sum))][1] = sy
+            if x1:
+                sprite_box[points_sum.index(min(points_sum))][1] = sx
+                sprite_box[points_sum.index(max(points_sum))][0] = sx
+
+            #print(sprite_box)
+
+        transf = affine6p.estimate(sprite_box, xy)
 
         return transf, sprite_box, nearest
 
@@ -192,6 +200,34 @@ class ShapeDrawBitmapCommand(Writable):
         return tag, self.buffer
 
 
+def calculate_nearest(uv_coords, xy_coords):
+    def is_clockwise(points):
+        sum = 0
+        for x in range(len(points)):
+            x1, y1 = points[(x + 1) % len(points)]
+            x2, y2 = points[x]
+            sum += (x1 - x2) * (y1 + y2)
+        return sum < 0
+
+    uv_cw = is_clockwise(uv_coords)
+    xy_cw = is_clockwise(xy_coords)
+
+    mirroring = not (uv_cw == xy_cw)
+
+    dx = xy_coords[1][0] - xy_coords[0][0]
+    dy = xy_coords[1][1] - xy_coords[0][1]
+    du = uv_coords[1][0] - uv_coords[0][0]
+    dv = uv_coords[1][1] - uv_coords[0][1]
+
+    angle_xy = degrees(atan2(dy, dx) + 360) % 360
+    angle_uv = degrees(atan2(dv, du) + 360) % 360
+
+    angle = (angle_xy - angle_uv + 360) % 360
+
+    if mirroring: angle -= 180
+
+    return round(angle / 90) * 90
+
 def calculate_scale(uv_coords, xy_coords):
     uv_width, uv_height = calculate_size(uv_coords)
     xy_width, xy_height = calculate_size(xy_coords)
@@ -205,4 +241,4 @@ def calculate_size(coords):
     right = max(coord[0] for coord in coords)
     bottom = max(coord[1] for coord in coords)
 
-    return right - left or 1, bottom - top or 1
+    return round(right - left, 4) or 1, round(bottom - top, 4) or 1

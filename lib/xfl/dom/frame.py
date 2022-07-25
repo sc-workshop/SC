@@ -11,7 +11,7 @@ from ..geom.color import Color
 
 
 class DOMFrame:
-    def __init__(self, index: int = None, duration: int = None, name: str = None, label_type: str = None, key_mode: int = None) -> None:
+    def __init__(self, index: int = None, duration: int = 1, name: str = None, label_type: str = None, key_mode: int = None) -> None:
         # attributes
         self.name = name
         self.label_type = label_type
@@ -100,7 +100,7 @@ class DOMFrame:
         if self.index is not None:
             xml.attrib["index"] = str(self.index)
         
-        if self.duration is not None:
+        if self.duration != 1:
             xml.attrib["duration"] = str(self.duration)
         
         if self.key_mode is not None:

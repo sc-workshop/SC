@@ -155,9 +155,6 @@ def sc_to_xfl(swf):
             if bind['id'] not in modifers_storage:
                 # Layers
                 bind_layer = DOMLayer(f"Layer_{i}")
-                for f_i in range(len(movieclip.frames)):
-                    empty_frame = DOMFrame(f_i)
-                    bind_layer.frames.append(empty_frame)
 
                 bind_layers.append(bind_layer)
 
@@ -280,10 +277,13 @@ def sc_to_xfl(swf):
         parent_layers = []
         added_bind_layer = {}
         for i, frame in enumerate(movieclip.frames):
+            empty_frames = []
             mask = False
             mask_child = False
             mask_idx = 0
             for element in frame.elements:
+                empty_frames.append(element['bind'])
+
                 if movieclip.binds[element['bind']]['id'] in modifers_storage:
                     modifer_value = modifers_storage[movieclip.binds[element['bind']]['id']].type
                     if modifer_value == "MASK":
@@ -308,8 +308,12 @@ def sc_to_xfl(swf):
                             prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
 
                     bind_layer = bind_layers[element['bind']]
+                    bind_frame = DOMFrame(index=i)
+                    if i and element in movieclip.frames[i-1].elements:
+                        bind_layer.frames[-1].duration += 1
+                        continue
 
-                    bind_frame = bind_layer.frames[i]
+
                     bind_frame.name = frame.name
                     bind_frame.key_mode = KEY_MODE_NORMAL
                     bind_frame.blend_mode = movieclip.binds[element['bind']]['blend']
@@ -346,7 +350,16 @@ def sc_to_xfl(swf):
                         bind_layer.parent_layer_index = mask_idx
                         bind_layer.is_locked = True
 
+                    bind_layer.frames.append(bind_frame)
                     bind_layers[element['bind']] = bind_layer
+
+            for bind_i in range(len(movieclip.binds)):
+                if bind_i not in [element['bind'] for element in frame.elements]:
+                    layer_frames = bind_layers[bind_i].frames
+                    if not i or len(layer_frames[-1].elements) != 0:
+                        layer_frames.append(DOMFrame(index=i))
+                    else:
+                        layer_frames[-1].duration += 1
 
         for layer_key in reversed(prepared_bind_layers):
             bind_layer = prepared_bind_layers[layer_key]
