@@ -3,7 +3,7 @@ import copy
 import cv2
 import numpy as np
 
-from lib.sc.swf.shape import get_matrix, get_bitmap
+from lib.sc.swf.shape import Shape
 
 from lib.xfl import *
 from lib.xfl.dom.folder_item import DOMFolderItem
@@ -196,16 +196,16 @@ def sc_to_xfl(swf):
                                     resource_name = f"M {bitmap['uv']}"
 
                                     if pivot is None:
-                                        matrix, sprite_box, nearest = get_matrix(uv, xy, True)
+                                        matrix, sprite_box, nearest = Shape.get_matrix(uv, xy, True)
                                         shapes_pivot[bitmap['uv']] = sprite_box
 
-                                        img = get_bitmap(swf.textures[bitmap["tex"]].image, uv)
+                                        img = Shape.get_bitmap(swf.textures[bitmap["tex"]].image, uv)
 
-                                        if nearest == 270:
+                                        if nearest in [270, -90]:
                                             img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                                        elif nearest == 180:
+                                        elif nearest in [180, -180]:
                                             img = cv2.rotate(img, cv2.ROTATE_180)
-                                        elif nearest == 90:
+                                        elif nearest in [90, -270]:
                                             img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
 
                                         image_name = f"{bitmap['uv']}.png"
@@ -219,10 +219,12 @@ def sc_to_xfl(swf):
 
                                         sc_xfl.media.update({dom_bitmap.name: dom_bitmap})
                                     else:
-                                        matrix, _, _ = get_matrix(pivot, xy)
+                                        matrix, _, _ = Shape.get_matrix(pivot, xy)
+                                    #TODO
+                                    if not isinstance(matrix, list):
+                                        matrix = matrix.get_matrix()
 
-                                    a, b, c, d, ty, tx = matrix
-                                    bitmap_matrix = Matrix(a, b, c, d, tx, ty)
+                                    bitmap_matrix = Matrix(matrix[0][0], matrix[1][0], matrix[0][1], matrix[1][1], matrix[0][2], matrix[1][2])
 
                                     bitmap_instance = DOMBitmapInstance()
                                     bitmap_instance.library_item_name = f"Resources/{bitmap['uv']}"
