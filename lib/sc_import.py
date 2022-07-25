@@ -355,11 +355,13 @@ def sc_to_xfl(swf):
 
             for bind_i in range(len(movieclip.binds)):
                 if bind_i not in [element['bind'] for element in frame.elements]:
-                    layer_frames = bind_layers[bind_i].frames
-                    if not i or len(layer_frames[-1].elements) != 0:
-                        layer_frames.append(DOMFrame(index=i))
-                    else:
-                        layer_frames[-1].duration += 1
+                    if bind_layers[bind_i] is not None:
+                        layer_frames = bind_layers[bind_i].frames
+
+                        if not i or len(layer_frames[-1].elements) != 0:
+                            layer_frames.append(DOMFrame(index=i))
+                        else:
+                            layer_frames[-1].duration += 1
 
         for layer_key in reversed(prepared_bind_layers):
             bind_layer = prepared_bind_layers[layer_key]
