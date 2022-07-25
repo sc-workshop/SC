@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 
-
 # basic stuff
 
 CHANNLES_TABLE = {
@@ -218,6 +217,7 @@ def load_image(texture, swf):
 
     if not texture.linear:
         make_linear(texture, pixels)
+
 
 
 def save_image(texture):

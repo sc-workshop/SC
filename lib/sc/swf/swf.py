@@ -54,7 +54,7 @@ class SupercellSWF:
 
         self.reader: BinaryReader = None
         self.writer: BinaryWriter = None
-    
+
     def load_internal(self, filepath: str, is_texture: bool):
         with open(filepath, 'rb') as file:
             file_buffer = file.read()
@@ -62,8 +62,9 @@ class SupercellSWF:
             decompressor = Decompressor()
             self.reader = BinaryReader(decompressor.decompress(file_buffer))
 
-            self.compression = compression_list[signature_list.index(decompressor.signatures.get_signature(file_buffer))]
-        
+            self.compression = compression_list[
+                signature_list.index(decompressor.signatures.get_signature(file_buffer))]
+
         if not is_texture:
             self.shapes_count = self.reader.read_ushort()
             self.movieclips_count = self.reader.read_ushort()
@@ -72,7 +73,7 @@ class SupercellSWF:
             self.matrices_count = self.reader.read_ushort()
             self.color_transforms_count = self.reader.read_ushort()
 
-            self.reader.skip(5) # unused
+            self.reader.skip(5)  # unused
 
             exports_count = self.reader.read_ushort()
 
@@ -82,19 +83,18 @@ class SupercellSWF:
                     self.exports[export_id] = []
                 self.exports[export_id].append(self.reader.read_ascii())
 
-            
             self.shapes = [_class() for _class in [Shape] * self.shapes_count]
             self.movieclips = [_class() for _class in [MovieClip] * self.movieclips_count]
             self.textures = [_class() for _class in [SWFTexture] * self.textures_count]
             self.text_fields = [_class() for _class in [TextField] * self.text_fields_count]
-            
+
             matrix_bank = MatrixBank()
             matrix_bank.matrices = [[1, 0, 0, 1, 0, 0]] * self.matrices_count
             matrix_bank.color_transforms = [[0, 0, 0, 0, 1, 1, 1, 1]] * self.color_transforms_count
             self.matrix_banks.append(matrix_bank)
-        
+
         return self.load_tags()
-    
+
     def load_tags(self):
         has_textures = False
 
@@ -175,13 +175,13 @@ class SupercellSWF:
 
                 multiplier = 0.0009765625 if tag == 8 else 0.000015259
 
-                matrix[0] = self.reader.read_int() * multiplier # scale x
-                matrix[1] = self.reader.read_int() * multiplier # rotation x
-                matrix[2] = self.reader.read_int() * multiplier # rotation y
-                matrix[3] = self.reader.read_int() * multiplier # scale y
+                matrix[0] = self.reader.read_int() * multiplier  # scale x
+                matrix[1] = self.reader.read_int() * multiplier  # rotation x
+                matrix[2] = self.reader.read_int() * multiplier  # rotation y
+                matrix[3] = self.reader.read_int() * multiplier  # scale y
 
-                matrix[4] = self.reader.read_twip() # tx
-                matrix[5] = self.reader.read_twip() # ty
+                matrix[4] = self.reader.read_twip()  # tx
+                matrix[5] = self.reader.read_twip()  # ty
 
                 self.matrix_banks[matrix_bank_offset].matrices[matrices_loaded] = matrix
                 matrices_loaded += 1
@@ -191,8 +191,8 @@ class SupercellSWF:
                 color = [0, 0, 0, 0, 1, 1, 1, 1]
 
                 color[0] = self.reader.read_uchar()  # red addition
-                color[1] = self.reader.read_uchar() # green addition
-                color[2] = self.reader.read_uchar() # blue addition
+                color[1] = self.reader.read_uchar()  # green addition
+                color[2] = self.reader.read_uchar()  # blue addition
 
                 color[7] = self.reader.read_uchar() / 255  # alpha multiplier
                 color[4] = self.reader.read_uchar() / 255  # red multiplier
@@ -210,10 +210,9 @@ class SupercellSWF:
 
             self.reader.skip(tag_length)
 
-
     def load(self, filepath: str, load_textures: bool = True):
         self.filename = filepath
-        
+
         self.load_internal(filepath, False)
 
         if load_textures:
@@ -223,20 +222,19 @@ class SupercellSWF:
                 else:
                     self.load_internal(os.path.splitext(filepath)[0] + self.texture_asset_postfix, True)
 
-    
     def save_tag(self, tag, buffer):
         self.writer.write_uchar(tag)
         self.writer.write_int(len(buffer))
         self.writer.write(buffer)
-    
+
     def save_texture(self):
         for texture in self.textures:
             tag, buffer = texture.save(False)
 
             self.save_tag(tag, buffer)
-        
+
         self.writer.write(bytes(5))
-    
+
     def save_tags(self, enable_postfix: bool = False):
         if enable_postfix:
             postfix_tag = BinaryWriter()
@@ -245,7 +243,7 @@ class SupercellSWF:
             postfix_tag.write_ascii(self.lowres_asset_postfix)
 
             self.save_tag(32, postfix_tag.buffer)
-        
+
         if not self.has_lowres_texture:
             self.save_tag(23, bytes())
 
@@ -254,15 +252,15 @@ class SupercellSWF:
 
         if self.has_external_texture:
             self.save_tag(26, bytes())
-        
+
         for texture in self.textures:
             tag, buffer = texture.save(self.has_external_texture)
-            
+
             self.save_tag(tag, buffer)
-        
+
         if self.movieclip_modifiers:
             self.save_tag(37, len(self.movieclip_modifiers).to_bytes(2, "little"))
-        
+
         for movieclip_modifier in self.movieclip_modifiers:
             tag, buffer = movieclip_modifier.save()
 
@@ -286,7 +284,7 @@ class SupercellSWF:
                 matrix_bank_tag.write_ushort(len(matrix_bank.color_transforms))
 
                 self.save_tag(42, matrix_bank_tag.buffer)
-            
+
             for matrix in matrix_bank.matrices:
                 matrix_tag = BinaryWriter()
 
@@ -319,11 +317,11 @@ class SupercellSWF:
 
             self.save_tag(tag, buffer)
 
-        self.writer.write(bytes(5)) # end tag
+        self.writer.write(bytes(5))  # end tag
 
     def save_internal(self, filepath: str, is_texture: bool, enable_postfix: bool = False):
         self.writer = BinaryWriter()
-        
+
         if not is_texture:
             self.writer.write_ushort(len(self.shapes))
             self.writer.write_ushort(len(self.movieclips))
@@ -332,25 +330,26 @@ class SupercellSWF:
 
             if not self.matrix_banks:
                 self.matrix_banks.append(MatrixBank())
-            
+
             matrix_bank = self.matrix_banks[0]
             self.writer.write_ushort(len(matrix_bank.matrices))
             self.writer.write_ushort(len(matrix_bank.color_transforms))
 
-            self.writer.write(bytes(5)) # unused
+            self.writer.write(bytes(5))  # unused
 
-            self.writer.write_ushort(len([export for expord_id in self.exports for export in self.exports[expord_id] if self.exports[expord_id]]))
+            self.writer.write_ushort(len([export for expord_id in self.exports for export in self.exports[expord_id] if
+                                          self.exports[expord_id]]))
 
             for export_id in self.exports:
                 for _ in self.exports[export_id]:
                     self.writer.write_ushort(export_id)
-            
+
             for export_id in self.exports:
                 for export in self.exports[export_id]:
                     self.writer.write_ascii(export)
 
             self.save_tags(enable_postfix)
-        
+
         else:
             self.save_texture()
 
@@ -359,7 +358,7 @@ class SupercellSWF:
             compress_signature = signature_list[compression_list.index(self.compression.upper())]
             file.write(compressor.compress(self.writer.buffer, compress_signature, 1))
 
-    def save(self, filepath: str, save_textures: bool = True, custom_postfix = ("_highres_tex.sc", "_lowres_tex.sc")):
+    def save(self, filepath: str, save_textures: bool = True, custom_postfix=("_highres_tex.sc", "_lowres_tex.sc")):
         self.filename = filepath
 
         postfix_enable = False
@@ -372,10 +371,10 @@ class SupercellSWF:
                 self.highres_asset_postfix = highres_postfix
                 self.lowres_asset_postfix = lowres_postfix
 
-        #Id generator
+        # Id generator
         ids = {}
-        
-        #duplicate movieclips
+
+        # duplicate movieclips
         replacement = {}
 
         movie_duplicates = [x for n, x in enumerate(self.movieclips) if x in self.movieclips[:n]]
@@ -401,11 +400,11 @@ class SupercellSWF:
             ids.update({obj.id: i})
             obj.id = i
 
-        #apply ids for export names
+        # apply ids for export names
         for export_id in self.exports.copy():
             self.exports[ids[export_id]] = self.exports.pop(export_id)
 
-        #apply ids for movieclip binds
+        # apply ids for movieclip binds
         for movie in self.movieclips:
             for bind in movie.binds:
                 if bind['id'] in replacement:
@@ -430,4 +429,3 @@ class SupercellSWF:
                     return'''
 
                 self.save_internal(os.path.splitext(filepath)[0] + self.texture_asset_postfix, True)
-

@@ -114,16 +114,17 @@ class Shape(Writable):
 
     @staticmethod
     def get_bitmap(texture, uv):
-        image_box = cv2.boundingRect(np.array(uv))
-        a, b, _, _ = image_box
+        img_w, img_h = calculate_size(uv)
+        a, b, _, _ = cv2.boundingRect(np.array(uv))
 
         points = np.array(uv, dtype=np.int32)
         mask = np.zeros(texture.shape[:2], dtype=np.uint8)
         cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
-        res = cv2.bitwise_and(texture, texture, mask=mask)
 
-        img_w, img_h = calculate_size(uv)
-        return res[b: b + int(img_h), a: a + int(img_w)]
+        texture = texture[b: b + int(img_h), a: a + int(img_w)]
+        mask = mask[b: b + int(img_h), a: a + int(img_w)]
+
+        return cv2.bitwise_and(texture, texture, mask=mask)
 
 
 class ShapeDrawBitmapCommand(Writable):
@@ -169,8 +170,8 @@ class ShapeDrawBitmapCommand(Writable):
             self.write_uchar(points_count)
 
         if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == (
-                "GL_NEAREST", "GL_NEAREST") and not self.max_rects:
-            tag = 17
+            "GL_NEAREST", "GL_NEAREST") and not self.max_rects:
+                tag = 17
 
         for coord in self.xy_coords[:points_count]:
             x, y = coord
