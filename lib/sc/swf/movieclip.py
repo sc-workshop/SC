@@ -24,11 +24,11 @@ class MovieClipModifier(Writable):
 
         swf.movieclip_modifiers_ids.append(self.id)
 
-        self.type = "MASK"
+        self.type = 2
         if tag == 39:
-            self.type = "MASK_CHILDREN_START"
+            self.type = 3
         elif tag == 40:
-            self.type = "MASK_CHILDREN_END"
+            self.type = 4
     
     def save(self):
         super().save()
