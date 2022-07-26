@@ -154,7 +154,7 @@ def sc_to_xfl(swf):
         for i, bind in enumerate(movieclip.binds):
             if bind['id'] not in modifers_storage:
                 # Layers
-                bind_layer = DOMLayer(i)
+                bind_layer = DOMLayer(f"Layer_{i}")
 
                 bind_layers.append(bind_layer)
 
@@ -269,12 +269,13 @@ def sc_to_xfl(swf):
 
                 instance.name = bind['name']
                 movie_bind_instances.append(instance)
-            else:
-                bind_layers.append(None)
-                movie_bind_instances.append(None)
-        # TODO framerate
+                continue
 
+            bind_layers.append(None)
+            movie_bind_instances.append(None)
+        # TODO framerate
         parent_layers = {}
+
         for i, frame in enumerate(movieclip.frames):
             empty_frames = []
             mask = False
@@ -287,13 +288,12 @@ def sc_to_xfl(swf):
                     if modifer_value == 2:
                         mask = True
                     elif modifer_value == 3:
-                        mask = False
                         mask_child = True
                     elif modifer_value == 4:
                         mask_child = False
                     continue
 
-                if element['bind'] not in prepared_bind_layers:
+                if element['bind'] not in prepared_bind_layers and not mask_child:
                     layer_is_prepared = [el['bind'] in prepared_bind_layers for el in frame.elements]
                     if i and element['bind'] not in prepared_bind_layers and False in layer_is_prepared:
                         element_ids = list(prepared_bind_layers)
@@ -306,6 +306,19 @@ def sc_to_xfl(swf):
                         prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
 
                 bind_layer = bind_layers[element['bind']]
+
+                if mask:
+                    bind_layer.layer_type = "mask"
+                    bind_layer.is_locked = True
+                    mask_idx = element['bind']
+                    mask = False
+                if mask_child and mask_idx:
+                    if mask_idx not in parent_layers:
+                        parent_layers[mask_idx] = []
+
+                    bind_layer.is_locked = True
+                    if bind_layer not in parent_layers[mask_idx]:
+                        parent_layers[mask_idx].append(bind_layer)
 
                 if i and element in movieclip.frames[i-1].elements:
                     bind_layer.frames[-1].duration += 1
@@ -337,20 +350,6 @@ def sc_to_xfl(swf):
                     instance.color = bind_color
 
                 bind_frame.elements.append(instance)
-
-                if mask:
-                    bind_layer.layer_type = "mask"
-                    bind_layer.is_locked = True
-                    mask_idx = element['bind']
-                if mask_child and mask_idx:
-                    if mask_idx not in parent_layers:
-                        parent_layers[mask_idx] = []
-
-                    bind_layer.parent_layer_index = mask_idx
-                    bind_layer.is_locked = True
-                    if bind_layer not in parent_layers[mask_idx]:
-                        parent_layers[mask_idx].append(bind_layer)
-
                 bind_layer.frames.append(bind_frame)
                 bind_layers[element['bind']] = bind_layer
 
@@ -358,26 +357,24 @@ def sc_to_xfl(swf):
                 if bind_i not in [element['bind'] for element in frame.elements]:
                     layer = bind_layers[bind_i]
                     if layer is not None:
-                        if not i or len(layer.frames[-1].elements) != 0:
-                            layer.frames.append(DOMFrame(index=i))
-                        else:
-                            layer.frames[-1].duration += 1
+                        if i+1 != len(layer.frames):
+                            if not i or len(layer.frames[-1].elements) != 0:
+                                layer.frames.append(DOMFrame(index=i))
+                            else:
+                                layer.frames[-1].duration += 1
 
         for layer_key in reversed(prepared_bind_layers):
             bind_layer = prepared_bind_layers[layer_key]
 
             movie_symbol.timeline.layers.append(bind_layer)
 
-        layer_offset = 0
         for layer_idx in parent_layers:
             layers = parent_layers[layer_idx]
             for child_layer in layers:
-                parent_idx = [layer.name for layer in movie_symbol.timeline.layers].index(layer_idx) + layer_offset
+                names = [layer.name for layer in movie_symbol.timeline.layers]
+                parent_idx = names.index(f"Layer_{layer_idx}")
                 child_layer.parent_layer_index = parent_idx
                 movie_symbol.timeline.layers.insert(parent_idx + 1, child_layer)
-
-                layer_offset += 1
-
 
         if movieclip.id in swf.exports:
             for export in swf.exports[movieclip.id]:

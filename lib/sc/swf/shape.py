@@ -194,8 +194,8 @@ class ShapeDrawBitmapCommand(Writable):
                 u *= 0xFFFF / swf.textures[self.texture_index].width
                 v *= 0xFFFF / swf.textures[self.texture_index].height
 
-            self.write_ushort(int(round(u)))
-            self.write_ushort(int(round(v)))
+            self.write_ushort(int(u))
+            self.write_ushort(int(v))
 
         return tag, self.buffer
 
