@@ -46,8 +46,8 @@ class DOMLayer:
         if "isSelected" in xml.attrib:
             self.is_selected = xml.attrib["isSelected"] == "true"
         
-        if "isLocked" in xml.attrib:
-            self.is_locked = xml.attrib["isLocked"] == "true"
+        if "locked" in xml.attrib:
+            self.is_locked = xml.attrib["locked"] == "true"
         
         if "animationType" in xml.attrib:
             self.animation_type = xml.attrib["animationType"]
