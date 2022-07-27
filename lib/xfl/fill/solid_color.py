@@ -2,7 +2,7 @@ from xml.etree.ElementTree import *
 
 
 class SolidColor:
-    def __init__(self, color: int = None, alpha: float = None) -> None:
+    def __init__(self, color: str = None, alpha: float = None) -> None:
         # attributes
         self.color = color
         self.alpha = alpha
@@ -18,7 +18,7 @@ class SolidColor:
         xml = Element("SolidColor")
 
         if self.color is not None:
-            #xml.attrib["color"] = "#" + str(hex(self.color).lstrip("0x").zfill(6))
+            '''xml.attrib["color"] = "#" + str(hex(self.color).lstrip("0x").zfill(6))'''
             xml.attrib["color"] = str(self.color)
         
         if self.alpha is not None:

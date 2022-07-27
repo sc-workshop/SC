@@ -37,16 +37,16 @@ class SupercellSWF:
         self.movieclip_modifiers_count: int = 0
 
         self.textures: list = []
-        self.movieclip_modifiers: list = []
-        self.shapes: list = []
-        self.text_fields: list = []
-        self.matrix_banks: list = []
-        self.movieclips: list = []
+        self.movieclip_modifiers: dict = []
+        self.shapes: dict = []
+        self.text_fields: dict = []
+        self.matrix_banks: dict = []
+        self.movieclips: dict = []
 
-        self.movieclip_modifiers_ids: list = []
         self.shapes_ids: list = []
-        self.text_fields_ids: list = []
-        self.movieclips_ids: list = []
+        self.fields_ids: list = []
+        self.modifers_ids: list = []
+        self.movie_ids: list = []
 
         self.texture_asset_postfix: str = "_tex.sc"
         self.highres_asset_postfix: str = "_highres_tex.sc"
@@ -209,6 +209,7 @@ class SupercellSWF:
                 continue
 
             self.reader.skip(tag_length)
+
 
     def load(self, filepath: str, load_textures: bool = True):
         self.filename = filepath

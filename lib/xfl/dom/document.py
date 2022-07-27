@@ -19,7 +19,7 @@ class DOMDocument:
         self.filepath: str = None
 
         # attributes
-        self.xfl_version: float = 22.02
+        self.xfl_version: float = 2.971
         self.creator_info: str = "Generated with XFL Python module by Pavel Sokov (luberalles aka fred31)"
 
         self.width: int = 1280
@@ -189,7 +189,7 @@ class DOMDocument:
             if symbol.symbol_type is not None and symbol.symbol_type == "graphic":
                 include.attrib["itemIcon"] = "1"
             
-            include.attrib["loadImmediate"] = "false"
+            include.attrib["loadImmediate"] = "true"
 
             symbols.append(include)
 

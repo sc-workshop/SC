@@ -7,7 +7,7 @@ class TextField(Writable):
 
         self.font_name: str = None
         self.font_color: int = -1
-        self.outline_color: int = None # -1
+        self.outline_color: int = None  # -1
         self.font_size: int = 0
         self.font_align: int = 0
 
@@ -23,17 +23,17 @@ class TextField(Writable):
 
         self.text: str = None
 
-        self.flag1: bool = None # False
-        self.flag2: bool = None # False
-        self.flag3: bool = None # False
+        self.flag1: bool = None  # False
+        self.flag2: bool = None  # False
+        self.flag3: bool = None  # False
 
-        self.c1: int = None # 0
-        self.c2: int = None # 0
-    
+        self.c1: int = None  # 0
+        self.c2: int = None  # 0
+
     def load(self, swf, tag: int):
         self.id = swf.reader.read_ushort()
 
-        swf.text_fields_ids.append(self.id)
+        swf.fields_ids.append(self.id)
 
         self.font_name = swf.reader.read_ascii()
         self.font_color = swf.reader.read_int()
@@ -41,7 +41,7 @@ class TextField(Writable):
         self.bold = swf.reader.read_bool()
         self.italic = swf.reader.read_bool()
         self.multiline = swf.reader.read_bool()
-        swf.reader.read_bool() # unused
+        swf.reader.read_bool()  # unused
 
         self.font_align = swf.reader.read_uchar()
         self.font_size = swf.reader.read_uchar()
@@ -54,7 +54,8 @@ class TextField(Writable):
         self.uppercase = swf.reader.read_bool()
         self.text = swf.reader.read_ascii()
 
-        if tag == 7: return
+        if tag == 7:
+            return
 
         self.flag1 = swf.reader.read_bool()
 
@@ -63,17 +64,17 @@ class TextField(Writable):
 
         if tag > 20:
             self.outline_color = swf.reader.read_int()
-        
+
         if tag > 25:
             self.c1 = swf.reader.read_short()
-            swf.reader.read_short() # unused
-        
+            swf.reader.read_short()  # unused
+
         if tag > 33:
             self.c2 = swf.reader.read_short()
-        
+
         if tag > 43:
             self.flag3 = swf.reader.read_bool()
-    
+
     def save(self):
         super().save()
 
@@ -87,7 +88,7 @@ class TextField(Writable):
         self.write_bool(self.bold)
         self.write_bool(self.italic)
         self.write_bool(self.multiline)
-        self.write_bool(False) # unused
+        self.write_bool(False)  # unused
 
         self.write_uchar(self.font_align)
         self.write_uchar(self.font_size)
@@ -116,7 +117,7 @@ class TextField(Writable):
                         if self.c1 is not None:
                             tag = 25
                             self.write_short(self.c1)
-                            self.write_short(0) # unused
+                            self.write_short(0)  # unused
 
                             if self.c2 is not None:
                                 tag = 33

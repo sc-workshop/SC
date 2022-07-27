@@ -70,70 +70,6 @@ class Shape(Writable):
 
         return tag, self.buffer
 
-    @staticmethod
-    def get_matrix(uv, xy, use_nearest=False):
-        nearest = 0
-        if use_nearest:
-            # calculate base rotation
-            nearest = calculate_nearest(uv ,xy)
-
-            # getting nearest
-            near_rad = radians(nearest)
-            # rotating uv
-            uv = [np.array(((np.cos(near_rad), -np.sin(near_rad)),
-                            (np.sin(near_rad), np.cos(near_rad)))).dot(point).tolist() for point in uv]
-
-        sprite_box = []
-
-        # rebulding mesh to corner
-        for p_i, p in enumerate(uv):
-            if p_i == 0:
-                sprite_box.append([0, 0])
-            else:
-                x_distance = uv[p_i][0] - uv[p_i - 1][0]
-                y_distance = uv[p_i][1] - uv[p_i - 1][1]
-
-                sprite_box.append([sprite_box[p_i - 1][0] + x_distance,
-                                   sprite_box[p_i - 1][1] + y_distance])
-            if sprite_box[p_i][0] < 0:
-                sprite_box = [[x - sprite_box[p_i][0], y] for x, y in sprite_box]
-            if sprite_box[p_i][1] < 0:
-                sprite_box = [[x, y - sprite_box[p_i][1]] for x, y in sprite_box]
-
-        s_x, s_y = calculate_size(sprite_box)
-        sx, sy = calculate_size(xy)
-        x1 = s_x == 1
-        y1 = s_y == 1
-        if x1 or y1:
-            #print(sprite_box)
-            points_sum = [sum(point) for point in sprite_box]
-            if y1:
-                sprite_box[points_sum.index(min(points_sum))][0] = sy
-                sprite_box[points_sum.index(max(points_sum))][1] = sy
-            if x1:
-                sprite_box[points_sum.index(min(points_sum))][1] = sx
-                sprite_box[points_sum.index(max(points_sum))][0] = sx
-
-            #print(sprite_box)
-
-        transf = affine6p.estimate(sprite_box, xy)
-
-        return transf, sprite_box, nearest
-
-    @staticmethod
-    def get_bitmap(texture, uv):
-        img_w, img_h = calculate_size(uv)
-        a, b, _, _ = cv2.boundingRect(np.array(uv))
-
-        points = np.array(uv, dtype=np.int32)
-        mask = np.zeros(texture.shape[:2], dtype=np.uint8)
-        cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
-
-        texture = texture[b: b + int(img_h), a: a + int(img_w)]
-        mask = mask[b: b + int(img_h), a: a + int(img_w)]
-
-        return cv2.bitwise_and(texture, texture, mask=mask)
-
 
 class ShapeDrawBitmapCommand(Writable):
     def __init__(self) -> None:
@@ -178,8 +114,8 @@ class ShapeDrawBitmapCommand(Writable):
             self.write_uchar(points_count)
 
         if (swf.textures[self.texture_index].mag_filter, swf.textures[self.texture_index].min_filter) == (
-            "GL_NEAREST", "GL_NEAREST") and not self.max_rects:
-                tag = 17
+                "GL_NEAREST", "GL_NEAREST") and not self.max_rects:
+            tag = 17
 
         for coord in self.xy_coords[:points_count]:
             x, y = coord
@@ -199,40 +135,89 @@ class ShapeDrawBitmapCommand(Writable):
 
         return tag, self.buffer
 
+    def calculate_nearest(self):
+        def is_clockwise(points):
+            points_sum = 0
+            for x in range(len(points)):
+                x1, y1 = points[(x + 1) % len(points)]
+                x2, y2 = points[x]
+                points_sum += (x1 - x2) * (y1 + y2)
+            return points_sum < 0
 
-def calculate_nearest(uv_coords, xy_coords):
-    def is_clockwise(points):
-        sum = 0
-        for x in range(len(points)):
-            x1, y1 = points[(x + 1) % len(points)]
-            x2, y2 = points[x]
-            sum += (x1 - x2) * (y1 + y2)
-        return sum < 0
+        uv_cw = is_clockwise(self.uv_coords)
+        xy_cw = is_clockwise(self.xy_coords)
 
-    uv_cw = is_clockwise(uv_coords)
-    xy_cw = is_clockwise(xy_coords)
+        mirroring = not (uv_cw == xy_cw)
 
-    mirroring = not (uv_cw == xy_cw)
+        dx = self.xy_coords[1][0] - self.xy_coords[0][0]
+        dy = self.xy_coords[1][1] - self.xy_coords[0][1]
+        du = self.uv_coords[1][0] - self.uv_coords[0][0]
+        dv = self.uv_coords[1][1] - self.uv_coords[0][1]
 
-    dx = xy_coords[1][0] - xy_coords[0][0]
-    dy = xy_coords[1][1] - xy_coords[0][1]
-    du = uv_coords[1][0] - uv_coords[0][0]
-    dv = uv_coords[1][1] - uv_coords[0][1]
+        angle_xy = degrees(atan2(dy, dx) + 360) % 360
+        angle_uv = degrees(atan2(dv, du) + 360) % 360
 
-    angle_xy = degrees(atan2(dy, dx) + 360) % 360
-    angle_uv = degrees(atan2(dv, du) + 360) % 360
+        angle = (angle_xy - angle_uv + 360) % 360
 
-    angle = (angle_xy - angle_uv + 360) % 360
+        if mirroring:
+            angle -= 180
 
-    if mirroring: angle -= 180
+        return round(angle / 90) * 90
 
-    return round(angle / 90) * 90
+    def get_matrix(self, uv=None, use_nearest=False):
+        uv = uv or self.uv_coords
+        nearest = 0
+        if use_nearest:
+            # calculate base rotation
+            nearest = self.calculate_nearest()
 
-def calculate_scale(uv_coords, xy_coords):
-    uv_width, uv_height = calculate_size(uv_coords)
-    xy_width, xy_height = calculate_size(xy_coords)
+            # getting nearest
+            near_rad = radians(nearest)
+            # rotating uv
+            uv = [np.array(((np.cos(near_rad), -np.sin(near_rad)),
+                            (np.sin(near_rad), np.cos(near_rad)))).dot(point).tolist() for point in self.uv_coords]
 
-    return xy_width / uv_width, xy_height / uv_height
+        sprite_box = []
+
+        # rebulding mesh to corner
+        for p_i, p in enumerate(uv):
+            if p_i == 0:
+                sprite_box.append([0, 0])
+            else:
+                x_distance = uv[p_i][0] - uv[p_i - 1][0]
+                y_distance = uv[p_i][1] - uv[p_i - 1][1]
+
+                sprite_box.append([sprite_box[p_i - 1][0] + x_distance,
+                                   sprite_box[p_i - 1][1] + y_distance])
+            if sprite_box[p_i][0] < 0:
+                sprite_box = [[x - sprite_box[p_i][0], y] for x, y in sprite_box]
+            if sprite_box[p_i][1] < 0:
+                sprite_box = [[x, y - sprite_box[p_i][1]] for x, y in sprite_box]
+
+        s_x, s_y = calculate_size(sprite_box)
+
+        if s_x == 1:
+            sprite_box = [[0, s_y], [s_x, s_y], [s_x, 0], [0, 0]]
+        if s_y == 1:
+            sprite_box = [[s_x, 0], [0, 0], [0, s_y], [s_x, s_y]]
+
+        transf = affine6p.estimate(sprite_box, self.xy_coords)
+
+        return transf, sprite_box, nearest
+
+    def get_image(self, textures):
+        atlas = textures[self.texture_index].image
+        img_w, img_h = calculate_size(self.uv_coords)
+        a, b, _, _ = cv2.boundingRect(np.array(self.uv_coords))
+
+        points = np.array(self.uv_coords, dtype=np.int32)
+        mask = np.zeros(atlas.shape[:2], dtype=np.uint8)
+        cv2.drawContours(mask, [points], -1, (255, 255, 255), -1, cv2.LINE_AA)
+
+        texture = atlas[b: b + int(img_h), a: a + int(img_w)]
+        mask = mask[b: b + int(img_h), a: a + int(img_w)]
+
+        return cv2.bitwise_and(texture, texture, mask=mask)
 
 
 def calculate_size(coords):

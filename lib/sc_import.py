@@ -1,50 +1,36 @@
 import copy
 
 import cv2
-import numpy as np
 
-from lib.sc.swf.shape import Shape
-
+from lib.sc.swf.shape import calculate_size
 from lib.xfl import *
-from lib.xfl.dom.folder_item import DOMFolderItem
-# Folder class for.. folders. just for better interaction with different types of symbols
-
-from lib.xfl.dom.symbol_item import DOMSymbolItem
-# Symboll item for shape and movieclip in DomDocument
-
-from lib.xfl.dom.symbol_instance import DOMSymbolInstance
-# Symboll instance class for using in movieclip or shape frames
-
-from lib.xfl.dom.layer import DOMLayer
-# Layer class. Used in all symboll types
-
-from lib.xfl.dom.bitmap_item import DOMBitmapItem
-# Bitmap item class for using in DomDocument
-
 from lib.xfl.dom.bitmap_instance import DOMBitmapInstance
-
-from lib.xfl.dom.layer import DOMFrame
-
+from lib.xfl.dom.bitmap_item import DOMBitmapItem
 from lib.xfl.dom.dynamic_text import DOMDynamicText
-# Text instance. Contain text position and some other things
-
-from lib.xfl.dom.text_run import DOMTextRun, DOMTextAttrs
-# Subclass of DOMStaticText. Contain text and its settings
-
+from lib.xfl.dom.folder_item import DOMFolderItem
+from lib.xfl.dom.layer import DOMFrame
+from lib.xfl.dom.layer import DOMLayer
 from lib.xfl.dom.shape import DOMShape
-# Shape class for ColorFill
-
+from lib.xfl.dom.symbol_instance import DOMSymbolInstance
+from lib.xfl.dom.symbol_item import DOMSymbolItem
+from lib.xfl.dom.text_run import DOMTextRun, DOMTextAttrs
+from lib.xfl.edge.edge import Edge
 from lib.xfl.fill.fill_style import FillStyle
 from lib.xfl.fill.solid_color import SolidColor
-# Subclass for DomShape (color)
-
-from lib.xfl.edge.edge import Edge
-# Subclass for DomShape (shape)
-
-from lib.xfl.geom.matrix import Matrix
-# Transform matrix class
-
 from lib.xfl.geom.color import Color
+from lib.xfl.geom.matrix import Matrix
+
+# Folder class for.. folders. just for better interaction with different types of symbols
+# Symboll item for shape and movieclip in DomDocument
+# Symboll instance class for using in movieclip or shape frames
+# Layer class. Used in all symboll types
+# Bitmap item class for using in DomDocument
+# Text instance. Contain text position and some other things
+# Subclass of DOMStaticText. Contain text and its settings
+# Shape class for ColorFill
+# Subclass for DomShape (color)
+# Subclass for DomShape (shape)
+# Transform matrix class
 
 # Color transfrom class
 
@@ -67,43 +53,50 @@ def sc_to_xfl(swf):
     sc_xfl = DOMDocument()
     sc_xfl.filepath = projectdir
 
-    shapes_uvs = []  # Shapes coordinates
-    shapes_pivot = []  # list, with xy coordinates, to search for transformations
+    # Folders initialization
+    Resources = DOMFolderItem("Resources")
 
-    dom_shapes = {}
-    prepared_shapes = {}  # Dictionary of shapes, with ids and bitmaps
+    image_path = f"{sc_xfl.librarypath}/Resources/"
+    os.makedirs(image_path, exist_ok=True)
+
+    Shapes = DOMFolderItem("Shapes")
+
+    Exports = DOMFolderItem("Exports")
+
+    sc_xfl.folders.append(Resources)
+    sc_xfl.folders.append(Shapes)
+    sc_xfl.folders.append(Exports)
+
+    shapes_uvs = []
+    shapes_colorfill = []  # list, with xy coordinates, to search for transformations
 
     for shape in swf.shapes:
-        bitmaps = []
         for bitmap in shape.bitmaps:
-            if bitmap.uv_coords not in shapes_uvs:
-                shapes_uvs.append(bitmap.uv_coords)
-                shapes_pivot.append(None)
+            uv = bitmap.uv_coords
+            xy = bitmap.xy_coords
 
-            _, _, w, h = cv2.boundingRect(np.array(bitmap.uv_coords))
-            # Color fills check (they are usually 1 px)
-            colorfill = w + h <= 2
+            if uv not in shapes_uvs:
+                shapes_uvs.append(uv)
+                if not sum(calculate_size(uv)) <= 2:
+                    shapes_colorfill.append(None)
+                    continue
 
-            prepared_bitmap = {"tex": bitmap.texture_index, "uv": shapes_uvs.index(bitmap.uv_coords),
-                               "xy": bitmap.xy_coords, "is_colorfill": colorfill}
-            if colorfill:
-                uv = shapes_uvs[prepared_bitmap['uv']]
-                xy = prepared_bitmap['xy']
+                tex = swf.textures[bitmap.texture_index].image
                 x, y = uv[-1]
-                tex = swf.textures[prepared_bitmap['tex']].image
                 px = tex[y, x]
 
+                color = "#000000"
                 alpha = 0
                 if tex.shape[2] == 4:
                     color = "#" + hex(px[2])[2:] + hex(px[1])[2:] + hex(px[0])[2:]
-                    alpha = px[3]/255
+                    alpha = px[3] / 255
                 elif tex.shape[2] == 3:
                     color = "#" + hex(px[2])[2:] + hex(px[1])[2:] + hex(px[0])[2:]
                 elif tex.shape[1] == 1:
                     color = "#" + hex(px[0])[2:] + hex(px[0])[2:] + hex(px[0])[2:]
 
                 final_edges = ""
-                for x, curr in enumerate(xy):
+                for x, curr in enumerate(bitmap.xy_coords):
                     nxt = xy[(x + 1) % len(xy)]
                     final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}"
                     # converting pixels to twips (again.) (1 twip = 1/20 pixel)
@@ -120,130 +113,101 @@ def sc_to_xfl(swf):
                 colorfill = DOMShape()
                 colorfill.fills.append(colorfill_color)
                 colorfill.edges.append(colorfill_edge)
-                prepared_bitmap.update({'colorfill': colorfill})
+                shapes_colorfill.append(colorfill)
 
-            bitmaps.append(prepared_bitmap)
-
-        prepared_shapes.update({shape.id: bitmaps})
-
-    # Folders initialization
-    Resources = DOMFolderItem("Resources")
-
-    image_path = f"{sc_xfl.librarypath}/Resources/"
-    os.makedirs(image_path, exist_ok=True)
-
-    Shapes = DOMFolderItem("Shapes")
-
-    Exports = DOMFolderItem("Exports")
-
-    sc_xfl.folders.append(Resources)
-    sc_xfl.folders.append(Shapes)
-    sc_xfl.folders.append(Exports)
-
-    # Some storages for using in frames
-    text_field_storage = {text_field.id: text_field for text_field in swf.text_fields}
-    modifers_storage = {modifer.id: modifer for modifer in swf.movieclip_modifiers}
+    shapes_box = [None for _ in range(len(shapes_uvs))]
 
     for movieclip in swf.movieclips:
         movie_symbol = DOMSymbolItem()
         movie_symbol.timeline.name = movieclip.id
 
-        prepared_bind_layers = {}
         bind_layers = []
         movie_bind_instances = []  # bind instances for using in frames
         for i, bind in enumerate(movieclip.binds):
-            if bind['id'] not in modifers_storage:
+            if bind['id'] not in swf.modifers_ids:
                 # Layers
                 bind_layer = DOMLayer(f"Layer_{i}")
 
                 bind_layers.append(bind_layer)
 
-                # Symbolls
+                # Symbols
                 if movieclip.nine_slice and bind['id'] in swf.shapes_ids:  # TODO add slice
                     instance = DOMSymbolInstance()  # for first time
                     instance.library_item_name = f"Shapes/{bind['id']}"
                     if instance.library_item_name not in sc_xfl.symbols:
                         pass
 
-                elif bind['id'] in swf.shapes_ids or bind['id'] in swf.movieclips_ids:
+                elif bind['id'] in swf.shapes_ids or bind['id'] in swf.movie_ids:
                     instance = DOMSymbolInstance()
 
                     if bind["id"] in swf.shapes_ids:
-                        instance.library_item_name = f"Shapes/{bind['id']}"
-                        if instance.library_item_name not in sc_xfl.symbols:
-                            id = bind['id']
-                            name = instance.library_item_name
-
+                        shape = swf.shapes[[shape.id for shape in swf.shapes].index(bind["id"])]
+                        name = f"Shapes/{bind['id']}"
+                        instance.library_item_name = name
+                        if name not in sc_xfl.symbols:
                             shape_symboll = DOMSymbolItem(name, "graphic")
                             shape_symboll.timeline.name = name.split("/")[-1]
 
-                            for b_i, bitmap in enumerate(reversed(prepared_shapes[id])):
+                            for b_i, bitmap in enumerate(reversed(shape.bitmaps)):
                                 bitmap_layer = DOMLayer(f"Bitmap_{b_i}")
                                 bitmap_frame = DOMFrame(index=0)
 
-                                if not bitmap['is_colorfill']:
-                                    pivot = shapes_pivot[bitmap['uv']]
-                                    xy = bitmap['xy']
-                                    uv = shapes_uvs[bitmap['uv']]
+                                uv_index = shapes_uvs.index(bitmap.uv_coords)
 
-                                    # building image bounding box
-                                    image_box = cv2.boundingRect(np.array(uv))
-                                    a, b, _, _ = image_box
+                                if not shapes_colorfill[uv_index]:
+                                    if shapes_box[uv_index] is None:
+                                        resource_name = f"M {uv_index}"
+                                        image_name = f"{uv_index}.png"
 
-                                    resource_name = f"M {bitmap['uv']}"
+                                        matrix, sprite_box, nearest = bitmap.get_matrix(None, True)
+                                        shapes_box[uv_index] = sprite_box
 
-                                    if pivot is None:
-                                        matrix, sprite_box, nearest = Shape.get_matrix(uv, xy, True)
-                                        shapes_pivot[bitmap['uv']] = sprite_box
-
-                                        img = Shape.get_bitmap(swf.textures[bitmap["tex"]].image, uv)
+                                        image = bitmap.get_image(swf.textures)
 
                                         if nearest in [270, -90]:
-                                            img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                                            image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
                                         elif nearest in [180, -180]:
-                                            img = cv2.rotate(img, cv2.ROTATE_180)
+                                            image = cv2.rotate(image, cv2.ROTATE_180)
                                         elif nearest in [90, -270]:
-                                            img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                                            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
 
-                                        image_name = f"{bitmap['uv']}.png"
-                                        dom_bitmap = DOMBitmapItem(f"Resources/{bitmap['uv']}", f"{resource_name}.dat")
+                                        dom_bitmap = DOMBitmapItem(f"Resources/{uv_index}", f"{resource_name}.dat")
                                         dom_bitmap.use_imported_jpeg_data = False
                                         dom_bitmap.img = "lossless"
-                                        dom_bitmap.image = img
-                                        # dom_bitmap.allow_smoothing = swf.textures[bitmap["tex"]].linear
+                                        dom_bitmap.image = image
+                                        dom_bitmap.allow_smoothing = False or not swf.textures[bitmap.texture_index].linear
                                         dom_bitmap.source_external_filepath = f"Resources/{image_name}"
-                                        cv2.imwrite(f"{image_path}{image_name}", img)
-
-                                        sc_xfl.media.update({dom_bitmap.name: dom_bitmap})
+                                        cv2.imwrite(f"{image_path}{image_name}", image)
+                                        sc_xfl.media.update({uv_index: dom_bitmap})
                                     else:
-                                        matrix, _, _ = Shape.get_matrix(pivot, xy)
-                                    #TODO
-                                    if not isinstance(matrix, list):
-                                        matrix = matrix.get_matrix()
+                                        matrix, _, _ = bitmap.get_matrix(shapes_box[uv_index])
 
-                                    bitmap_matrix = Matrix(matrix[0][0], matrix[1][0], matrix[0][1], matrix[1][1], matrix[0][2], matrix[1][2])
+                                    matrix = matrix.get_matrix()
+
+                                    bitmap_matrix = Matrix(matrix[0][0], matrix[1][0], matrix[0][1],
+                                                           matrix[1][1], matrix[0][2], matrix[1][2])
 
                                     bitmap_instance = DOMBitmapInstance()
-                                    bitmap_instance.library_item_name = f"Resources/{bitmap['uv']}"
+                                    bitmap_instance.library_item_name = f"Resources/{uv_index}"
                                     bitmap_instance.matrix = bitmap_matrix
 
                                     bitmap_frame.elements.append(bitmap_instance)
                                 else:
-                                    bitmap_frame.elements.append(bitmap['colorfill'])
+                                    bitmap_frame.elements.append(shapes_colorfill[uv_index])
 
                                 bitmap_layer.frames.append(bitmap_frame)
                                 shape_symboll.timeline.layers.append(bitmap_layer)
 
-                            dom_shapes.update({name: shape_symboll})
+                            sc_xfl.symbols.update({name: shape_symboll})
 
-                    elif bind["id"] in swf.movieclips_ids and bind['id'] in swf.exports:
+                    elif bind["id"] in swf.movie_ids and bind['id'] in swf.exports:
                         instance.library_item_name = f"Exports/{swf.exports[bind['id']][0]}"
 
-                    elif bind["id"] in swf.movieclips_ids:
+                    elif bind["id"] in swf.movie_ids:
                         instance.library_item_name = bind['id']
 
-                elif bind['id'] in swf.text_fields_ids:
-                    bind_text = text_field_storage[bind['id']]
+                elif bind['id'] in swf.fields_ids:
+                    bind_text = swf.text_fields[[field.id for field in swf.text_fields].index(bind['id'])]
 
                     instance = DOMDynamicText()
                     instance.width = bind_text.right_corner - bind_text.left_corner
@@ -273,9 +237,9 @@ def sc_to_xfl(swf):
 
             bind_layers.append(None)
             movie_bind_instances.append(None)
-        # TODO framerate
-        parent_layers = {}
 
+        prepared_bind_layers = {}
+        parent_layers = {}
         for i, frame in enumerate(movieclip.frames):
             empty_frames = []
             mask = False
@@ -283,8 +247,8 @@ def sc_to_xfl(swf):
             mask_idx = None
             for element in frame.elements:
                 empty_frames.append(element['bind'])
-                if movieclip.binds[element['bind']]['id'] in modifers_storage:
-                    modifer_value = modifers_storage[movieclip.binds[element['bind']]['id']].type
+                if movieclip.binds[element['bind']]['id'] in swf.modifers_ids:
+                    modifer_value = swf.movieclip_modifiers[[modifer.id for modifer in swf.movieclip_modifiers].index(movieclip.binds[element['bind']]['id'])].type
                     if modifer_value == 2:
                         mask = True
                     elif modifer_value == 3:
@@ -320,7 +284,7 @@ def sc_to_xfl(swf):
                     if bind_layer not in parent_layers[mask_idx]:
                         parent_layers[mask_idx].append(bind_layer)
 
-                if i and element in movieclip.frames[i-1].elements:
+                if i and element in movieclip.frames[i - 1].elements:
                     bind_layer.frames[-1].duration += 1
                     continue
 
@@ -357,7 +321,7 @@ def sc_to_xfl(swf):
                 if bind_i not in [element['bind'] for element in frame.elements]:
                     layer = bind_layers[bind_i]
                     if layer is not None:
-                        if i+1 != len(layer.frames):
+                        if i + 1 != len(layer.frames):
                             if not i or len(layer.frames[-1].elements) != 0:
                                 layer.frames.append(DOMFrame(index=i))
                             else:
@@ -389,7 +353,5 @@ def sc_to_xfl(swf):
             movie_symbol.name = movieclip.id
             sc_xfl.symbols.update({movieclip.id: movie_symbol})
 
-    sc_xfl.symbols = sc_xfl.symbols | dom_shapes
-
-    #XFL.save(f"{projectdir}.fla", sc_xfl)
+    # XFL.save(f"{projectdir}.fla", sc_xfl)
     sc_xfl.save(projectdir)  # save as xfl
