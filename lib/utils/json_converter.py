@@ -31,12 +31,12 @@ def convert_sc_to_json(filepath):
 
         library["textures"].append(inlib)
 
-    for movieclip_modifier in swf.movieclip_modifiers.values():
+    for movieclip_modifier in swf.movieclip_modifiers:
         inlib = {"id": movieclip_modifier.id, "stencil": movieclip_modifier.type}  # in library movieclip modifier
 
         library["movieclipModifiers"].append(inlib)
 
-    for shape in swf.shapes.values():
+    for shape in swf.shapes:
         inlib = {"id": shape.id, "bitmaps": []}  # in library shape
 
         for bitmap in shape.bitmaps:
@@ -53,7 +53,7 @@ def convert_sc_to_json(filepath):
         library["shapes"].append(inlib)
 
     # font_alignment = ["left", "right", "center", "justify"]
-    for text_field in swf.text_fields.values():
+    for text_field in swf.text_fields:
         inlib = {"id": text_field.id, "fontName": text_field.font_name,
                  "fontColor": hex(text_field.font_color & 0xFFFFFFFF), "fontSize": text_field.font_size,
                  "fontMargin": text_field.font_align,
@@ -88,7 +88,7 @@ def convert_sc_to_json(filepath):
 
         library["textFields"].append(inlib)
 
-    for movieclip in swf.movieclips.values():
+    for movieclip in swf.movieclips:
         inlib = {}  # in library movieclip
 
         if movieclip.id in swf.exports:

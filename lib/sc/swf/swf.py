@@ -37,11 +37,11 @@ class SupercellSWF:
         self.movieclip_modifiers_count: int = 0
 
         self.textures: list = []
-        self.movieclip_modifiers: dict = []
-        self.shapes: dict = []
-        self.text_fields: dict = []
-        self.matrix_banks: dict = []
-        self.movieclips: dict = []
+        self.movieclip_modifiers: list = []
+        self.shapes: list = []
+        self.text_fields: list = []
+        self.matrix_banks: list = []
+        self.movieclips: list = []
 
         self.shapes_ids: list = []
         self.fields_ids: list = []

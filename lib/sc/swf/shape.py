@@ -165,7 +165,7 @@ class ShapeDrawBitmapCommand(Writable):
         return round(angle / 90) * 90
 
     def get_matrix(self, uv=None, use_nearest=False):
-        uv = uv or self.uv_coords
+        uv = uv if uv is not None else self.uv_coords
         nearest = 0
         if use_nearest:
             # calculate base rotation

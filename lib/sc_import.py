@@ -20,20 +20,6 @@ from lib.xfl.fill.solid_color import SolidColor
 from lib.xfl.geom.color import Color
 from lib.xfl.geom.matrix import Matrix
 
-# Folder class for.. folders. just for better interaction with different types of symbols
-# Symboll item for shape and movieclip in DomDocument
-# Symboll instance class for using in movieclip or shape frames
-# Layer class. Used in all symboll types
-# Bitmap item class for using in DomDocument
-# Text instance. Contain text position and some other things
-# Subclass of DOMStaticText. Contain text and its settings
-# Shape class for ColorFill
-# Subclass for DomShape (color)
-# Subclass for DomShape (shape)
-# Transform matrix class
-
-# Color transfrom class
-
 # for use
 KEY_MODE_NORMAL = 9728
 KEY_MODE_CLASSIC_TWEEN = 22017
@@ -180,7 +166,7 @@ def sc_to_xfl(swf):
                                         cv2.imwrite(f"{image_path}{image_name}", image)
                                         sc_xfl.media.update({uv_index: dom_bitmap})
                                     else:
-                                        matrix, _, _ = bitmap.get_matrix(shapes_box[uv_index])
+                                        matrix, _, _ = bitmap.get_matrix(shapes_box[uv_index], False)
 
                                     matrix = matrix.get_matrix()
 
