@@ -222,7 +222,11 @@ def sc_to_xfl(filepath):
                     instance_text.text_attrs.append(instance_text_atr)
                     instance.text_runs.append(instance_text)
 
-                instance.name = bind['name']
+                if bind['name']:
+                    instance.name = bind['name']
+                else:
+                    instance.type = "graphic"
+
                 movie_bind_instances.append(instance)
                 continue
 

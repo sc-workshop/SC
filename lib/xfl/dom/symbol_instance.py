@@ -13,6 +13,7 @@ class DOMSymbolInstance:
         self.name = name
         self.library_item_name = library_item_name
         self.blend_mode: str = None
+        self.type: str = None
 
         self.loop = loop
 
@@ -33,7 +34,10 @@ class DOMSymbolInstance:
         
         if "loop" in xml.attrib:
             self.loop = xml.attrib["loop"]
-        
+
+        if "symbolType" in xml.attrib:
+            self.type = xml.attrib["symbolType"]
+
         matrix = xml.find("./xfl:matrix", NAMESPACES)
         if matrix is not None:
             for matrix_element in matrix:
@@ -66,6 +70,9 @@ class DOMSymbolInstance:
         
         if self.loop is not None:
             xml.attrib["loop"] = str(self.loop)
+
+        if self.type is not None:
+            xml.attrib["symbolType"] = str(self.type)
         
         if self.matrix is not None:
             matrix = SubElement(xml, "matrix")
