@@ -2,6 +2,8 @@ import copy
 
 import cv2
 
+from lib.sc.swf import *
+
 from lib.sc.swf.shape import calculate_size
 from lib.xfl import *
 from lib.xfl.dom.bitmap_instance import DOMBitmapInstance
@@ -28,7 +30,10 @@ KEY_MODE_MOTION_TWEEN = 8195
 KEY_MODE_SHAPE_LAYERS = 8192
 
 
-def sc_to_xfl(swf):
+def sc_to_xfl(filepath):
+    swf = SupercellSWF()
+    swf.load(filepath)
+
     projectdir = os.path.splitext(swf.filename)[0]
     if os.path.exists(projectdir):
         rmtree(projectdir)
@@ -127,7 +132,7 @@ def sc_to_xfl(swf):
                     instance = DOMSymbolInstance()
 
                     if bind["id"] in swf.shapes_ids:
-                        shape = swf.shapes[[shape.id for shape in swf.shapes].index(bind["id"])]
+                        shape = swf.shapes[swf.shapes_ids.index(bind["id"])]
                         name = f"Shapes/{bind['id']}"
                         instance.library_item_name = name
                         if name not in sc_xfl.symbols:
@@ -193,7 +198,7 @@ def sc_to_xfl(swf):
                         instance.library_item_name = bind['id']
 
                 elif bind['id'] in swf.fields_ids:
-                    bind_text = swf.text_fields[[field.id for field in swf.text_fields].index(bind['id'])]
+                    bind_text = swf.text_fields[swf.fields_ids.index(bind["id"])]
 
                     instance = DOMDynamicText()
                     instance.width = bind_text.right_corner - bind_text.left_corner
@@ -231,10 +236,10 @@ def sc_to_xfl(swf):
             mask = False
             mask_child = False
             mask_idx = None
-            for element in frame.elements:
+            for el_i, element in enumerate(frame.elements):
                 empty_frames.append(element['bind'])
                 if movieclip.binds[element['bind']]['id'] in swf.modifers_ids:
-                    modifer_value = swf.movieclip_modifiers[[modifer.id for modifer in swf.movieclip_modifiers].index(movieclip.binds[element['bind']]['id'])].type
+                    modifer_value = swf.movieclip_modifiers[swf.modifers_ids.index(movieclip.binds[element['bind']]['id'])].type
                     if modifer_value == 2:
                         mask = True
                     elif modifer_value == 3:
@@ -244,14 +249,21 @@ def sc_to_xfl(swf):
                     continue
 
                 if element['bind'] not in prepared_bind_layers and not mask_child:
-                    layer_is_prepared = [el['bind'] in prepared_bind_layers for el in frame.elements]
-                    if i and element['bind'] not in prepared_bind_layers and False in layer_is_prepared:
-                        element_ids = list(prepared_bind_layers)
-                        element_layers = [prepared_bind_layers[key] for key in prepared_bind_layers]
+                    if el_i:
+                        prepared_layers_list = list(prepared_bind_layers)
+                        last_element_pos = el_i - 1
 
-                        element_ids.insert(layer_is_prepared.index(False) + 1, element['bind'])
-                        element_layers.insert(layer_is_prepared.index(False) + 1, bind_layers[element['bind']])
-                        prepared_bind_layers = {element_ids[i]: element_layers[i] for i in range(len(element_ids))}
+                        while last_element_pos:
+                            if last_element_pos not in prepared_layers_list:
+                                last_element_pos -= 1
+                            else:
+                                break
+
+                        prepared_layers_list.insert(prepared_layers_list.index(frame.elements[last_element_pos]['bind']), element['bind'])
+
+                        prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
+
+                        prepared_bind_layers = {key: prepared_bind_layers[key] for key in prepared_layers_list}
                     else:
                         prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
 
@@ -270,7 +282,7 @@ def sc_to_xfl(swf):
                     if bind_layer not in parent_layers[mask_idx]:
                         parent_layers[mask_idx].append(bind_layer)
 
-                if i and element in movieclip.frames[i - 1].elements:
+                if i and element in movieclip.frames[i - 1].elements and frame.name == movieclip.frames[i-1].name:
                     bind_layer.frames[-1].duration += 1
                     continue
 
@@ -313,7 +325,7 @@ def sc_to_xfl(swf):
                             else:
                                 layer.frames[-1].duration += 1
 
-        for layer_key in reversed(prepared_bind_layers):
+        for layer_key in prepared_bind_layers:
             bind_layer = prepared_bind_layers[layer_key]
 
             movie_symbol.timeline.layers.append(bind_layer)
