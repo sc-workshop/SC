@@ -262,8 +262,10 @@ def sc_to_xfl(filepath):
                                 last_element_pos -= 1
                             else:
                                 break
-
-                        prepared_layers_list.insert(prepared_layers_list.index(frame.elements[last_element_pos]['bind']), element['bind'])
+                        if last_element_pos:
+                            prepared_layers_list.insert(prepared_layers_list.index(frame.elements[last_element_pos]['bind']), element['bind'])
+                        else:
+                            prepared_layers_list.append(element['bind'])
 
                         prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
 
