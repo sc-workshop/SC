@@ -33,6 +33,7 @@ KEY_MODE_SHAPE_LAYERS = 8192
 def sc_to_xfl(filepath):
     swf = SupercellSWF()
     swf.load(filepath)
+    print()
 
     projectdir = os.path.splitext(swf.filename)[0]
     if os.path.exists(projectdir):
@@ -59,19 +60,17 @@ def sc_to_xfl(filepath):
     sc_xfl.folders.append(Exports)
 
     shapes_uvs = []
-    shapes_colorfill = []  # list, with xy coordinates, to search for transformations
+    shapes_colorfill = {}  # list, with xy coordinates, to search for transformations
 
     for shape in swf.shapes:
+        shapes_colorfill[shape.id] = []
         for bitmap in shape.bitmaps:
             uv = bitmap.uv_coords
             xy = bitmap.xy_coords
 
             if uv not in shapes_uvs:
                 shapes_uvs.append(uv)
-                if not sum(calculate_size(uv)) <= 2:
-                    shapes_colorfill.append(None)
-                    continue
-
+            if sum(calculate_size(uv)) <= 2:
                 tex = swf.textures[bitmap.texture_index].image
                 x, y = uv[-1]
                 px = tex[y, x]
@@ -79,12 +78,12 @@ def sc_to_xfl(filepath):
                 color = "#000000"
                 alpha = 0
                 if tex.shape[2] == 4:
-                    color = "#" + hex(px[2])[2:] + hex(px[1])[2:] + hex(px[0])[2:]
+                    color = "#{:02x}{:02x}{:02x}".format(px[2], px[1], px[0])
                     alpha = px[3] / 255
                 elif tex.shape[2] == 3:
-                    color = "#" + hex(px[2])[2:] + hex(px[1])[2:] + hex(px[0])[2:]
+                    color = "#{:02x}{:02x}{:02x}".format(px[2], px[1], px[0])
                 elif tex.shape[1] == 1:
-                    color = "#" + hex(px[0])[2:] + hex(px[0])[2:] + hex(px[0])[2:]
+                    "#{:02x}{:02x}{:02x}".format(px[0], px[0], px[0])
 
                 final_edges = ""
                 for x, curr in enumerate(bitmap.xy_coords):
@@ -104,7 +103,10 @@ def sc_to_xfl(filepath):
                 colorfill = DOMShape()
                 colorfill.fills.append(colorfill_color)
                 colorfill.edges.append(colorfill_edge)
-                shapes_colorfill.append(colorfill)
+                shapes_colorfill[shape.id].append(colorfill)
+                continue
+
+            shapes_colorfill[shape.id].append(None)
 
     shapes_box = [None for _ in range(len(shapes_uvs))]
 
@@ -145,7 +147,7 @@ def sc_to_xfl(filepath):
 
                                 uv_index = shapes_uvs.index(bitmap.uv_coords)
 
-                                if not shapes_colorfill[uv_index]:
+                                if not shapes_colorfill[bind['id']][b_i]:
                                     if shapes_box[uv_index] is None:
                                         resource_name = f"M {uv_index}"
                                         image_name = f"{uv_index}.png"
@@ -184,7 +186,7 @@ def sc_to_xfl(filepath):
 
                                     bitmap_frame.elements.append(bitmap_instance)
                                 else:
-                                    bitmap_frame.elements.append(shapes_colorfill[uv_index])
+                                    bitmap_frame.elements.append(shapes_colorfill[bind['id']][b_i])
 
                                 bitmap_layer.frames.append(bitmap_frame)
                                 shape_symboll.timeline.layers.append(bitmap_layer)
@@ -233,14 +235,16 @@ def sc_to_xfl(filepath):
             bind_layers.append(None)
             movie_bind_instances.append(None)
 
-        prepared_bind_layers = {}
+        layer_sequence = [bind_layers.index(lay) for lay in [layer for layer in bind_layers if layer != None]]
         parent_layers = {}
         for i, frame in enumerate(movieclip.frames):
             empty_frames = []
             mask = False
             mask_child = False
             mask_idx = None
-            for el_i, element in enumerate(frame.elements):
+            element_idx = 0
+            frame_elements = [element['bind'] for element in frame.elements if movieclip.binds[element['bind']]['id'] not in swf.modifers_ids]
+            for element in frame.elements:
                 empty_frames.append(element['bind'])
                 if movieclip.binds[element['bind']]['id'] in swf.modifers_ids:
                     modifer_value = swf.movieclip_modifiers[swf.modifers_ids.index(movieclip.binds[element['bind']]['id'])].type
@@ -251,27 +255,21 @@ def sc_to_xfl(filepath):
                     elif modifer_value == 4:
                         mask_child = False
                     continue
+                else:
+                    element_pos = frame_elements.index(element["bind"])
+                    element_list_pos = layer_sequence.index(element["bind"])
+                    for list_element in frame_elements:
+                        if element != list_element:
+                            list_element_pos = frame_elements.index(list_element)
+                            list_element_list_pos = layer_sequence.index(list_element)
 
-                if element['bind'] not in prepared_bind_layers and not mask_child:
-                    if el_i:
-                        prepared_layers_list = list(prepared_bind_layers)
-                        last_element_pos = el_i - 1
+                            layer_pos = element_pos > list_element_pos
+                            layer_list_pos = element_list_pos > list_element_list_pos
 
-                        while last_element_pos:
-                            if last_element_pos not in prepared_layers_list:
-                                last_element_pos -= 1
-                            else:
-                                break
-                        if last_element_pos:
-                            prepared_layers_list.insert(prepared_layers_list.index(frame.elements[last_element_pos]['bind']), element['bind'])
-                        else:
-                            prepared_layers_list.append(element['bind'])
-
-                        prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
-
-                        prepared_bind_layers = {key: prepared_bind_layers[key] for key in prepared_layers_list}
-                    else:
-                        prepared_bind_layers.update({element['bind']: bind_layers[element['bind']]})
+                            if layer_pos != layer_list_pos:
+                                if not layer_list_pos:
+                                    active_layer_element = layer_sequence.pop(list_element_list_pos)
+                                    layer_sequence.insert(layer_sequence.index(element["bind"]), active_layer_element)
 
                 bind_layer = bind_layers[element['bind']]
 
@@ -320,6 +318,7 @@ def sc_to_xfl(filepath):
                 bind_frame.elements.append(instance)
                 bind_layer.frames.append(bind_frame)
                 bind_layers[element['bind']] = bind_layer
+                element_idx += 1
 
             for bind_i in range(len(movieclip.binds)):
                 if bind_i not in [element['bind'] for element in frame.elements]:
@@ -331,8 +330,8 @@ def sc_to_xfl(filepath):
                             else:
                                 layer.frames[-1].duration += 1
 
-        for layer_key in prepared_bind_layers:
-            bind_layer = prepared_bind_layers[layer_key]
+        for layer_key in reversed(layer_sequence):
+            bind_layer = bind_layers[layer_key]
 
             movie_symbol.timeline.layers.append(bind_layer)
 
