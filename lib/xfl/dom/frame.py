@@ -5,6 +5,7 @@ from . import NAMESPACES
 from .bitmap_instance import DOMBitmapInstance
 from .symbol_instance import DOMSymbolInstance
 from .shape import DOMShape
+from .group import DOMGroup
 from .static_text import DOMStaticText
 from .dynamic_text import DOMDynamicText
 from ..geom.color import Color
@@ -81,6 +82,11 @@ class DOMFrame:
                     dynamic_text = DOMDynamicText()
                     dynamic_text.load(element)
                     self.elements.append(dynamic_text)
+
+                elif element.tag.endswith("DOMGroup"):
+                    group = DOMGroup()
+                    group.load(element)
+                    self.elements.append(group)
 
         self.frame_color = xml.find("./xfl:frameColor", NAMESPACES)
         if self.frame_color is not None:

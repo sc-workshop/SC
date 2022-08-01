@@ -1,6 +1,7 @@
 from math import ceil, atan2, degrees, radians
 
 import numpy as np
+from scipy import ndimage as nd
 import cv2
 import affine6p
 
@@ -69,7 +70,6 @@ class Shape(Writable):
         self.write(bytes(5))  # end tag for bitmap tags array
 
         return tag, self.buffer
-
 
 class ShapeDrawBitmapCommand(Writable):
     def __init__(self) -> None:

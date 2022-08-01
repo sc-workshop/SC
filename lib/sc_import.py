@@ -1,6 +1,9 @@
 import copy
 
 import cv2
+import numpy as np
+
+from math import degrees
 
 from lib.sc.swf import *
 
@@ -19,8 +22,10 @@ from lib.xfl.dom.text_run import DOMTextRun, DOMTextAttrs
 from lib.xfl.edge.edge import Edge
 from lib.xfl.fill.fill_style import FillStyle
 from lib.xfl.fill.solid_color import SolidColor
+from lib.xfl.fill.bitmap_fill import BitmapFill
 from lib.xfl.geom.color import Color
 from lib.xfl.geom.matrix import Matrix
+from lib.xfl.dom.group import DOMGroup
 
 # for use
 KEY_MODE_NORMAL = 9728
@@ -60,7 +65,7 @@ def sc_to_xfl(filepath):
     sc_xfl.folders.append(Exports)
 
     shapes_uvs = []
-    shapes_colorfill = {}  # list, with xy coordinates, to search for transformations
+    shapes_colorfill = {}
 
     for shape in swf.shapes:
         shapes_colorfill[shape.id] = []
@@ -86,7 +91,7 @@ def sc_to_xfl(filepath):
                     "#{:02x}{:02x}{:02x}".format(px[0], px[0], px[0])
 
                 final_edges = ""
-                for x, curr in enumerate(bitmap.xy_coords):
+                for x, curr in enumerate(xy):
                     nxt = xy[(x + 1) % len(xy)]
                     final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}"
                     # converting pixels to twips (again.) (1 twip = 1/20 pixel)
@@ -123,12 +128,72 @@ def sc_to_xfl(filepath):
 
                 bind_layers.append(bind_layer)
 
-                # Symbols
-                if movieclip.nine_slice and bind['id'] in swf.shapes_ids:  # TODO add slice
-                    instance = DOMSymbolInstance()  # for first time
-                    instance.library_item_name = f"Shapes/{bind['id']}"
-                    if instance.library_item_name not in sc_xfl.symbols:
-                        pass
+                if bind['id'] in swf.shapes_ids and movieclip.nine_slice:
+                    movie_symbol.scale_grid_left = movieclip.nine_slice[0]
+                    movie_symbol.scale_grid_top = movieclip.nine_slice[1]
+
+                    movie_symbol.scale_grid_right = movieclip.nine_slice[2] + movieclip.nine_slice[0]
+                    movie_symbol.scale_grid_bottom = movieclip.nine_slice[3] + movieclip.nine_slice[1]
+
+                    shape = swf.shapes[swf.shapes_ids.index(bind["id"])]
+                    instance = DOMGroup()
+                    for b_i, bitmap in enumerate(reversed(shape.bitmaps)):
+                        slice = DOMShape()
+                        slice.is_drawing_object = True
+
+                        uv_index = shapes_uvs.index(bitmap.uv_coords)
+
+                        if shapes_box[uv_index] is None:
+                            resource_name = f"M {uv_index}"
+                            image_name = f"{uv_index}.png"
+
+                            matrix, sprite_box, nearest = bitmap.get_matrix(None, True)
+                            shapes_box[uv_index] = sprite_box
+
+                            image = bitmap.get_image(swf.textures)
+
+                            if nearest in [270, -90]:
+                                image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                            elif nearest in [180, -180]:
+                                image = cv2.rotate(image, cv2.ROTATE_180)
+                            elif nearest in [90, -270]:
+                                image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+
+                            dom_bitmap = DOMBitmapItem(f"Resources/{uv_index}", f"{resource_name}.dat")
+                            dom_bitmap.use_imported_jpeg_data = False
+                            dom_bitmap.img = "lossless"
+                            dom_bitmap.image = image
+                            dom_bitmap.allow_smoothing = False or not swf.textures[
+                                bitmap.texture_index].linear
+                            dom_bitmap.source_external_filepath = f"Resources/{image_name}"
+                            cv2.imwrite(f"{image_path}{image_name}", image)
+                            sc_xfl.media.update({uv_index: dom_bitmap})
+                        else:
+                            matrix, sprite_box, _ = bitmap.get_matrix(shapes_box[uv_index], False)
+
+                        values = matrix.get_matrix()
+
+                        bitmap_matrix = Matrix(values[0][0], values[1][0], values[0][1],
+                                               values[1][1], values[0][2], values[1][2])
+
+                        slice_edge = ""
+                        for x, curr in enumerate(sprite_box):
+                            nxt = sprite_box[(x + 1) % len(sprite_box)]
+                            slice_edge += f"!{round(curr[0] * 20)} {round(curr[1] * 20)}|{round(nxt[0] * 20)} {round(nxt[1] * 20)}"
+
+                        slice_style = FillStyle(1)
+                        slice_bitmap_fill = BitmapFill(f"Resources/{uv_index}")
+                        slice_bitmap_fill.matrix = Matrix(20, 0, 0, 20, 0, 0) #sy*20, round(tx, 2), round(ty, 2))
+                        slice_style.data = slice_bitmap_fill
+
+                        slice_shape = Edge()
+                        slice_shape.edges = slice_edge
+                        slice_shape.fill_style1 = 1
+
+                        slice.fills.append(slice_style)
+                        slice.edges.append(slice_shape)
+                        slice.matrix = bitmap_matrix
+                        instance.members.append(slice)
 
                 elif bind['id'] in swf.shapes_ids or bind['id'] in swf.movie_ids:
                     instance = DOMSymbolInstance()
@@ -168,7 +233,8 @@ def sc_to_xfl(filepath):
                                         dom_bitmap.use_imported_jpeg_data = False
                                         dom_bitmap.img = "lossless"
                                         dom_bitmap.image = image
-                                        dom_bitmap.allow_smoothing = False or not swf.textures[bitmap.texture_index].linear
+                                        dom_bitmap.allow_smoothing = False or not swf.textures[
+                                            bitmap.texture_index].linear
                                         dom_bitmap.source_external_filepath = f"Resources/{image_name}"
                                         cv2.imwrite(f"{image_path}{image_name}", image)
                                         sc_xfl.media.update({uv_index: dom_bitmap})
@@ -193,11 +259,14 @@ def sc_to_xfl(filepath):
 
                             sc_xfl.symbols.update({name: shape_symboll})
 
-                    elif bind["id"] in swf.movie_ids and bind['id'] in swf.exports:
-                        instance.library_item_name = f"Exports/{swf.exports[bind['id']][0]}"
-
                     elif bind["id"] in swf.movie_ids:
-                        instance.library_item_name = bind['id']
+                        if not swf.movieclips[swf.movie_ids.index(bind['id'])].nine_slice and not bind['name']:
+                            instance.type = "graphic"
+
+                        if bind['id'] in swf.exports:
+                            instance.library_item_name = f"Exports/{swf.exports[bind['id']][0]}"
+                        else:
+                            instance.library_item_name = bind['id']
 
                 elif bind['id'] in swf.fields_ids:
                     bind_text = swf.text_fields[swf.fields_ids.index(bind["id"])]
@@ -223,11 +292,6 @@ def sc_to_xfl(filepath):
 
                     instance_text.text_attrs.append(instance_text_atr)
                     instance.text_runs.append(instance_text)
-
-                if bind['name']:
-                    instance.name = bind['name']
-                else:
-                    instance.type = "graphic"
 
                 movie_bind_instances.append(instance)
                 continue

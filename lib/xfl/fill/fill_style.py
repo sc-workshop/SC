@@ -3,6 +3,7 @@ from xml.etree.ElementTree import *
 from .solid_color import SolidColor
 from .linear_gradient import LinearGradient
 from .radial_gradient import RadialGradient
+from .bitmap_fill import BitmapFill
 
 from ..dom import NAMESPACES
 
@@ -33,6 +34,11 @@ class FillStyle:
         if radial_gradient is not None:
             self.data = RadialGradient()
             self.data.load(radial_gradient)
+
+        bitmap_fill = xml.find("./xfl:BitmapFill", NAMESPACES)
+        if bitmap_fill is not None:
+            self.data = BitmapFill()
+            self.data.load(bitmap_fill)
     
     def save(self):
         xml = Element("FillStyle")
@@ -40,7 +46,7 @@ class FillStyle:
         if self.index is not None:
             xml.attrib["index"] = str(self.index)
         
-        if self.data is not None and isinstance(self.data, (SolidColor, LinearGradient, RadialGradient)):
+        if self.data is not None and isinstance(self.data, (SolidColor, LinearGradient, RadialGradient, BitmapFill)):
             xml.append(self.data.save())
 
         return xml
