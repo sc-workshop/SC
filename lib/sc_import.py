@@ -152,6 +152,9 @@ def sc_to_xfl(filepath):
 
                             image = bitmap.get_image(swf.textures)
 
+                            if c == 3:
+                                image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+
                             if nearest in [270, -90]:
                                 image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
                             elif nearest in [180, -180]:
@@ -159,10 +162,21 @@ def sc_to_xfl(filepath):
                             elif nearest in [90, -270]:
                                 image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
 
+                            h, w, c = image.shape
+
+                            extrude = cv2.resize(image, (w + 2, h + 2))
+
+                            alpha_s = image[:, :, 3] / 255.0
+                            alpha_l = 1.0 - alpha_s
+
+                            for c in range(0, 3):
+                                extrude[1:h + 1, 1:w + 1, c] = (alpha_s * image[:, :, c] +
+                                                                alpha_l * extrude[1:h + 1, 1:w + 1, c])
+
                             dom_bitmap = DOMBitmapItem(f"Resources/{uv_index}", f"{resource_name}.dat")
                             dom_bitmap.use_imported_jpeg_data = False
                             dom_bitmap.img = "lossless"
-                            dom_bitmap.image = image
+                            dom_bitmap.image = extrude
                             dom_bitmap.allow_smoothing = False or not swf.textures[
                                 bitmap.texture_index].linear
                             dom_bitmap.source_external_filepath = f"Resources/{image_name}"
@@ -183,7 +197,7 @@ def sc_to_xfl(filepath):
 
                         slice_style = FillStyle(1)
                         slice_bitmap_fill = BitmapFill(f"Resources/{uv_index}")
-                        slice_bitmap_fill.matrix = Matrix(20, 0, 0, 20, 0, 0) #sy*20, round(tx, 2), round(ty, 2))
+                        slice_bitmap_fill.matrix = Matrix(20, 0, 0, 20, -1, -1)
                         slice_style.data = slice_bitmap_fill
 
                         slice_shape = Edge()
@@ -197,6 +211,7 @@ def sc_to_xfl(filepath):
 
                 elif bind['id'] in swf.shapes_ids or bind['id'] in swf.movie_ids:
                     instance = DOMSymbolInstance()
+                    instance.library_item_name = bind['id']
 
                     if bind["id"] in swf.shapes_ids:
                         shape = swf.shapes[swf.shapes_ids.index(bind["id"])]
@@ -259,14 +274,8 @@ def sc_to_xfl(filepath):
 
                             sc_xfl.symbols.update({name: shape_symboll})
 
-                    elif bind["id"] in swf.movie_ids:
-                        if not swf.movieclips[swf.movie_ids.index(bind['id'])].nine_slice and not bind['name']:
-                            instance.type = "graphic"
-
-                        if bind['id'] in swf.exports:
-                            instance.library_item_name = f"Exports/{swf.exports[bind['id']][0]}"
-                        else:
-                            instance.library_item_name = bind['id']
+                    elif bind["id"] in swf.movie_ids and bind['id'] in swf.exports:
+                        instance.library_item_name = f"Exports/{swf.exports[bind['id']][0]}"
 
                 elif bind['id'] in swf.fields_ids:
                     bind_text = swf.text_fields[swf.fields_ids.index(bind["id"])]
@@ -306,7 +315,6 @@ def sc_to_xfl(filepath):
             mask = False
             mask_child = False
             mask_idx = None
-            element_idx = 0
             frame_elements = [element['bind'] for element in frame.elements if movieclip.binds[element['bind']]['id'] not in swf.modifers_ids]
             for element in frame.elements:
                 empty_frames.append(element['bind'])
@@ -336,19 +344,6 @@ def sc_to_xfl(filepath):
                                     layer_sequence.insert(layer_sequence.index(element["bind"]), active_layer_element)
 
                 bind_layer = bind_layers[element['bind']]
-
-                if mask:
-                    bind_layer.layer_type = "mask"
-                    bind_layer.is_locked = True
-                    mask_idx = element['bind']
-                    mask = False
-                if mask_child and mask_idx:
-                    if mask_idx not in parent_layers:
-                        parent_layers[mask_idx] = []
-
-                    bind_layer.is_locked = True
-                    if bind_layer not in parent_layers[mask_idx]:
-                        parent_layers[mask_idx].append(bind_layer)
 
                 if i and element in movieclip.frames[i - 1].elements and frame.name == movieclip.frames[i-1].name:
                     bind_layer.frames[-1].duration += 1
@@ -381,8 +376,22 @@ def sc_to_xfl(filepath):
 
                 bind_frame.elements.append(instance)
                 bind_layer.frames.append(bind_frame)
+
+                if mask:
+                    bind_layer.layer_type = "mask"
+                    bind_layer.is_locked = True
+                    mask_idx = element['bind']
+                    mask = False
+                if mask_child and mask_idx:
+                    if mask_idx not in parent_layers:
+                        parent_layers[mask_idx] = []
+
+                    bind_layer.is_locked = True
+                    if bind_layer not in parent_layers[mask_idx]:
+                        parent_layers[mask_idx].append(bind_layer)
+                    continue
+
                 bind_layers[element['bind']] = bind_layer
-                element_idx += 1
 
             for bind_i in range(len(movieclip.binds)):
                 if bind_i not in [element['bind'] for element in frame.elements]:
@@ -396,8 +405,8 @@ def sc_to_xfl(filepath):
 
         for layer_key in reversed(layer_sequence):
             bind_layer = bind_layers[layer_key]
-
-            movie_symbol.timeline.layers.append(bind_layer)
+            if bind_layer not in [layer for parent_key in parent_layers for layer in parent_layers[parent_key]]:
+                movie_symbol.timeline.layers.append(bind_layer)
 
         for layer_idx in parent_layers:
             layers = parent_layers[layer_idx]
@@ -408,7 +417,18 @@ def sc_to_xfl(filepath):
                 movie_symbol.timeline.layers.insert(parent_idx + 1, child_layer)
 
         if movieclip.id in swf.exports:
+            script_layer = DOMLayer("Script")
+            script_frame = DOMFrame(0, len(movieclip.frames))
+            if movieclip.frame_rate != 30:
+                script_frame.script += f"stage.frameRate = {movieclip.frame_rate};\n"
+                script_layer.frames.append(script_frame)
+                movie_symbol.timeline.layers.append(script_layer)
+
             for export in swf.exports[movieclip.id]:
+                if "_atlasgenerator_texture_" in export:
+                    export, texture_type = export.split("_atlasgenerator_texture_")
+                    script_frame.script += f"var textureType = {texture_type};\n"
+
                 export_instance = copy.deepcopy(movie_symbol)
                 symbol_name = f"Exports/{export}"
                 export_instance.timeline.name = export
@@ -419,6 +439,7 @@ def sc_to_xfl(filepath):
             movie_symbol.timeline.name = movieclip.id
             movie_symbol.name = movieclip.id
             sc_xfl.symbols.update({movieclip.id: movie_symbol})
+
 
     # XFL.save(f"{projectdir}.fla", sc_xfl)
     sc_xfl.save(projectdir)  # save as xfl

@@ -29,6 +29,7 @@ class DOMFrame:
 
         # elements
         self.elements: list = []
+        self.script: str = ""
 
         self.frame_color: Color = None
     
@@ -53,7 +54,14 @@ class DOMFrame:
         
         if "tweenType" in xml.attrib:
             self.tween_type = xml.attrib["tweenType"]
-        
+
+        script = xml.find("./xfl:Actionscript", NAMESPACES)
+
+        for element in script:
+            if element.tag == "script":
+                if str(element.text).startswith("![CDATA["):
+                    self.script = element.text[7:len(element.text) - 2]
+
         elements = xml.find("./xfl:elements", NAMESPACES)
 
         if elements is not None:
@@ -117,6 +125,11 @@ class DOMFrame:
         
         if self.tween_type is not None:
             xml.attrib["tweenType"] = str(self.tween_type)
+
+        if self.script is not None:
+            action_script = SubElement(xml, "Actionscript")
+            script = SubElement(action_script, "script")
+            script.text = self.script
         
         elements = SubElement(xml, "elements")
         for element in self.elements:
