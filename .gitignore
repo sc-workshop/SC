@@ -1,2 +1,3 @@
 *.pyc
-/game-assets/
+assets
+__pycache__
