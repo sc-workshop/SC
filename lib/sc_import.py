@@ -2,7 +2,6 @@ import copy
 
 from lib.console import Console
 
-import cv2
 import numpy as np
 
 from math import degrees
