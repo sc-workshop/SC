@@ -2,6 +2,9 @@ import copy
 
 from lib.console import Console
 
+import cv2
+import numpy as np
+
 from math import degrees
 
 from lib.sc import *
@@ -49,7 +52,7 @@ def prepare_document():
     return fla
 
 
-def proceed_resource(fla, swf, resource, export_name, use_nine_slice):
+def proceed_resource(fla, swf, resource, export_name = None, use_nine_slice = False):
     if resource.id in resources_finished:
         if resources_finished[resource.id]:
             return
@@ -73,14 +76,16 @@ def proceed_resources(fla, swf):
     Console.info("Converting SupercellFlash resources to Adobe Animate...")
 
     for id in swf.exports:
-        use_nine_slice = isinstance(swf.resources[id], MovieClip) and swf.resources[id].nine_slice
+        use_nine_slice = isinstance(swf.resource[id], MovieClip) and swf.resources[id].nine_slice
         proceed_resource(fla, swf, swf.resources[id], swf.exports[id], use_nine_slice)
 
 
 def convert_shape(fla, swf, shape, use_nine_slice):
+    Console.info(f"Converting Shape {shape.id} to Adobe Animate Graphic...")
+
     graphic = DOMSymbolItem(f"shapes/shape_{shape.id}", "graphic")
 
-    graphic.timeline.name = f"shape_{shape.id}"
+    graphic.timeline.name = "shape-timeline"
     layer = DOMLayer("shape", False)
     frame = DOMFrame(0)
 
@@ -148,7 +153,12 @@ def convert_shape(fla, swf, shape, use_nine_slice):
 
 
 def convert_movieclip(fla, swf, movieclip: MovieClip, export_name: str = None):
-    movie = DOMSymbolItem()
+    Console.info(f"Converting MovieClip {movieclip.id} to Adobe Animate MovieClip...")
+
+    movie_name = f"movieclips/{movieclip.id}" if not export_name else f"exports/{export_name}"
+
+    movie = DOMSymbolItem(movie_name)
+    movie.timeline.name = "movieclip-timeline"
 
     # Prepearing layers
     def init_new_layer(name, type, parent):
@@ -181,16 +191,8 @@ def convert_movieclip(fla, swf, movieclip: MovieClip, export_name: str = None):
         elif isinstance(resource, MovieClip):
             pass
 
-    if isinstance(export_name, list):
-        for export in export_name:
-            movie.name = f"exports/{export}"
-            movie.timeline.name = export
-            fla.symbols.update({movie.name: movie})
-        return
+    fla.symbols.append(movie)
 
-    movie.name = f"movieclips/{movieclip.id}"
-    movie.timeline.name = movieclip.id
-    fla.symbols.update({movie.name: movie})
 
 def sc_to_fla(filepath):
     swf = SupercellSWF()
