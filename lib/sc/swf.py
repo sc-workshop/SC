@@ -74,7 +74,6 @@ class SupercellSWF:
         self.resources[resource.id] = resource
     
     def init_matrix_bank(self, matrices_count: int, color_transforms_count: int):
-        Console.info(f"MatrixBank: {matrices_count} matrices and {color_transforms_count} color transforms")
         self.matrix_banks.append(MatrixBank(matrices_count, color_transforms_count))
     
     def load(self, filepath: str):
@@ -122,15 +121,12 @@ class SupercellSWF:
 
             self.exports_count = self.reader.read_ushort()
 
-            export_ids = [self.reader.read_ushort() for x in range(self.exports_count)]
+            export_ids = [self.reader.read_ushort() for _ in range(self.exports_count)]
+            self.exports = {id: [] for id in export_ids}
             for export_id in export_ids:
                 export_name = self.reader.read_ascii()
 
-                self.exports[export_id] = export_name
-
-                Console.info(f"Export {export_name} with id {export_id}")
-            
-            print()
+                self.exports[export_id].append(export_name)
             
             self.textures = [_class() for _class in [SWFTexture] * self.textures_count]
             
@@ -155,13 +151,17 @@ class SupercellSWF:
         text_fields_loaded = 0
         movieclips_loaded = 0
 
+        last_bank_matrices_count = 0
+        last_bank_colors_count = 0
+
         while True:
             tag = self.reader.read_uchar()
             tag_length = self.reader.read_int()
 
             if tag == SupercellSWF.END_TAG:
-                Console.info("End tag.")
                 print()
+                Console.info("Reading completed.")
+
                 break
 
             if tag == SupercellSWF.USE_LOWRES_TEXTURE_TAG:
@@ -233,32 +233,36 @@ class SupercellSWF:
                 continue
 
             elif tag in SupercellSWF.SHAPE_TAGS:
+                Console.progress_bar("Shapes loading...", shapes_loaded, self.shapes_count)
+
                 shape = Shape()
                 shape.load(self, tag)
-
-                Console.info(f"Shape: {shape.id} - {len(shape.bitmaps)} bitmaps")
 
                 self.add_resource(shape)
 
                 shapes_loaded += 1
+                if shapes_loaded == self.shapes_count:
+                    print()
                 continue
 
             elif tag in SupercellSWF.TEXT_FIELD_TAGS:
+                Console.progress_bar("Textfields loading...", text_fields_loaded, self.text_fields_count)
+
                 text_field = TextField()
                 text_field.load(self, tag)
-
-                Console.info(f"TextField: {text_field.id} - {text_field.font_name}")
 
                 self.add_resource(text_field)
 
                 text_fields_loaded += 1
+                if text_fields_loaded == self.text_fields_count:
+                    print()
                 continue
 
             elif tag == SupercellSWF.MATRIX_BANK_TAG:
-                matrices_count = self.reader.read_ushort()
+                last_bank_matrices_count = self.reader.read_ushort()
                 color_transforms_count = self.reader.read_ushort()
 
-                self.init_matrix_bank(matrices_count, color_transforms_count)
+                self.init_matrix_bank(last_bank_matrices_count, color_transforms_count)
 
                 matrices_loaded = 0
                 color_transforms_loaded = 0
@@ -298,14 +302,16 @@ class SupercellSWF:
                 continue
 
             elif tag in SupercellSWF.MOVIECLIP_TAGS:
+                Console.progress_bar("Movieclips loading...", movieclips_loaded, self.movieclips_count)
+
                 movieclip = MovieClip()
                 movieclip.load(self, tag)
-
-                Console.info(f"MovieClip: {movieclip.id} - {movieclip.frame_rate} FPS and {len(movieclip.frames)} frames")
 
                 self.add_resource(movieclip)
 
                 movieclips_loaded += 1
+                if movieclips_loaded == self.movieclips_count:
+                    print()
                 continue
 
             Console.warning(f"{self.filename} has unknown tag {tag} with length {tag_length}! Skipped...")

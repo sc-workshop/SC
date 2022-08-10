@@ -13,8 +13,8 @@ from sc_compression import Decompressor, Compressor
 def main():
     parser = argparse.ArgumentParser(description="SC tool by SCW Make - github.com/scwmake/SC")
 
-    parser.add_argument("-d", "--decompile", help="Convert *.sc file to *.fla and *.tps files", type=str)
-    parser.add_argument("-c", "--compile", help="Convert *.fla and *.tps files to *.sc file", type=str)
+    parser.add_argument("-d", "--decompile", help="Convert *.sc file to *.fla", type=str)
+    parser.add_argument("-c", "--compile", help="Convert *.fla to *.sc file", type=str)
 
     parser.add_argument("-dx", "--decompress", help="Decompress *.sc files with Supercell compression", type=str)
     parser.add_argument("-cx", "--compress", help="Compress *.sc files with Supercell compression (LZMA | SC | version 1)", type=str)
