@@ -4,6 +4,9 @@ Supercell SWF (Flash) file format decompiler and compiler. Supercell's games usi
 
 Please follow the Supercell fan content policy - http://supercell.com/fan-content-policy!
 
+## Credits
+Tool created by Fred-31 and DaniilSV (Pavel Sokov and Daniil Sivachenko). Inspired by XCoder (by Vorono4ka) and Supercell-Extractor (by baraklevy20)
+
 ## About
 
 This tool is designed to import and export 2D assets (`*.sc`, `*_dl.sc`, `*_tex.sc` files) from Supercell games using Adobe Animate. At the moment, the tool is very slow when working with large files (so we do not advise you to import large files like ui.sc if you have a weak PC). Maybe we rewrite it on C++ or C# in future...
@@ -59,6 +62,8 @@ Supercell's uses Adobe Animate and TexturePacker to create these assets.
 Nothing more to say, I think.
 
 ## TODO List
-- Find a way to add LUMINANCE_ALPHA textures support (for OpenCV)
+- Add TexturePacker projects support
+- Refactor code in ```lib/sc```
+- Refactor code in ```lib/fla```
+- Add JSON support
 - Rewrite it on C++ or C# (because Python is **very** slow)
-- Create SC export (from XFL)

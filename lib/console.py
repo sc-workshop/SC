@@ -23,11 +23,7 @@ class Console:
 
     @staticmethod
     def progress_bar(message, current, total, start=0, end=100):
-        sys.stdout.write(f"\r[{((current + 1) * end + start) // total + start}%] {message}")
-    
-    @staticmethod
-    def percent(current, total):
-        return (current + 1) * 100 // total
+        sys.stdout.write(colorama.Fore.GREEN + f"\r[{((current + 1) * end + start) // total + start}%] {message}" + colorama.Style.RESET_ALL)
 
 
 if __name__ == "__main__":

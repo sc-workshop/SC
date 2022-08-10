@@ -62,6 +62,12 @@ class Bitmap:
 
     @staticmethod
     def save(filepath: str, image: Image, compression: bool = True):
+        if image.mode == "LA":
+            image = image.convert("RGBA")
+        
+        if image.mode == "L":
+            image = image.convert("RGB")
+        
         height, width = image.size
         alpha = image.mode == "RGBA"
 
@@ -74,10 +80,10 @@ class Bitmap:
 
                 if alpha:
                     r, g, b, a = pixel
-                    image_binary_data.append(r << 24 | g << 16 | b << 8 | a)
+                    image_binary_data.append(b << 24 | g << 16 | r << 8 | a)
                 else:
                     r, g, b = pixel
-                    image_binary_data.append(r << 24 | g << 16 | b << 8)
+                    image_binary_data.append(b << 24 | g << 16 | r << 8)
 
         image_binary_data = np.array(image_binary_data, dtype="<I").tobytes()
 

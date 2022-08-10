@@ -195,7 +195,7 @@ class ShapeDrawBitmapCommand(Writable):
         sprite = Image.new(texture.image.mode, sprite_size)
         sprite.paste(texture.image.crop(bbox), (0, 0), mask.crop(bbox))
 
-        rotation = self.get_rotation()
+        rotation = self.get_rotation(nearest=True)
         sprite = sprite.rotate(rotation, expand=True)
 
         return sprite

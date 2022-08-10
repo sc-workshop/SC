@@ -1,9 +1,11 @@
 from xml.etree.ElementTree import *
 
+from PIL import Image
+
 
 class DOMBitmapItem:
     def __init__(self, name: str = None, bitmap_data_href: str = None) -> None:
-        self.image = None
+        self.image: Image = None
 
         # attributes
         self.name = name

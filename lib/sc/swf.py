@@ -123,12 +123,14 @@ class SupercellSWF:
             self.exports_count = self.reader.read_ushort()
 
             export_ids = [self.reader.read_ushort() for x in range(self.exports_count)]
+            self.exports = {id: [] for id in export_ids}
+
             for export_id in export_ids:
                 export_name = self.reader.read_ascii()
 
-                self.exports[export_id] = export_name
+                self.exports[export_id].append(export_name)
 
-                Console.info(f"Export {export_name} with id {export_id}")
+                Console.info(f"Export {export_name} -> {export_id}")
             
             print()
             
@@ -160,12 +162,12 @@ class SupercellSWF:
             tag_length = self.reader.read_int()
 
             if tag == SupercellSWF.END_TAG:
-                Console.info("End tag.")
+                Console.info("End tag")
                 print()
                 break
 
             if tag == SupercellSWF.USE_LOWRES_TEXTURE_TAG:
-                Console.info("Use low resolution texture tag.")
+                Console.info("Use low resolution texture tag")
 
                 lowres_texture_filename = os.path.splitext(self.filename)[0] + self.lowres_texture_postfix + SupercellSWF.TEXTURE_EXTENSION
 
@@ -181,12 +183,12 @@ class SupercellSWF:
                 continue
 
             elif tag == SupercellSWF.USE_EXTERNAL_TEXTURE_TAG:
-                Console.info("Use external texture file tag.")
+                Console.info("Use external texture file tag")
                 has_external_texture = True
                 continue
 
             elif tag == SupercellSWF.USE_UNCOMMON_RESOLUTION_TAG:
-                Console.info("Use uncommon resolution texture tag.")
+                Console.info("Use uncommon resolution texture tag")
 
                 highres_texture_filename = os.path.splitext(self.filename)[0] + self.highres_texture_postfix + SupercellSWF.TEXTURE_EXTENSION
                 lowres_texture_filename = os.path.splitext(self.filename)[0] + self.lowres_texture_postfix + SupercellSWF.TEXTURE_EXTENSION
@@ -233,25 +235,31 @@ class SupercellSWF:
                 continue
 
             elif tag in SupercellSWF.SHAPE_TAGS:
+                Console.progress_bar("Shapes loading...", shapes_loaded, self.shapes_count)
+
                 shape = Shape()
                 shape.load(self, tag)
-
-                Console.info(f"Shape: {shape.id} - {len(shape.bitmaps)} bitmaps")
 
                 self.add_resource(shape)
 
                 shapes_loaded += 1
+                if shapes_loaded == self.shapes_count:
+                    print()
+                
                 continue
 
             elif tag in SupercellSWF.TEXT_FIELD_TAGS:
+                Console.progress_bar("TextFields loading...", text_fields_loaded, self.text_fields_count)
+
                 text_field = TextField()
                 text_field.load(self, tag)
-
-                Console.info(f"TextField: {text_field.id} - {text_field.font_name}")
 
                 self.add_resource(text_field)
 
                 text_fields_loaded += 1
+                if text_fields_loaded == self.text_fields_count:
+                    print()
+                
                 continue
 
             elif tag == SupercellSWF.MATRIX_BANK_TAG:
@@ -265,6 +273,8 @@ class SupercellSWF:
                 continue
 
             elif tag in SupercellSWF.MATRIX_TAGS:
+                Console.progress_bar("Matrices loading...", matrices_loaded, self.matrix_banks[-1].matrices_count)
+
                 matrix = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
                 divider = 1024 if tag == 8 else 65535
@@ -278,10 +288,16 @@ class SupercellSWF:
                 matrix[5] = self.reader.read_twip()  # ty
 
                 self.matrix_banks[-1].matrices[matrices_loaded] = matrix
+
                 matrices_loaded += 1
+                if matrices_loaded == self.matrix_banks[-1].matrices_count:
+                    print()
+                
                 continue
 
             elif tag == SupercellSWF.COLOR_TRANSFORM_TAG:
+                Console.progress_bar("ColorTransforms loading...", color_transforms_loaded, self.matrix_banks[-1].color_transforms_count)
+
                 color = [0, 0, 0, 0, 1.0, 1.0, 1.0, 1.0]
 
                 color[0] = self.reader.read_uchar()  # red addition
@@ -294,18 +310,25 @@ class SupercellSWF:
                 color[6] = self.reader.read_uchar() / 255  # blue multiplier
 
                 self.matrix_banks[-1].color_transforms[color_transforms_loaded] = color
+
                 color_transforms_loaded += 1
+                if color_transforms_loaded == self.matrix_banks[-1].color_transforms_count:
+                    print()
+                
                 continue
 
             elif tag in SupercellSWF.MOVIECLIP_TAGS:
+                Console.progress_bar("MovieClips loading...", movieclips_loaded, self.movieclips_count)
+
                 movieclip = MovieClip()
                 movieclip.load(self, tag)
-
-                Console.info(f"MovieClip: {movieclip.id} - {movieclip.frame_rate} FPS and {len(movieclip.frames)} frames")
 
                 self.add_resource(movieclip)
 
                 movieclips_loaded += 1
+                if movieclips_loaded == self.movieclips_count:
+                    print()
+
                 continue
 
             Console.warning(f"{self.filename} has unknown tag {tag} with length {tag_length}! Skipped...")
