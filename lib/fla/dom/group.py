@@ -3,7 +3,6 @@ from xml.etree.ElementTree import *
 from .bitmap_instance import DOMBitmapInstance
 from .symbol_instance import DOMSymbolInstance
 from .shape import DOMShape
-from .group import DOMGroup
 from .static_text import DOMStaticText
 from .dynamic_text import DOMDynamicText
 
