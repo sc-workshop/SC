@@ -1,4 +1,5 @@
-numpy~=1.20.3
-opencv-python~=4.5.3.56
-affine6p~=1.0.0
-sc-compression~=0.5.6
+sc-compression
+Pillow
+numpy
+affine6p
+colorama
