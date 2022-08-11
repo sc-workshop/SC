@@ -14,14 +14,13 @@ from affine6p import estimate
 def get_size(coords):
     left = min(x for x, _ in coords)
     top = min(y for _, y in coords)
-    right = max(x for x, _  in coords)
+    right = max(x for x, _ in coords)
     bottom = max(y for _, y in coords)
 
     return right - left or 1, bottom - top or 1
 
 
 class Shape(Resource, Writable):
-
     SHAAPE_END_COMMAND_TAG = 0
 
     SHAAPE_DRAW_BITMAP_COMMAND_TAGS = (4, 17, 22)
@@ -59,7 +58,8 @@ class Shape(Resource, Writable):
                 Console.error("Tag ShapeDrawColorFillCommand is unsupported! Aborting...")
                 raise TypeError()
 
-            Console.warning(f"Shape {self.id} has unknown command tag {bitmap_tag} with length {bitmap_tag_length}! Skipping...")
+            Console.warning(
+                f"Shape {self.id} has unknown command tag {bitmap_tag} with length {bitmap_tag_length}! Skipping...")
             swf.reader.skip(bitmap_tag_length)
 
     def save(self, swf):
@@ -156,7 +156,7 @@ class ShapeDrawBitmapCommand(Writable):
             self.write_ushort(int(v))
 
         return tag, self.buffer
-    
+
     def get_image(self, swf) -> Image:
         texture = swf.textures[self.texture_index]
 
@@ -180,7 +180,7 @@ class ShapeDrawBitmapCommand(Writable):
                     mask.putpixel((left + _x - 1, bottom - 1), color)
             else:
                 mask.putpixel((right - 1, bottom - 1), color)
-            
+
             bbox = mask.getbbox()
 
         a, b, c, d = bbox
@@ -195,16 +195,13 @@ class ShapeDrawBitmapCommand(Writable):
         sprite = Image.new(texture.image.mode, sprite_size)
         sprite.paste(texture.image.crop(bbox), (0, 0), mask.crop(bbox))
 
-        rotation = self.get_rotation(nearest=True)
-        sprite = sprite.rotate(rotation, expand=True)
-
         return sprite
-    
-    def get_matrix(self, custom_uv_coords: list = None, use_rotation: bool = False, use_nearest: bool = False):
+
+    def get_matrix(self, custom_uv_coords: list = None, use_nearest: bool = False):
         uv_coords = custom_uv_coords or self.uv_coords
 
         rotation = 0
-        if use_rotation:
+        if use_nearest:
             rotation = self.get_rotation(use_nearest)
 
             rad = radians(rotation)
@@ -229,25 +226,25 @@ class ShapeDrawBitmapCommand(Writable):
 
                 sprite_box.append([sprite_box[idx - 1][0] + x_distance,
                                    sprite_box[idx - 1][1] + y_distance])
-            
+
             if sprite_box[idx][0] < 0:
                 sprite_box = [[x - sprite_box[idx][0], y] for x, y in sprite_box]
-            
+
             if sprite_box[idx][1] < 0:
                 sprite_box = [[x, y - sprite_box[idx][1]] for x, y in sprite_box]
-        
+
         scale_x, scale_y = get_size(sprite_box)
 
         if scale_x == 1:
             sprite_box = [[0, scale_y], [scale_x, scale_y], [scale_x, 0], [0, 0]]
-        
+
         if scale_y == 1:
             sprite_box = [[scale_x, 0], [0, 0], [0, scale_y], [scale_x, scale_y]]
-        
+
         transform = estimate(sprite_box, self.xy_coords)
 
         return transform, sprite_box, rotation
-    
+
     def get_translation(self, centroid: bool = False):
         if centroid:
             x_coords = [x for x, _ in self.xy_coords]
@@ -259,12 +256,12 @@ class ShapeDrawBitmapCommand(Writable):
             y = sum(y_coords) / size
 
             return x, y
-        
+
         left = min(x for x, _ in self.xy_coords)
         top = min(y for _, y in self.xy_coords)
 
         return left, top
-    
+
     def get_rotation(self, nearest: bool = False):
         def is_clockwise(points):
             points_sum = 0
@@ -291,7 +288,7 @@ class ShapeDrawBitmapCommand(Writable):
 
         if mirroring:
             angle -= 180
-        
+
         if nearest:
             angle = round(angle / 90) * 90
 
@@ -313,7 +310,7 @@ class ShapeDrawBitmapCommand(Writable):
 
         if uv_width <= 0:
             uv_width = 1
-        
+
         if uv_height <= 0:
             uv_height = 1
 

@@ -68,14 +68,14 @@ class Bitmap:
         if image.mode == "L":
             image = image.convert("RGB")
         
-        height, width = image.size
+        width, height = image.size
         alpha = image.mode == "RGBA"
 
         loaded = image.load()
         image_binary_data = []
 
-        for x in range(height):
-            for y in range(width):
+        for y in range(height):
+            for x in range(width):
                 pixel = loaded[x, y]
 
                 if alpha:

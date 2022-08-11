@@ -14,6 +14,7 @@ from PIL import Image
 
 
 shape_bitmap_uvs = []
+shape_bitmaps_twips = []
 shapes_with_nine_slices = []
 
 
@@ -82,10 +83,8 @@ def proceed_resources(fla, swf):
 
 
 def convert_shape(fla, swf, shape):
-    Console.info(f"Converting Shape {shape.id} to Adobe Animate Graphic...")
-
     graphic = DOMSymbolItem(f"shapes/shape_{shape.id}", "graphic")
-    graphic.timeline.name = f"shape_{shape.id}-timeline"
+    graphic.timeline.name = f"shape_{shape.id}"
 
     for bitmap_index, bitmap in enumerate(reversed(shape.bitmaps)):
         layer = DOMLayer(f"shape_layer_{bitmap_index}", False)
@@ -102,7 +101,6 @@ def convert_shape(fla, swf, shape):
             x, y = uv_coords[0]
             pixel = texture.image.getpixel((int(x), int(y)))
 
-            print(pixel)
             color = 0
             alpha = 1.0
 
@@ -146,31 +144,32 @@ def convert_shape(fla, swf, shape):
                 uvs_index = shape_bitmap_uvs.index(uv_coords)
                 resource_name = f"M {uvs_index}"
 
-                matrix, _, _ = bitmap.get_matrix(use_rotation=True, use_nearest=True)
+                matrix, twips, near = bitmap.get_matrix(use_nearest=False)
+                shape_bitmaps_twips.append(twips)
 
                 bitmap_item = DOMBitmapItem(f"resources/{uvs_index}", f"{resource_name}.dat")
 
                 bitmap_item.quality = 100
                 bitmap_item.use_imported_jpeg_data = False
-                bitmap_item.allow_smoothing = swf.textures[bitmap.texture_index].linear
+                bitmap_item.allow_smoothing = swf.textures[bitmap.texture_index].linear != True
                 
                 sprite = bitmap.get_image(swf)
+                #sprite.rotate(near)
                 bitmap_item.image = sprite
 
                 fla.media[uvs_index] = bitmap_item
-            
+
             else:
-                matrix, _, _ = bitmap.get_matrix(shape_bitmap_uvs[uvs_index], use_rotation=True, use_nearest=True)
+                matrix, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmap_uvs.index(uv_coords)])
             
             uvs_index = shape_bitmap_uvs.index(uv_coords)
 
             bitmap_instance = DOMBitmapInstance()
             bitmap_instance.library_item_name = f"resources/{uvs_index}"
 
-            matrix = matrix.get_matrix()
+            a, c, b, d, tx, ty = matrix.params
 
-            bitmap_instance.matrix = Matrix(matrix[0][0], matrix[1][0], matrix[0][1],
-                                            matrix[1][1], matrix[0][2], matrix[1][2])
+            bitmap_instance.matrix = Matrix(a, b, c, d, tx, ty)
             
             frame.elements.append(bitmap_instance)
 
@@ -195,8 +194,6 @@ def patch_shape_nine_slice(shape):
 
 
 def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None):
-    Console.info(f"Converting MovieClip {movieclip.id} to Adobe Animate MovieClip...")
-
     if export_names and len(export_names) > 1:
         for export_name in export_names:
             convert_movieclip(fla, swf, movieclip, [export_name])
