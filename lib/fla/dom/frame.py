@@ -67,10 +67,11 @@ class DOMFrame:
 
         script = xml.find("./xfl:Actionscript", NAMESPACES)
 
-        for element in script:
-            if element.tag == "script":
-                if str(element.text).startswith("![CDATA["):
-                    self.script = element.text[7:len(element.text) - 2]
+        if script is not None:
+            for element in script:
+                if element.tag == "script":
+                    if str(element.text).startswith("![CDATA["):
+                        self.script = element.text[7:len(element.text) - 2]
 
         elements = xml.find("./xfl:elements", NAMESPACES)
 

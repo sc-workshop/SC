@@ -11,12 +11,9 @@ from lib.fla import *
 
 from PIL import Image
 
-
-
 shape_bitmaps_uvs = []
 shape_bitmaps_twips = []
-shapes_with_nine_slices = []
-
+shapes_with_nine_slices = {}
 
 
 def sc_to_fla(filepath):
@@ -26,10 +23,15 @@ def sc_to_fla(filepath):
     projectdir = os.path.splitext(swf.filename)[0]
     if os.path.exists(projectdir):
         rmtree(projectdir)
-    
+
     os.makedirs(projectdir, exist_ok=True)
 
     fla = prepare_document()
+
+    startup = DOMDocument()
+    startup.load("lib/scwmake_credit")
+
+    fla.timelines = startup.timelines
 
     proceed_resources(fla, swf)
 
@@ -73,13 +75,11 @@ def proceed_resources(fla, swf):
 
         if isinstance(resource, Shape):
             convert_shape(fla, swf, resource)
-        
-        elif isinstance(resource, MovieClip):
-            continue
 
+        elif isinstance(resource, MovieClip):
             export_names = swf.exports[id] if id in swf.exports else None
             convert_movieclip(fla, swf, resource, export_names)
-        
+
         else:
             continue
 
@@ -87,6 +87,7 @@ def proceed_resources(fla, swf):
 def convert_shape(fla, swf, shape):
     graphic = DOMSymbolItem(f"shapes/shape_{shape.id}", "graphic")
     graphic.timeline.name = f"shape_{shape.id}"
+    graphic.timeline.layers
 
     for bitmap_index, bitmap in enumerate(reversed(shape.bitmaps)):
         layer = DOMLayer(f"shape_layer_{bitmap_index}", False)
@@ -95,7 +96,7 @@ def convert_shape(fla, swf, shape):
         uv_coords = bitmap.uv_coords
         xy_coords = bitmap.xy_coords
 
-        if uv_coords.count(uv_coords[0]) == len(uv_coords): # color fills is always 1x1
+        if uv_coords.count(uv_coords[0]) == len(uv_coords):  # color fills is always 1x1
             color_fill = DOMShape()
 
             texture = swf.textures[bitmap.texture_index]
@@ -113,7 +114,7 @@ def convert_shape(fla, swf, shape):
 
                 if len(pixel) == 4:
                     alpha = pixel[3] / 255
-            
+
             elif len(pixel) in (2, 1):
                 color |= pixel[0] << 16
                 color |= (pixel[0] << 16) >> 8
@@ -128,15 +129,15 @@ def convert_shape(fla, swf, shape):
             final_edges = ""
             for x, curr in enumerate(xy_coords):
                 nxt = xy_coords[(x + 1) % len(xy_coords)]
-                final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}" # converting pixels to twips 
-            
+                final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}"  # converting pixels to twips
+
             color_fill_edge = Edge()
             color_fill_edge.edges = final_edges
             color_fill_edge.fill_style1 = 1
 
             color_fill.fills.append(color_fill_style)
             color_fill.edges.append(color_fill_edge)
-            
+
             frame.elements.append(color_fill)
 
         else:
@@ -155,7 +156,7 @@ def convert_shape(fla, swf, shape):
                 bitmap_item.use_imported_jpeg_data = False
                 bitmap_item.allow_smoothing = swf.textures[bitmap.texture_index].linear != True
                 bitmap_item.source_external_filepath = f"LIBRARY/resources/{uvs_index}.png"
-                
+
                 sprite = bitmap.get_image(swf)
                 bitmap_item.image = sprite
 
@@ -163,7 +164,7 @@ def convert_shape(fla, swf, shape):
 
             else:
                 matrix, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmaps_uvs.index(uv_coords)])
-            
+
             uvs_index = shape_bitmaps_uvs.index(uv_coords)
 
             bitmap_instance = DOMBitmapInstance()
@@ -171,7 +172,7 @@ def convert_shape(fla, swf, shape):
 
             a, c, b, d, tx, ty = matrix.params
             bitmap_instance.matrix = Matrix(a, b, c, d, tx, ty)
-            
+
             frame.elements.append(bitmap_instance)
 
         layer.frames.append(frame)
@@ -180,40 +181,181 @@ def convert_shape(fla, swf, shape):
     fla.symbols[graphic.name] = graphic
 
 
-def patch_shape_nine_slice(shape):
+def patch_shape_nine_slice(fla, shape):
     if shape.id in shapes_with_nine_slices:
-        return
-    
-    group = DOMGroup()
-    
-    sliced = DOMShape()
-    sliced.is_drawing_object = True
+        return shapes_with_nine_slices[shape.id]
 
-    # Patching shape here
-    bitmaps = [] # Соберёшь все битмапы с уже готового шейпа чтобы заного не юзать get_image, ибо будет -время
-    # Потом пройдёшься по собранным битмапам и конвертнешь это всё в DOMShape с BitmapFill
-    # После чего заменишь в уже существующем символе битмапы/слои/кадры на то что, получилось
-    
-    shapes_with_nine_slices.append(shape.id)
+    shape_slice = DOMGroup()
+
+    shape_symbol = fla.symbols[f"shapes/shape_{shape.id}"]
+
+    for l, layer in enumerate(shape_symbol.timeline.layers):
+        for f, frame in enumerate(layer.frames):
+            for e, element in enumerate(frame.elements):
+                if isinstance(element, DOMBitmapInstance):
+                    element_media = fla.media[int(element.library_item_name.split("/")[1])]
+                    element_sprite = element_media.image
+                    w, h = element_sprite.size
+
+                    extrude_sprite = element_sprite.resize((w+2, h+2))
+                    extrude_sprite.paste(element_sprite, (1, 1))
+                    element_media.image = extrude_sprite
+
+                    sprite_twip = [[0,0], [w, 0], [w, h], [0, h]]
+
+                    slice = DOMShape()
+                    slice.is_drawing_object = True
+
+                    edge_shape = ""
+                    for x, curr in enumerate(sprite_twip):
+                        nxt = sprite_twip[(x + 1) % len(sprite_twip)]
+                        edge_shape += f"!{round(curr[0] * 20)} {round(curr[1] * 20)}|{round(nxt[0] * 20)} {round(nxt[1] * 20)}"
+
+                    slice_style = FillStyle(1)
+                    slice_bitmap_fill = BitmapFill(element.library_item_name)
+                    slice_bitmap_fill.matrix = Matrix(20, 0, 0, 20, -1, -1)
+                    slice_style.data = slice_bitmap_fill
+
+                    slice_shape = Edge()
+                    slice_shape.edges = edge_shape
+                    slice_shape.fill_style1 = 1
+
+                    slice.fills.append(slice_style)
+                    slice.edges.append(slice_shape)
+                    slice.matrix = element.matrix
+
+                    shape_slice.members.append(slice)
+
+                    shape_symbol.timeline.layers[l].frames[f].elements[e] = slice
+
+    shapes_with_nine_slices[shape.id] = shape_slice
+    return shape_slice
 
 
 def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None):
-    if export_names and len(export_names) > 1:
-        for export_name in export_names:
-            convert_movieclip(fla, swf, movieclip, [export_name])
-        return
-    
-    movie_name = f"movieclips/movieclip_{movieclip.id}" if not export_name else f"exports/{export_name[0]}"
+    movie = DOMSymbolItem()
 
-    movie = DOMSymbolItem(movie_name)
-    movie.timeline.name = f"movieclip_{movieclip.id}-timeline"
+    layers_instance = []
+    layers_order = []
+    symbols_instance = []
+
+    masked_layers = {}
+    masked_layers_order = {}
 
     # Prepearing layers
-    # Пройдись по биндам и заюзай isinstance, мне поскорее хочется дописать текстовый поля ыыы
-    # Ах да, забыл, если isinstance(bind, Shape) И у мувика есть nine_slice то вызываешь функцию path_shape_nine_slice
+    for i, bind in enumerate(movieclip.binds):
+        bind_resource = swf.resources[bind['id']]
+        if isinstance(bind_resource, MovieClipModifier):
+            layers_instance.append(None)
+            symbols_instance.append(bind_resource)
+        else:
+            # Layers
+            bind_layer = DOMLayer(f"Layer_{i}")
+            if bind["name"]:
+                bind_layer.name = bind["name"]
+
+            # Layer order
+            layers_order.append(i)
+
+            # Symbols instance
+            if isinstance(bind_resource, Shape):
+                if movieclip.nine_slice:
+                    bind_instance = patch_shape_nine_slice(fla, bind_resource)
+
+                else:
+                    bind_instance = DOMSymbolInstance(library_item_name=f"shapes/shape_{bind['id']}")
+
+            elif isinstance(bind_resource, MovieClip):
+                bind_instance = DOMSymbolInstance(library_item_name=
+                                                  f"movieclips/movieclip_{bind['id']}"
+                                                  if bind['id'] not in swf.exports
+                                                  else f"exports/{swf.exports[bind['id']][-1]}")
+                bind_instance.blend_mode = bind['blend']
+                if bind['name']:
+                    bind_instance.name = bind['name']
+
+            elif isinstance(bind_resource, TextField):
+                bind_instance = DOMDynamicText() #Ну тут твой выход
+
+            symbols_instance.append(bind_instance)
+            layers_instance.append(bind_layer)
 
     # Converting frames
-    # Тута кадры
+    for i, frame in enumerate(movieclip.frames):
+        element_idx = [element['bind'] for element in frame.elements]
+
+        mask = False
+        masked = False
+        mask_layer = None
+        for layer_idx, curr_layer in enumerate(layers_instance):
+            if curr_layer is None:
+                modifer = symbols_instance[layer_idx].modifier
+
+                if modifer == modifer.Mask:
+                    mask = True
+                elif modifer == modifer.Masked:
+                    mask = False
+                    masked = True
+                elif modifer == modifer.Unmasked:
+                    masked = False
+                    mask_layer = None
+
+            else:
+                if layer_idx in element_idx:
+                    if mask:
+                        curr_layer.layer_type = "mask"
+                        curr_layer.is_locked = True
+                        mask_layer = curr_layer
+                    elif masked:
+                        if mask_layer not in masked_layers:
+                            masked_layers[mask_layer] = []
+                            masked_layers_order[mask_layer] = []
+                            
+                        if curr_layer not in masked_layers[mask_layer]:
+                            masked_layers[mask_layer].append(curr_layer)
+                            masked_layers_order[mask_layer].append(masked_layers[mask_layer].index(curr_layer))
+
+                    layer_frame = DOMFrame(i)
+                    instance = copy.deepcopy(symbols_instance[layer_idx])
+
+                    element = frame.elements[element_idx.index(layer_idx)]
+
+                    if element["matrix"] != 0xFFFF:
+                        a, b, c, d, tx, ty = swf.matrix_banks[movieclip.matrix_bank].matrices[element["matrix"]]
+                        instance.matrix = Matrix(a, b, c, d, tx, ty)
+
+                    if element["color"] != 0xFFFF:
+                        r_add, g_add, b_add, a_add, r_multi, g_multi, b_multi, a_multi = \
+                            swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
+                        bind_color = Color()
+                        bind_color.red_offset = r_add
+                        bind_color.green_offset = g_add
+                        bind_color.blue_offset = b_add
+                        bind_color.alpha_offset = a_add
+                        bind_color.red_multiplier = r_multi
+                        bind_color.green_multiplier = g_multi
+                        bind_color.blue_multiplier = b_multi
+                        bind_color.alpha_multiplier = a_multi
+                        instance.color = bind_color
+
+                    layer_frame.elements.append(instance)
+                    curr_layer.frames.append(layer_frame)
+
+                else:
+                    if curr_layer.frames and len(curr_layer.frames[-1].elements) == 0:
+                        curr_layer.frames[-1].duration += 1
+                    else:
+                        curr_layer.frames.append(DOMFrame(i))
+
+    for idx in layers_order:
+        movie.timeline.layers.append(layers_instance[idx])
+
+    for layer_key in masked_layers_order:
+        for idx in masked_layers_order[layer_key]:
+            mask_layer_index = movie.timeline.layers.index(layer_key)
+            masked_layer = masked_layers[layer_key][idx]
+            masked_layer.parent_layer_index = mask_layer_index
+            movie.timeline.layers.insert(mask_layer_index, masked_layer)
 
     if movieclip.nine_slice:
         x, y, width, height = movieclip.nine_slice
@@ -223,8 +365,17 @@ def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None)
         movie.scale_grid_right = x + width
         movie.scale_grid_bottom = y + height
 
-    fla.symbols[movie.name] = movie
+    if isinstance(export_names, list):
+        for export in export_names:
+            movie_instance = copy.deepcopy(movie)
+            movie_instance.name = f"exports/{export}"
+            movie_instance.timeline.name = export
+            fla.symbols[movie_instance.name] = movie_instance
+        return
 
+    movie.name = f"movieclips/movieclip_{movieclip.id}"
+    movie.timeline.name = f"movieclip_{movieclip.id}"
+    fla.symbols[movie.name] = movie
 
 # TODO: Refactor it ( to this / \ )
 #                              |

@@ -127,7 +127,7 @@ class SupercellSWF:
             for export_id in export_ids:
                 export_name = self.reader.read_ascii()
 
-                self.exports[export_id] = export_name
+                self.exports[export_id].append(export_name)
 
                 Console.info(f"Export {export_name} with id {export_id}")
             
