@@ -14,8 +14,8 @@ class DOMTextAttrs:
 
         self.indent: float = 0.0
         self.line_spacing: float = 0.0
-
         self.letter_spacing: int = 0
+        self.line_height: float = 0.0
 
         self.alias_text: bool = False
         self.auto_kern: bool = True

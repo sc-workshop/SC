@@ -5,7 +5,7 @@ Supercell SWF (Flash) file format decompiler and compiler. Supercell's games usi
 Please follow the Supercell fan content policy - http://supercell.com/fan-content-policy!
 
 ## Credits
-Tool created by <a href="github.com/Fred-31">Fred-31</a> and <a href="github.com/Daniil-SV">DaniilSV</a>. Inspired by <a href="github.com/Vorono4ka/XCoder">XCoder</a> and <a href="github.com/baraklevy20/Supercell-Extractor">Supercell-Extractor</a>.
+Tool created by <a href="https://github.com/Fred-31">Fred-31</a> and <a href="https://github.com/Daniil-SV">DaniilSV</a>. Inspired by <a href="https://github.com/Vorono4ka/XCoder">XCoder</a> and <a href="https://github.com/baraklevy20/Supercell-Extractor">Supercell-Extractor</a>.
 
 ## About
 

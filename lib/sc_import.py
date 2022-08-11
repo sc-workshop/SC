@@ -269,13 +269,75 @@ def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None)
                 bind_instance = DOMSymbolInstance(library_item_name=
                                                   f"movieclips/movieclip_{bind['id']}"
                                                   if bind['id'] not in swf.exports
-                                                  else f"exports/{swf.exports[bind['id']][-1]}")
+                                                  else f"exports/{swf.exports[bind['id']][-1]}",
+                                                  name=bind["name"])
                 bind_instance.blend_mode = bind['blend']
-                if bind['name']:
-                    bind_instance.name = bind['name']
 
             elif isinstance(bind_resource, TextField):
-                bind_instance = DOMDynamicText() #Ну тут твой выход
+                bind_instance = DOMDynamicText(name=bind["name"]) # Спасибо, Солнышко :)
+
+                # Subtracting4 because inside files it is lower by 4 than inside scene, idk why and how it works.
+                bind_instance.width = bind_resource.right_corner - bind_resource.left_corner - 4
+                bind_instance.height = bind_resource.bottom_corner - bind_resource.top_corner - 4
+
+                if bind_resource.multiline:
+                    bind_instance.line_type = "multiline no wrap"
+                
+                text_run = DOMTextRun()
+                text_attrs = DOMTextAttrs()
+
+                if bind_resource.text is not None:
+                    text_run.characters = bind_resource.text
+                
+                text_attrs.face = bind_resource.font_name
+                text_attrs.size = bind_resource.font_size
+                text_attrs.bitmap_size = bind_resource.font_size * 20
+
+                if bind_resource.bold or bind_resource.italic:
+                    text_attrs.face += "-"
+                
+                if bind_resource.bold:
+                    text_attrs.face += "Bold"
+                
+                if bind_resource.italic:
+                    text_attrs.face += "Italic"
+
+                text_attrs.fill_color = bind_resource.font_color & 0xFFFFFF00
+                text_attrs.alpha = (bind_resource.font_color & 0x000000FF) / 255
+
+                text_attrs.line_spacing = 0
+                text_attrs.left_margin = bind_resource.font_align
+
+                if bind_resource.outline_color:
+                    glow_filter = GlowFilter()
+
+                    glow_filter.blur_x = 2
+                    glow_filter.blur_y = 2
+
+                    glow_filter.color = bind_resource.outline_color & 0xFFFFFF00
+
+                    glow_filter.strength = 15
+
+                    if bind_resource.c1:
+                        glow_filter.strength = bind_resource.c1 / 65535
+
+                    bind_instance.filters.append(glow_filter)
+                
+                if bind_resource.c2:
+                    drop_shadow_filter = DrowShadowFilter()
+
+                    drop_shadow_filter.angle = (bind_resource.c2 / 65535) * 360
+
+                    drop_shadow_filter.blur_x = 4                
+                    drop_shadow_filter.blur_y = 4
+
+                    drop_shadow_filter.distance = 4
+
+                    bind_instance.filters.append(drop_shadow_filter)
+                
+                text_run.text_attrs.append(text_attrs)
+                
+                bind_instance.text_runs.append(text_run)
 
             symbols_instance.append(bind_instance)
             layers_instance.append(bind_layer)
