@@ -13,7 +13,7 @@ from PIL import Image
 
 
 
-shape_bitmap_uvs = []
+shape_bitmaps_uvs = []
 shape_bitmaps_twips = []
 shapes_with_nine_slices = []
 
@@ -50,15 +50,17 @@ def prepare_document():
 
     fla.background_color = 0x666666
 
-    fla.creator_info = "File generated with SC tool by SCW Make! VK: vk.com/scwmake, GIT: github.com/scwmake/SC"
+    fla.creator_info = "File generated with SC tool by SCW Make! (VK: vk.com/scwmake, GITHUB: github.com/scwmake/SC)"
 
     folder_shapes = DOMFolderItem("shapes")
     folder_movieclips = DOMFolderItem("movieclips")
     folder_exports = DOMFolderItem("exports")
+    folder_resources = DOMFolderItem("resources")
 
     fla.folders.append(folder_shapes)
     fla.folders.append(folder_movieclips)
     fla.folders.append(folder_exports)
+    fla.folders.append(folder_resources)
 
     return fla
 
@@ -105,17 +107,17 @@ def convert_shape(fla, swf, shape):
             alpha = 1.0
 
             if len(pixel) in (4, 3):
-                color |= pixel[0]
-                color |= pixel[1] >> 8
-                color |= pixel[2] >> 16
+                color |= pixel[0] << 16
+                color |= (pixel[1] << 16) >> 8
+                color |= pixel[2]
 
                 if len(pixel) == 4:
                     alpha = pixel[3] / 255
             
             elif len(pixel) in (2, 1):
+                color |= pixel[0] << 16
+                color |= (pixel[0] << 16) >> 8
                 color |= pixel[0]
-                color |= pixel[0] >> 8
-                color |= pixel[0] >> 16
 
                 if len(pixel) == 2:
                     alpha = pixel[1] / 255
@@ -138,13 +140,13 @@ def convert_shape(fla, swf, shape):
             frame.elements.append(color_fill)
 
         else:
-            if uv_coords not in shape_bitmap_uvs:
-                shape_bitmap_uvs.append(uv_coords)
+            if uv_coords not in shape_bitmaps_uvs:
+                shape_bitmaps_uvs.append(uv_coords)
 
-                uvs_index = shape_bitmap_uvs.index(uv_coords)
+                uvs_index = shape_bitmaps_uvs.index(uv_coords)
                 resource_name = f"M {uvs_index}"
 
-                matrix, twips, near = bitmap.get_matrix(use_nearest=False)
+                matrix, twips, _ = bitmap.get_matrix(use_nearest=False)
                 shape_bitmaps_twips.append(twips)
 
                 bitmap_item = DOMBitmapItem(f"resources/{uvs_index}", f"{resource_name}.dat")
@@ -152,23 +154,22 @@ def convert_shape(fla, swf, shape):
                 bitmap_item.quality = 100
                 bitmap_item.use_imported_jpeg_data = False
                 bitmap_item.allow_smoothing = swf.textures[bitmap.texture_index].linear != True
+                bitmap_item.source_external_filepath = f"LIBRARY/resources/{uvs_index}.png"
                 
                 sprite = bitmap.get_image(swf)
-                #sprite.rotate(near)
                 bitmap_item.image = sprite
 
                 fla.media[uvs_index] = bitmap_item
 
             else:
-                matrix, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmap_uvs.index(uv_coords)])
+                matrix, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmaps_uvs.index(uv_coords)])
             
-            uvs_index = shape_bitmap_uvs.index(uv_coords)
+            uvs_index = shape_bitmaps_uvs.index(uv_coords)
 
             bitmap_instance = DOMBitmapInstance()
             bitmap_instance.library_item_name = f"resources/{uvs_index}"
 
             a, c, b, d, tx, ty = matrix.params
-
             bitmap_instance.matrix = Matrix(a, b, c, d, tx, ty)
             
             frame.elements.append(bitmap_instance)
@@ -189,6 +190,9 @@ def patch_shape_nine_slice(shape):
     sliced.is_drawing_object = True
 
     # Patching shape here
+    bitmaps = [] # Соберёшь все битмапы с уже готового шейпа чтобы заного не юзать get_image, ибо будет -время
+    # Потом пройдёшься по собранным битмапам и конвертнешь это всё в DOMShape с BitmapFill
+    # После чего заменишь в уже существующем символе битмапы/слои/кадры на то что, получилось
     
     shapes_with_nine_slices.append(shape.id)
 
@@ -198,10 +202,8 @@ def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None)
         for export_name in export_names:
             convert_movieclip(fla, swf, movieclip, [export_name])
         return
-    else:
-        export_name = export_names[0]
-
-    movie_name = f"movieclips/movieclip_{movieclip.id}" if not export_name else f"exports/{export_name}"
+    
+    movie_name = f"movieclips/movieclip_{movieclip.id}" if not export_name else f"exports/{export_name[0]}"
 
     movie = DOMSymbolItem(movie_name)
     movie.timeline.name = f"movieclip_{movieclip.id}-timeline"

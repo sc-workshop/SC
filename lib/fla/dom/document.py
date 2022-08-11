@@ -2,6 +2,8 @@ import os
 
 from xml.etree.ElementTree import *
 
+from PIL import Image
+
 from .folder_item import DOMFolderItem
 from .bitmap_item import DOMBitmapItem
 from .symbol_item import DOMSymbolItem
@@ -19,7 +21,7 @@ class DOMDocument:
 
         # attributes
         self.xfl_version: float = 2.971
-        self.creator_info: str = "Generated with XFL Python module by Pavel Sokov (Fred-31)"
+        self.creator_info: str = "Generated with XFL Python module by Pavel Sokov (GIHUB: github.com/Fred-31)"
 
         self.width: int = 1280
         self.height: int = 720
@@ -91,12 +93,12 @@ class DOMDocument:
                 bitmap = DOMBitmapItem()
                 bitmap.load(media_element)
 
-                """if bitmap.bitmap_data_href is not None and bitmap.bitmap_data_href != "":
+                if bitmap.bitmap_data_href is not None:
                     bitmap.image = Bitmap.load(os.path.join(self.binarypath, bitmap.bitmap_data_href))
 
                     # TODO: external source image loading
-                    # if bitmap.source_external_filepath is not None and bitmap.source_external_filepath != "":
-                    #     bitmap.image = Image.open(os.path.join(self.filepath, os.path.normpath(bitmap.source_external_filepath)))"""
+                    if bitmap.source_external_filepath is not None:
+                        bitmap.image = Image.open(os.path.join(self.filepath, os.path.normpath(bitmap.source_external_filepath)))
 
                 self.media[bitmap.name] = bitmap
         
@@ -169,8 +171,8 @@ class DOMDocument:
             media.append(medium.save())
 
             # TODO: external source image saving
-            # if medium.source_external_filepath is not None and medium.source_external_filepath != "":
-            #     medium.image.save(os.path.join(self.filepath, os.path.normpath(medium.source_external_filepath)))
+            if medium.source_external_filepath is not None:
+                medium.image.save(os.path.join(self.filepath, os.path.normpath(medium.source_external_filepath)), "PNG")
 
             if medium.image is not None:
                 Bitmap.save(os.path.join(self.binarypath, medium.bitmap_data_href), medium.image)
