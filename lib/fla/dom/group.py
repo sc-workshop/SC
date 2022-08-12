@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from .bitmap_instance import DOMBitmapInstance
 from .symbol_instance import DOMSymbolInstance

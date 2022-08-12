@@ -1,5 +1,4 @@
-from xml.etree.ElementTree import *
-import xml.dom.minidom as md
+from lxml.etree import *
 
 from . import NAMESPACES
 from .timeline import DOMTimeline
@@ -52,10 +51,7 @@ class DOMSymbolItem:
                 self.timeline.load(timeline)
     
     def save(self, filepath: str):
-        xml = Element("DOMSymbolItem")
-
-        xml.attrib["xmlns"] = NAMESPACES["xfl"]
-        xml.attrib["xmlns:xsi"] = NAMESPACES["xsi"]
+        xml = Element("DOMSymbolItem", {"xmlns": NAMESPACES["xfl"]}, nsmap={'xsi': NAMESPACES["xsi"]})
 
         if self.name is not None:
             xml.attrib["name"] = str(self.name)
@@ -82,5 +78,5 @@ class DOMSymbolItem:
         if self.timeline is not None:
             timeline.append(self.timeline.save())
 
-        with open(filepath, 'w') as file:
-            file.write(md.parseString(tostring(xml)).toprettyxml())
+
+        ElementTree(xml).write(filepath)

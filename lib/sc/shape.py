@@ -211,6 +211,9 @@ class ShapeDrawBitmapCommand(Writable):
                 ).dot(point).tolist() for point in self.uv_coords
             ]
 
+            if mirroring:
+                uv_coords = [[-x, y] for x, y, in uv_coords]
+
         sprite_box = []
 
         for idx, _ in enumerate(uv_coords):

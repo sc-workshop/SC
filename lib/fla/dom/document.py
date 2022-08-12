@@ -1,6 +1,6 @@
 import os
 
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from PIL import Image
 
@@ -131,12 +131,9 @@ class DOMDocument:
             if folder.name is not None and folder.name != "":
                 if not os.path.exists(os.path.join(self.librarypath, folder.name)):
                     os.mkdir(os.path.join(self.librarypath, folder.name))
+        XSI = "http://www.w3.org/2001/XMLSchema-instance"
+        xml = Element("DOMDocument", {"xmlns": NAMESPACES["xfl"]}, nsmap={'xsi': NAMESPACES["xsi"]})
 
-        xml = Element("DOMDocument")
-
-        xml.attrib["xmlns:xsi"] = NAMESPACES["xsi"]
-        xml.attrib["xmlns"] = NAMESPACES["xfl"]
-        
         if self.xfl_version is not None:
             xml.attrib["xflVersion"] = str(self.xfl_version)
         
@@ -203,9 +200,8 @@ class DOMDocument:
 
         for timeline in self.timelines:
             timelines.append(timeline.save())
-        
-        with open(os.path.join(self.filepath, "DOMDocument.xml"), 'wb') as file:
-            file.write(tostring(xml))
+
+        ElementTree(xml).write(os.path.join(self.filepath, "DOMDocument.xml"))
         
         with open(os.path.join(self.filepath, os.path.basename(self.filepath) + ".xfl"), 'w') as file:
             file.write("PROXY-CS5")

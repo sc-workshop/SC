@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from . import NAMESPACES
 from .layer import DOMLayer

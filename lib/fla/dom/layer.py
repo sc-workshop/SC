@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from . import NAMESPACES
 from .frame import DOMFrame

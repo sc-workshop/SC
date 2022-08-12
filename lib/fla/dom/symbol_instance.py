@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from ..geom.matrix import Matrix
 from ..geom.color import Color

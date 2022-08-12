@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from .gradient_entry import GradientEntry
 from ..geom.matrix import Matrix

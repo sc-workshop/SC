@@ -153,7 +153,7 @@ def convert_shape(fla, swf, shape):
                 sprite = bitmap.get_image(swf)
                 sprite = sprite.rotate(-rotation, expand = True)
                 if mirror:
-                    sprite.transpose(Image.FLIP_LEFT_RIGHT)
+                    sprite = sprite.transpose(Image.FLIP_LEFT_RIGHT)
                 bitmap_item.image = sprite
 
                 fla.media[uvs_index] = bitmap_item
@@ -437,12 +437,13 @@ def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None)
         movie.timeline.layers.append(layers_instance[idx])
 
     for layer_key in masked_layers_order:
-        for idx in masked_layers_order[layer_key]:
-            mask_layer_index = movie.timeline.layers.index(layer_key)
-            masked_layer = masked_layers[layer_key][idx]
-            masked_layer.is_locked = True
-            masked_layer.parent_layer_index = mask_layer_index
-            movie.timeline.layers.insert(mask_layer_index + 1, masked_layer)
+        if layer_key is not None:
+            for idx in masked_layers_order[layer_key]:
+                mask_layer_index = movie.timeline.layers.index(layer_key)
+                masked_layer = masked_layers[layer_key][idx]
+                masked_layer.is_locked = True
+                masked_layer.parent_layer_index = mask_layer_index
+                movie.timeline.layers.insert(mask_layer_index + 1, masked_layer)
 
     if movieclip.nine_slice:
         x, y, width, height = movieclip.nine_slice
