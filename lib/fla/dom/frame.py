@@ -39,7 +39,7 @@ class DOMFrame:
 
         # elements
         self.elements: list = []
-        self.script: str = ""
+        self.script: str = None
 
         self.frame_color: Color = None
     

@@ -159,40 +159,29 @@ class ShapeDrawBitmapCommand(Writable):
 
     def get_image(self, swf) -> Image:
         texture = swf.textures[self.texture_index]
-
-        left = min(x for x, _ in self.uv_coords)
-        top = min(y for _, y in self.uv_coords)
-        right = max(x for x, _ in self.uv_coords)
-        bottom = max(y for _, y in self.uv_coords)
+        w, h = self.get_size(self.uv_coords)
+        if w + h == 2:
+            pix = self.uv_coords[-1]
+            return Image.new(texture.image.mode, (1, 1), texture[pix[0], pix[1]])
 
         mask = Image.new("L", (texture.width, texture.height), 0)
 
         color = 255
         ImageDraw.Draw(mask).polygon([(x, y) for x, y in self.uv_coords], fill=color)
 
-        bbox = mask.getbbox()
-        if not bbox:
-            if bottom - top != 0:
-                for _y in range(bottom - top):
-                    mask.putpixel((right - 1, top + _y - 1), color)
-            elif right - left != 0:
-                for _x in range(right - left):
-                    mask.putpixel((left + _x - 1, bottom - 1), color)
-            else:
-                mask.putpixel((right - 1, bottom - 1), color)
+        left = min(x for x, _ in self.uv_coords)
+        top = min(y for _, y in self.uv_coords)
+        right = max(x for x, _ in self.uv_coords)
+        bottom = max(y for _, y in self.uv_coords)
 
-            bbox = mask.getbbox()
+        if w == 1:
+            right += 1
+        if h == 1:
+            bottom += 1
 
-        a, b, c, d = bbox
-        if c - a - 1:
-            c -= 1
-        if d - b - 1:
-            d -= 1
+        bbox = left, top, right, bottom
 
-        bbox = a, b, c, d
-
-        sprite_size = c - a, d - b
-        sprite = Image.new(texture.image.mode, sprite_size)
+        sprite = Image.new(texture.image.mode, (w, h))
         sprite.paste(texture.image.crop(bbox), (0, 0), mask.crop(bbox))
 
         return sprite
@@ -200,9 +189,16 @@ class ShapeDrawBitmapCommand(Writable):
     def get_matrix(self, custom_uv_coords: list = None, use_nearest: bool = False):
         uv_coords = custom_uv_coords or self.uv_coords
 
+        scale_x, scale_y = self.get_size(uv_coords)
+
+        if scale_x <= 1 or scale_y <= 1:  # TODO fix this
+            uv_coords = [[0, 0], [scale_x, 0], [scale_x, scale_y], [0, scale_y]]
+            return estimate(uv_coords, self.xy_coords), uv_coords, 0, False
+
         rotation = 0
+        mirroring = False
         if use_nearest:
-            rotation = self.get_rotation(use_nearest)
+            rotation, mirroring = self.get_rotation(use_nearest)
 
             rad = radians(rotation)
 
@@ -233,17 +229,10 @@ class ShapeDrawBitmapCommand(Writable):
             if sprite_box[idx][1] < 0:
                 sprite_box = [[x, y - sprite_box[idx][1]] for x, y in sprite_box]
 
-        scale_x, scale_y = get_size(sprite_box)
-
-        if scale_x == 1:
-            sprite_box = [[0, scale_y], [scale_x, scale_y], [scale_x, 0], [0, 0]]
-
-        if scale_y == 1:
-            sprite_box = [[scale_x, 0], [0, 0], [0, scale_y], [scale_x, scale_y]]
-
         transform = estimate(sprite_box, self.xy_coords)
 
-        return transform, sprite_box, rotation
+
+        return transform, sprite_box, rotation, mirroring
 
     def get_translation(self, centroid: bool = False):
         if centroid:
@@ -292,26 +281,18 @@ class ShapeDrawBitmapCommand(Writable):
         if nearest:
             angle = round(angle / 90) * 90
 
-        return angle
+        return angle, mirroring
+
+    def get_size(self, coords):
+        left = min(coord[0] for coord in coords)
+        top = min(coord[1] for coord in coords)
+        right = max(coord[0] for coord in coords)
+        bottom = max(coord[1] for coord in coords)
+
+        return right - left or 1, bottom - top or 1
 
     def get_scale(self):
-        uv_left = min(x for x, _ in self.uv_coords)
-        uv_top = min(y for _, y in self.uv_coords)
-        uv_right = max(x for x, _ in self.uv_coords)
-        uv_bottom = max(y for _, y in self.uv_coords)
+        uv_x, uv_y = get_size(self.uv_coords)
+        xy_x, xy_y = get_size(self.xy_coords)
 
-        xy_left = min(x for x, _ in self.xy_coords)
-        xy_top = min(y for _, y in self.xy_coords)
-        xy_right = max(x for x, _ in self.xy_coords)
-        xy_bottom = max(y for _, y in self.xy_coords)
-
-        uv_width, uv_height = uv_right - uv_left, uv_bottom - uv_top
-        xy_width, xy_height = xy_right - xy_left, xy_bottom - xy_top
-
-        if uv_width <= 0:
-            uv_width = 1
-
-        if uv_height <= 0:
-            uv_height = 1
-
-        return xy_width / uv_width, xy_height / uv_height
+        return uv_x / xy_x, uv_y / xy_y

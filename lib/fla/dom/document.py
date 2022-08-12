@@ -13,6 +13,7 @@ from ..dat.bitmap import Bitmap
 
 from . import NAMESPACES
 
+from lib.console import Console
 
 class DOMDocument:
     def __init__(self) -> None:
@@ -165,8 +166,8 @@ class DOMDocument:
         for folder in self.folders:
             if folder.name is not None and folder.name != "":
                 folders.append(folder.save())
-        
-        for media_name in self.media:
+
+        for i, media_name in enumerate(self.media):
             medium = self.media[media_name]
             media.append(medium.save())
 
@@ -176,8 +177,11 @@ class DOMDocument:
 
             if medium.image is not None:
                 Bitmap.save(os.path.join(self.binarypath, medium.bitmap_data_href), medium.image)
+
+            Console.progress_bar("Adobe binary images saving...", i, len(self.media))
+        print()
         
-        for symbol_name in self.symbols:
+        for i, symbol_name in enumerate(self.symbols):
             symbol = self.symbols[symbol_name]
 
             href = str(symbol_name) + ".xml"
@@ -193,6 +197,9 @@ class DOMDocument:
             include.attrib["loadImmediate"] = "true"
 
             symbols.append(include)
+
+            Console.progress_bar("Saving symbols...", i, len(self.symbols))
+        print()
 
         for timeline in self.timelines:
             timelines.append(timeline.save())
