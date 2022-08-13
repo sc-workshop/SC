@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from ..edge.edge import Edge
 from ..fill.fill_style import FillStyle

@@ -1,4 +1,4 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 
 from .solid_color import SolidColor
 from .linear_gradient import LinearGradient
