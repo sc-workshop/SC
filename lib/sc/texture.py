@@ -197,7 +197,7 @@ class SWFTexture(Writable):
         self.width = swf.reader.read_ushort()
         self.height = swf.reader.read_ushort()
 
-        Console.info(f"SWFTexture: {self.width}x{self.height} - {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
+        Console.info(f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
 
         if not has_external_texture:
             self.image = Image.new(MODES_TABLE[self.pixel_format], (self.width, self.height))

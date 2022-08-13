@@ -35,6 +35,8 @@ class MovieClipModifier(Resource, Writable):
     def load(self, swf, tag: int):
         self.id = swf.reader.read_ushort()
 
+        Console.info(f"MovieClipModifier: {self.id} - {self.modifier.name}")
+
         self.modifier = Modifier(tag)
 
     def save(self):
@@ -72,9 +74,11 @@ class MovieClip(Resource, Writable):
         frames_count = swf.reader.read_ushort()
         self.frames = [_class() for _class in [MovieClipFrame] * frames_count]
 
-        if tag in [3, 14]:
+        if tag in (3, 14):
             Console.error("Tags MovieClip and MovieClip4 is unsupported! Aborting...")
             raise TypeError()
+        
+        Console.info(f"MovieClip {self.id} - FPS: {self.frame_rate}, {frames_count} frames")
 
         frame_elements = []
         frame_elements_count = swf.reader.read_int()
@@ -100,7 +104,7 @@ class MovieClip(Resource, Writable):
         if tag in (12, 35):
             for x in range(binds_count):
                 blend_index = swf.reader.read_uchar() & 0x3F
-                # reversed = (bind_index >> 6) & 1
+                # reversed = (bind_index >> 6) & 1 # TODO: blend modes
                 self.binds[x]["blend"] = BLENDMODES[blend_index]
 
         for x in range(binds_count):
@@ -130,6 +134,8 @@ class MovieClip(Resource, Writable):
                 continue
 
             elif frame_tag == MovieClip.MOVIECLIP_SCALING_GRID_TAG:
+                Console.warning(f"MovieClip {self.id} has ScalingGrid!")
+
                 self.nine_slice = [swf.reader.read_twip() for _ in range(4)]
                 continue
 
@@ -140,7 +146,7 @@ class MovieClip(Resource, Writable):
             Console.warning(f"MovieClip {self.id} has unknown frame tag {frame_tag} with length {frame_tag_length}! Skipping...")
             swf.reader.skip(frame_tag_length)
 
-    def save(self, swf):
+    def save(self):
         super().save()
 
         self.write_ushort(self.id)

@@ -61,7 +61,6 @@ class SupercellSWF:
         self.matrix_banks: list = []
         self.resources: dict = {}
 
-        self.exports_count: int = 0
         self.exports: dict = {}
 
         self.highres_texture_postfix: str = "_highres"
@@ -72,9 +71,6 @@ class SupercellSWF:
     
     def add_resource(self, resource: Resource):
         self.resources[resource.id] = resource
-    
-    def init_matrix_bank(self, matrices_count: int, color_transforms_count: int):
-        self.matrix_banks.append(MatrixBank(matrices_count, color_transforms_count))
     
     def load(self, filepath: str):
         Console.info(f"Reading {filepath} SupercellFlash asset file...")
@@ -114,14 +110,15 @@ class SupercellSWF:
             self.textures_count = self.reader.read_ushort()
             self.text_fields_count = self.reader.read_ushort()
 
-            matrices_count = self.reader.read_ushort()
-            color_transforms_count = self.reader.read_ushort()
+            matrix_bank = MatrixBank()
+            matrix_bank.load(self)
+            self.matrix_banks.append(matrix_bank)
 
             self.reader.skip(5)  # unused
 
-            self.exports_count = self.reader.read_ushort()
+            exports_count = self.reader.read_ushort()
 
-            export_ids = [self.reader.read_ushort() for x in range(self.exports_count)]
+            export_ids = [self.reader.read_ushort() for x in range(exports_count)]
             self.exports = {id: [] for id in export_ids}
             
             for export_id in export_ids:
@@ -134,8 +131,6 @@ class SupercellSWF:
             print()
             
             self.textures = [_class() for _class in [SWFTexture] * self.textures_count]
-            
-            self.init_matrix_bank(matrices_count, color_transforms_count)
         
         else:
             Console.info("Reading external texture asset file...")
@@ -155,9 +150,6 @@ class SupercellSWF:
         shapes_loaded = 0
         text_fields_loaded = 0
         movieclips_loaded = 0
-
-        last_bank_matrices_count = 0
-        last_bank_colors_count = 0
 
         while True:
             tag = self.reader.read_uchar()
@@ -220,7 +212,12 @@ class SupercellSWF:
 
             elif tag in SupercellSWF.TEXTURE_TAGS:
                 self.textures[textures_loaded].load(self, tag, has_external_texture)
+
                 textures_loaded += 1
+                if textures_loaded > self.textures_count:
+                    Console.error("Trying to load too many SWFTextures! Aborting...")
+                    raise TypeError()
+                
                 continue
 
             elif tag == SupercellSWF.MOVIECLIP_MODIFIERS_COUNT_TAG:
@@ -231,22 +228,26 @@ class SupercellSWF:
                 movieclip_modifier = MovieClipModifier()
                 movieclip_modifier.load(self, tag)
 
-                Console.info(f"MovieClipModifier: {movieclip_modifier.id} - {movieclip_modifier.modifier.name}")
-
                 self.add_resource(movieclip_modifier)
 
                 movieclip_modifiers_loaded += 1
+                if movieclip_modifiers_loaded > self.movieclip_modifiers_count:
+                    Console.error("Trying to load too many MovieClipModifiers! Aborting...")
+                    raise TypeError()
+                
                 continue
 
             elif tag in SupercellSWF.SHAPE_TAGS:
-                Console.progress_bar("Shapes loading...", shapes_loaded, self.shapes_count)
-
                 shape = Shape()
                 shape.load(self, tag)
 
                 self.add_resource(shape)
 
                 shapes_loaded += 1
+                if shapes_loaded > self.shapes_count:
+                    Console.error("Trying to load too many Shapes! Aborting...")
+                    raise TypeError()
+
                 continue
 
             elif tag in SupercellSWF.TEXT_FIELD_TAGS:
@@ -256,13 +257,16 @@ class SupercellSWF:
                 self.add_resource(text_field)
 
                 text_fields_loaded += 1
+                if text_fields_loaded > self.text_fields_count:
+                    Console.error("Trying to load too many TextFields! Aborting...")
+                    raise TypeError()
+                
                 continue
 
             elif tag == SupercellSWF.MATRIX_BANK_TAG:
-                last_bank_matrices_count = self.reader.read_ushort()
-                color_transforms_count = self.reader.read_ushort()
-
-                self.init_matrix_bank(last_bank_matrices_count, color_transforms_count)
+                matrix_bank = MatrixBank()
+                matrix_bank.load(self)
+                self.matrix_banks.append(matrix_bank)
 
                 matrices_loaded = 0
                 color_transforms_loaded = 0
@@ -320,9 +324,164 @@ class SupercellSWF:
                 self.add_resource(movieclip)
 
                 movieclips_loaded += 1
+                if movieclips_loaded > self.movieclips_count:
+                    Console.error("Trying to load too many MovieClips! Aborting...")
+                    raise TypeError()
+                
                 continue
 
             Console.warning(f"{self.filename} has unknown tag {tag} with length {tag_length}! Skipped...")
             self.reader.skip(tag_length)
 
         return has_external_texture
+    
+    def save(self, filepath: str, use_external_texture: bool):
+        self.filename = filepath
+
+        self.save_internal(filepath, use_external_texture, False)
+
+        if use_external_texture:
+            if self.use_uncommon_texture:
+                self.save_internal(self.uncommon_texture_filename, False, True)
+
+            else:
+                texture_filename = os.path.splitext(self.filename)[0] + SupercellSWF.TEXTURE_EXTENSION
+                self.save_internal(texture_filename, False, True)
+
+    def save_internal(self, filepath: str, use_external_texture: bool, is_texture: bool):
+        self.writer = BinaryWriter()
+
+        if not is_texture:
+            # TODO: Fix SC header!!!
+            self.writer.write_ushort(0)
+            self.writer.write_ushort(0)
+            self.writer.write_ushort(len(self.textures))
+            self.writer.write_ushort(0)
+
+            if not self.matrix_banks:
+                self.matrix_banks.append(MatrixBank())
+            
+            matrix_bank = self.matrix_banks[0]
+            _, data = matrix_bank.save()
+            self.writer.write(data)
+
+            self.writer.write(bytes(5)) # unused
+
+            export_ids = []
+            export_names = []
+            for export_id in self.exports:
+                for export_name in self.exports[export_id]:
+                    export_ids.append(export_id)
+                    export_names.append(export_name)
+            
+            self.writer.write_ushort(len(export_ids))
+            
+            for export_id in export_ids:
+                self.writer.write_ushort(export_id)
+            
+            for export_name in export_names:
+                self.writer.write_ascii(export_name)
+
+        self.save_tags(use_external_texture, is_texture)
+
+        with open(filepath, 'wb') as file:
+            compressor = Compressor()
+            file.write(compressor.compress(self.writer.buffer, Signatures.SC, 1))
+
+    def save_tags(self, use_external_texture: bool, is_texture: bool):
+        def save_tag(tag, data):
+            self.writer.write_uchar(tag)
+            self.writer.write_int(len(data))
+            self.writer.write(data)
+
+        if is_texture:
+            for texture in self.textures:
+                tag, data = texture.load(use_external_texture)
+                save_tag(tag, data)
+            
+            return
+        
+        if self.use_lowres_texture:
+            save_tag(SupercellSWF.USE_LOWRES_TEXTURE_TAG, bytes())
+
+        if use_external_texture:
+            save_tag(SupercellSWF.USE_EXTERNAL_TEXTURE_TAG, bytes())
+
+        if self.use_uncommon_texture:
+            save_tag(SupercellSWF.USE_UNCOMMON_RESOLUTION_TAG, bytes())
+        
+        for texture in self.textures:
+            tag, data = texture.load(use_external_texture)
+            save_tag(tag, data)
+        
+        movieclip_modifiers = []
+        shapes = []
+        text_fields = []
+        movieclips = []
+
+        for id in self.resources:
+            resource = self.resources[id]
+
+            if isinstance(resource, MovieClipModifier):
+                movieclip_modifiers.append(resource)
+            
+            elif isinstance(resource, Shape):
+                shapes.append(resource)
+            
+            elif isinstance(resource, TextField):
+                text_fields.append(resource)
+            
+            elif isinstance(resource, MovieClip):
+                movieclips.append(resource)
+        
+        for movieclip_modifier in movieclip_modifiers:
+            tag, data = movieclip_modifier.save()
+            save_tag(tag, data)
+        
+        for shape in shapes:
+            tag, data = shape.save(self)
+            save_tag(tag, data)
+        
+        for text_field in text_fields:
+            tag, data = text_field.save()
+            save_tag(tag, data)
+        
+        for i, matrix_bank in enumerate(self.matrix_banks):
+            if i > 0:
+                tag, data = matrix_bank.save()
+                save_tag(tag, data)
+
+            for matrix in matrix_bank.matrices:
+                a, b, c, d, tx, ty = matrix
+
+                self.writer.write_uchar(8)
+                self.writer.write_int(24)
+
+                self.writer.write_int(int(round(a * 1024)))
+                self.writer.write_int(int(round(b * 1024)))
+                self.writer.write_int(int(round(c * 1024)))
+                self.writer.write_int(int(round(d * 1024)))
+
+                self.writer.write_twip(tx)
+                self.writer.write_twip(ty)
+
+            for color_transform in matrix_bank.color_transforms:
+                r_add, g_add, b_add, _, r_mul, g_mul, b_mul, a_mul = color_transform
+                
+                self.writer.write_uchar(9)
+                self.writer.write_int(7)
+                
+                self.writer.write_uchar(r_add)
+                self.writer.write_uchar(g_add)
+                self.writer.write_uchar(b_add)
+
+                self.writer.write_uchar(r_mul)
+                self.writer.write_uchar(g_mul)
+                self.writer.write_uchar(b_mul)
+                self.writer.write_uchar(a_mul)
+        
+        for movieclip in movieclips:
+            tag, data = movieclip.save()
+            save_tag(tag, data)
+        
+        self.writer.write(bytes(5)) # end tag

@@ -40,6 +40,8 @@ class Shape(Resource, Writable):
         points_count = 4 * bitmaps_count
         if tag == 18:
             points_count = swf.reader.read_ushort()
+        
+        Console.info(f"Shape {self.id} - {bitmaps_count} bitmaps")
 
         bitmaps_loaded = 0
         while True:

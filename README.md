@@ -29,8 +29,9 @@ Please **WATCH ALL THE VIDEOS BELOW** before using this tool!
 4. Creating sprite sheets/texture atlases in TexturePacker.
 5. Converting Adobe Animate project to `.sc` file.
 
-## TODO List
-- Add TexturePacker projects support
-- Refactor some code in ```lib/sc```
-- Refactor some code in ```lib/fla```
+## TODO
+- Add TexturePacker projects support.
+- Refactor some code in ```lib/sc```.
+- Write code in ```lib/fla```.
+- Add ```sc_export.py``` functional.
 - Rewrite it with C++ or C# in future...

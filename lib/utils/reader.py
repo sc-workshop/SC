@@ -9,7 +9,7 @@ class BinaryReader(BytesIO):
         self.read(size)
     
     def read_bool(self):
-        return bool.from_bytes(self.read(1), "little")
+        return self.read_uchar() >= 1
 
     def read_char(self):
         return int.from_bytes(self.read(1), "little", signed=True)

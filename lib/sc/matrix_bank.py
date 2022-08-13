@@ -1,10 +1,9 @@
-class MatrixBank:
-    def __init__(self, matrices_count: int = 0, color_transforms_count: int = 0) -> None:
-        self.matrices_count = matrices_count
-        self.color_transforms_count = color_transforms_count
-        
-        self.matrices: list = [[1, 0, 0, 1, 0, 0]] * self.matrices_count
-        self.color_transforms: list = [[0, 0, 0, 0, 1, 1, 1, 1]] * self.color_transforms_count
+from .writable import Writable
+
+class MatrixBank(Writable):
+    def __init__(self) -> None:
+        self.matrices_count: int = 0
+        self.color_transforms_count: int = 0
 
     def get_matrix(self, matrix: list):
         if matrix not in self.matrices:
@@ -17,3 +16,18 @@ class MatrixBank:
             return None
 
         return self.color_transforms[self.color_transforms.index(color_transform)]
+    
+    def load(self, swf):
+        self.matrices_count = swf.reader.read_ushort()
+        self.color_transforms_count = swf.reader.read_ushort()
+
+        self.matrices: list = [[1.0, 0.0, 0.0, 1.0, 0.0, 0.0]] * self.matrices_count
+        self.color_transforms: list = [[0, 0, 0, 0, 1.0, 1.0, 1.0, 1.0]] * self.color_transforms_count
+
+    def save(self):
+        super().save()
+
+        self.write_ushort(len(self.matrices))
+        self.write_ushort(len(self.color_transforms))
+
+        return 42, self.buffer

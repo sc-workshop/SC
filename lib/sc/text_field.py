@@ -1,6 +1,8 @@
 from .resource import Resource
 from .writable import Writable
 
+from lib.console import Console
+
 
 class TextField(Resource, Writable):
     def __init__(self) -> None:
@@ -36,6 +38,8 @@ class TextField(Resource, Writable):
         
         self.font_name = swf.reader.read_ascii()
         self.font_color = swf.reader.read_int()
+
+        Console.info(f"TextField {self.id} - Font: {self.font_name}")
 
         self.bold = swf.reader.read_bool()
         self.italic = swf.reader.read_bool()
