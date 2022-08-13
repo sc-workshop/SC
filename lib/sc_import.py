@@ -28,10 +28,10 @@ def sc_to_fla(filepath):
 
     fla = prepare_document()
 
-    startup = DOMDocument()
-    startup.load("lib/scwmake_credit")
+    # startup = DOMDocument()
+    # startup.load("lib/scwmake_credit")
 
-    fla.timelines = startup.timelines
+    # fla.timelines = startup.timelines
 
     proceed_resources(fla, swf)
 
