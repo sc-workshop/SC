@@ -191,12 +191,6 @@ class ShapeDrawBitmapCommand(Writable):
     def get_matrix(self, custom_uv_coords: list = None, use_nearest: bool = False):
         uv_coords = custom_uv_coords or self.uv_coords
 
-        scale_x, scale_y = self.get_size(uv_coords)
-
-        if scale_x <= 1 or scale_y <= 1:  # TODO fix this
-            uv_coords = [[0, 0], [scale_x, 0], [scale_x, scale_y], [0, scale_y]]
-            return estimate(uv_coords, self.xy_coords), uv_coords, 0, False
-
         rotation = 0
         mirroring = False
         if use_nearest:
@@ -218,7 +212,7 @@ class ShapeDrawBitmapCommand(Writable):
 
         sprite_box = []
 
-        for idx, _ in enumerate(uv_coords):
+        for idx in range(len(uv_coords)):
             if idx == 0:
                 sprite_box.append([0, 0])
             else:
@@ -234,7 +228,16 @@ class ShapeDrawBitmapCommand(Writable):
             if sprite_box[idx][1] < 0:
                 sprite_box = [[x, y - sprite_box[idx][1]] for x, y in sprite_box]
 
-        transform = estimate(sprite_box, self.xy_coords)
+        scale_x, scale_y = self.get_size(sprite_box)
+        if scale_x <= 1:
+            sprite_box = [[0, scale_y], [1, scale_y], [1, 0], [0, 0]]
+        elif scale_y <= 1:
+            sprite_box = [[0, 0], [scale_x, 0], [scale_x, 1], [0, 1]]
+        try:
+            transform = estimate(sprite_box, self.xy_coords)
+        except:
+            print()
+
 
 
         return transform, sprite_box, rotation, mirroring
