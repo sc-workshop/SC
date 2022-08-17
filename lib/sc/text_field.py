@@ -17,7 +17,7 @@ class TextField(Resource, Writable):
         self.bold: bool = False
         self.italic: bool = False
         self.multiline: bool = False
-        self.uppercase: bool = False
+        self.outline: bool = False
 
         self.left_corner: int = 0
         self.top_corner: int = 0
@@ -47,12 +47,12 @@ class TextField(Resource, Writable):
         self.font_align = swf.reader.read_uchar()
         self.font_size = swf.reader.read_uchar()
 
-        self.left_corner = swf.reader.read_short()
         self.top_corner = swf.reader.read_short()
-        self.right_corner = swf.reader.read_short()
         self.bottom_corner = swf.reader.read_short()
+        self.left_corner = swf.reader.read_short()
+        self.right_corner = swf.reader.read_short()
 
-        self.uppercase = swf.reader.read_bool()
+        self.outline = swf.reader.read_bool()
         self.text = swf.reader.read_ascii()
 
         if tag == 7:
@@ -96,12 +96,12 @@ class TextField(Resource, Writable):
         self.write_uchar(self.font_align)
         self.write_uchar(self.font_size)
 
-        self.write_short(self.left_corner)
         self.write_short(self.top_corner)
-        self.write_short(self.right_corner)
         self.write_short(self.bottom_corner)
+        self.write_short(self.left_corner)
+        self.write_short(self.right_corner)
 
-        self.write_bool(self.uppercase)
+        self.write_bool(self.outline)
         self.write_ascii(self.text)
 
         if self.flag1 is not None:
