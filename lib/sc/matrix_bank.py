@@ -2,6 +2,7 @@ from .writable import Writable
 
 class MatrixBank(Writable):
     def __init__(self) -> None:
+        self.index: int = 0
         self.matrices_count: int = 0
         self.color_transforms_count: int = 0
 

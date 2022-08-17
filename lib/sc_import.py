@@ -255,11 +255,11 @@ def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None)
 
             # Symbols instance
             if isinstance(bind_resource, Shape):
-                if movieclip.nine_slice:
+                '''if movieclip.nine_slice:
                     bind_instance = patch_shape_nine_slice(fla, bind_resource)
 
-                else:
-                    bind_instance = DOMSymbolInstance(library_item_name=f"shapes/shape_{bind['id']}")
+                else:'''
+                bind_instance = DOMSymbolInstance(library_item_name=f"shapes/shape_{bind['id']}")
 
             elif isinstance(bind_resource, MovieClip):
                 bind_instance = DOMSymbolInstance(name=bind["name"],

@@ -34,12 +34,10 @@ class TextField(Resource, Writable):
         self.c2: int = None  # 0
 
     def load(self, swf, tag: int):
-        self.id = swf.reader.read_ushort()
+        id = swf.reader.read_ushort()
         
         self.font_name = swf.reader.read_ascii()
         self.font_color = swf.reader.read_int()
-
-        Console.info(f"TextField {self.id} - Font: {self.font_name}")
 
         self.bold = swf.reader.read_bool()
         self.italic = swf.reader.read_bool()
@@ -58,7 +56,7 @@ class TextField(Resource, Writable):
         self.text = swf.reader.read_ascii()
 
         if tag == 7:
-            return
+            return id
 
         self.flag1 = swf.reader.read_bool()
 
@@ -78,12 +76,14 @@ class TextField(Resource, Writable):
         if tag > 43:
             self.flag3 = swf.reader.read_bool()
 
-    def save(self):
+        return id
+
+    def save(self, id: int):
         super().save()
 
         tag = 7
 
-        self.write_ushort(self.id)
+        self.write_ushort(id)
 
         self.write_ascii(self.font_name)
         self.write_int(self.font_color)
@@ -132,3 +132,28 @@ class TextField(Resource, Writable):
                                         self.write_bool(self.flag3)
 
         return tag, self.buffer
+
+    def __eq__(a, b):
+        if type(a) == type(b):
+            if a.font_name == b.font_name\
+                    and a.font_color == b.font_color\
+                    and a.outline_color == b.outline_color\
+                    and a.font_size == b.font_size\
+                    and a.font_size == b.font_size\
+                    and a.font_align == b.font_align\
+                    and a.bold == b.bold\
+                    and a.italic == b.italic\
+                    and a.multiline == b.multiline\
+                    and a.uppercase == b.uppercase\
+                    and a.left_corner == b.left_corner\
+                    and a.top_corner == b.top_corner\
+                    and a.right_corner == b.right_corner\
+                    and a.bottom_corner == b.bottom_corner\
+                    and a.text == b.text\
+                    and a.flag1 == b.flag1\
+                    and a.flag2 == b.flag2\
+                    and a.flag3 == b.flag3\
+                    and a.c1 == b.c1\
+                    and a.c2 == b.c2:
+                return True
+        return False

@@ -21,6 +21,7 @@ BLENDMODES = [
 
 
 class Modifier(Enum):
+    Unknown = 37
     Mask = 38
     Masked = 39
     Unmasked = 40
@@ -33,20 +34,25 @@ class MovieClipModifier(Resource, Writable):
         self.modifier: Modifier = Modifier.Mask
 
     def load(self, swf, tag: int):
-        self.id = swf.reader.read_ushort()
-
-        Console.info(f"MovieClipModifier: {self.id} - {self.modifier.name}")
-
         self.modifier = Modifier(tag)
 
-    def save(self):
+        return swf.reader.read_ushort()
+
+    def save(self, id: int):
         super().save()
 
-        self.write_ushort(self.id)
+        self.write_ushort(id)
 
         tag = self.modifier.value
 
         return tag, self.buffer
+
+    def __eq__(a, b):
+        if type(a) == type(b):
+            if a.modifier == b.modifier:
+                return True
+
+        return False
 
 
 class MovieClip(Resource, Writable):
@@ -68,7 +74,7 @@ class MovieClip(Resource, Writable):
         self.matrix_bank: int = 0
 
     def load(self, swf, tag: int):
-        self.id = swf.reader.read_ushort()
+        id = swf.reader.read_ushort()
 
         self.frame_rate = swf.reader.read_uchar()
         frames_count = swf.reader.read_ushort()
@@ -77,8 +83,7 @@ class MovieClip(Resource, Writable):
         if tag in (3, 14):
             Console.error("Tags MovieClip and MovieClip4 is unsupported! Aborting...")
             raise TypeError()
-        
-        Console.info(f"MovieClip {self.id} - FPS: {self.frame_rate}, {frames_count} frames")
+
 
         frame_elements = []
         frame_elements_count = swf.reader.read_int()
@@ -134,8 +139,6 @@ class MovieClip(Resource, Writable):
                 continue
 
             elif frame_tag == MovieClip.MOVIECLIP_SCALING_GRID_TAG:
-                Console.warning(f"MovieClip {self.id} has ScalingGrid!")
-
                 self.nine_slice = [swf.reader.read_twip() for _ in range(4)]
                 continue
 
@@ -146,10 +149,12 @@ class MovieClip(Resource, Writable):
             Console.warning(f"MovieClip {self.id} has unknown frame tag {frame_tag} with length {frame_tag_length}! Skipping...")
             swf.reader.skip(frame_tag_length)
 
-    def save(self):
+        return id
+
+    def save(self, id: int, ids: list):
         super().save()
 
-        self.write_ushort(self.id)
+        self.write_ushort(id)
         self.write_uchar(self.frame_rate)
         self.write_ushort(len(self.frames))
 
@@ -167,7 +172,7 @@ class MovieClip(Resource, Writable):
         self.write_ushort(len(self.binds))
 
         for bind in self.binds:
-            self.write_ushort(bind["id"])
+            self.write_ushort(ids[bind["id"]])
 
         for bind in self.binds:
             self.write_uchar(BLENDMODES.index(bind["blend"]) & 0x3F)
@@ -202,7 +207,16 @@ class MovieClip(Resource, Writable):
         # TODO: add support for tag 35 (idk where difference, but it's also used in games)
         return 12, self.buffer
 
+    def __eq__(a, b):
+        if type(a) == type(b):
+            if a.frame_rate == b.frame_rate\
+                    and a.binds == b.binds\
+                    and a.frames == b.frames\
+                    and a.nine_slice == b.nine_slice\
+                    and a.matrix_bank == b.matrix_bank:
+                return True
 
+        return False
 class MovieClipFrame(Writable):
     def __init__(self) -> None:
         self.elements: list = []
@@ -221,3 +235,8 @@ class MovieClipFrame(Writable):
         self.write_ascii(self.name)
 
         return 11, self.buffer
+
+    def __eq__(a, b):
+        if a.name == b.name\
+                and a.elements == b.elements:
+            return False

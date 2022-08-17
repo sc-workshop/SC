@@ -8,7 +8,7 @@ from lib import sc_to_fla, fla_to_sc
 from sc_compression.signatures import Signatures
 from sc_compression import Decompressor, Compressor
 
-
+from lib.console import Console, Time
 
 def main():
     parser = argparse.ArgumentParser(description="SC tool by SCW Make - github.com/scwmake/SC")
@@ -44,9 +44,10 @@ def main():
         file = args.compress
 
         compressor = Compressor()
-        compressed = compressor.decompress(open(file, 'rb').read(), Signatures.SC, 1)
+        compressed = compressor.compress(open(file, 'rb').read(), Signatures.SC, 1)
 
         open(file + ".cmp", 'wb').write(compressed)
+
 
     # elif args.decompile_json:
     #     print("Decompile to JSON")
@@ -55,11 +56,16 @@ def main():
     #     print("Compile from JSON")
 
     else:
-        pass
+        Console.title("SC tool by SCW Make - github.com/scwmake/SC")
+        print("-d, --decompile : Convert *.sc file to *.fla")
+        print("-c, --compile : Convert *.fla to *.sc file")
+        print("-dx, --decompress : Decompress *.sc files with Supercell compression")
+        print("-cx, --compress : Compress *.sc files with Supercell compression (LZMA | SC | version 1)")
+        exit(0)
 
     result_time = time.time() - start_time
 
-    print(f"Done in {result_time} seconds!")
+    print(f"Done in {Time(result_time)} seconds!")
 
 
 if __name__ == "__main__":

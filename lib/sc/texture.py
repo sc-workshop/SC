@@ -191,15 +191,16 @@ class SWFTexture(Writable):
             self.mag_filter = "GL_NEAREST"
             self.min_filter = "GL_NEAREST"
 
-        self.linear = True if tag not in [27, 28, 29] else False
-        self.downscaling = True if tag in [1, 16, 28, 29] else False
+        self.linear = tag in [27, 28, 29]
+        self.downscaling = tag in [1, 16, 28, 29]
 
         self.width = swf.reader.read_ushort()
         self.height = swf.reader.read_ushort()
 
-        Console.info(f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
-
         if not has_external_texture:
+            Console.info(
+                f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
+
             self.image = Image.new(MODES_TABLE[self.pixel_format], (self.width, self.height))
             loaded = self.image.load()
 
@@ -207,7 +208,7 @@ class SWFTexture(Writable):
 
             read_pixel = PIXEL_READ_FUNCTIONS[self.pixel_internal_format]
 
-            if self.linear:
+            if not self.linear:
                 for y in range(self.height):
                     for x in range(self.width):
                         loaded[x, y] = read_pixel(swf)
@@ -238,14 +239,14 @@ class SWFTexture(Writable):
                                 loaded[pixel_x, pixel_y] = read_pixel(swf)
                     
                     Console.progress_bar("Loading splitted texture data...", y_block, y_blocks + 1)
-                print()
             print()
 
     def save(self, has_external_texture: bool):
         super().save()
 
         if self.image is not None:
-            self.height, self.width, self.channels = CHANNLES_TABLE[self.image.mode]
+            self.channels = CHANNLES_TABLE[self.image.mode]
+            self.width, self.height = self.image.size
 
         if self.channels == 4:
             self.pixel_format = "GL_RGBA"
@@ -278,7 +279,7 @@ class SWFTexture(Writable):
 
         tag = 1
         if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_NEAREST"):
-            if not self.linear:
+            if self.linear:
                 tag = 27 if not self.downscaling else 28
             else:
                 tag = 24 if not self.downscaling else 1
@@ -297,24 +298,26 @@ class SWFTexture(Writable):
         self.write_ushort(self.width)
         self.write_ushort(self.height)
 
+        Console.info(
+            f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
+
         if not has_external_texture:
             loaded = self.image.load()
 
             write_pixel = PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format]
 
-            if not self.linear:
+            if self.linear:
                 loaded_clone = self.image.copy().load()
 
                 def add_pixel(pixel: tuple):
                     loaded[pixel_index % self.width, pixel_index // self.width] = pixel
-                
+
                 block_size = 32
 
                 x_blocks = self.width // block_size
                 y_blocks = self.height // block_size
-                
-                pixel_index = 0
 
+                pixel_index = 0
                 for y_block in range(y_blocks + 1):
                     for x_block in range(x_blocks + 1):
                         for y in range(block_size):
@@ -331,11 +334,14 @@ class SWFTexture(Writable):
 
                                 add_pixel(loaded_clone[pixel_x, pixel_y])
                                 pixel_index += 1
-                
+
                 loaded = loaded_clone
-            
+
             for y in range(self.height):
+                Console.progress_bar("Writing texture data...", y, self.height)
                 for x in range(self.width):
                     write_pixel(self, loaded[x, y])
+
+            print()
 
         return tag, self.buffer

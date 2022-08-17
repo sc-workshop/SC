@@ -32,7 +32,7 @@ class Shape(Resource, Writable):
         self.bitmaps: list = []
 
     def load(self, swf, tag: int):
-        self.id = swf.reader.read_ushort()
+        id = swf.reader.read_ushort()
 
         bitmaps_count = swf.reader.read_ushort()
         self.bitmaps = [_class() for _class in [ShapeDrawBitmapCommand] * bitmaps_count]
@@ -40,8 +40,6 @@ class Shape(Resource, Writable):
         points_count = 4 * bitmaps_count
         if tag == 18:
             points_count = swf.reader.read_ushort()
-        
-        Console.info(f"Shape {self.id} - {bitmaps_count} bitmaps")
 
         bitmaps_loaded = 0
         while True:
@@ -64,10 +62,12 @@ class Shape(Resource, Writable):
                 f"Shape {self.id} has unknown command tag {bitmap_tag} with length {bitmap_tag_length}! Skipping...")
             swf.reader.skip(bitmap_tag_length)
 
-    def save(self, swf):
+        return id
+
+    def save(self, swf, id: int):
         super().save()
 
-        self.write_ushort(self.id)
+        self.write_ushort(id)
         self.write_ushort(len(self.bitmaps))
 
         points_count = 0
@@ -93,6 +93,12 @@ class Shape(Resource, Writable):
         self.write(bytes(5))  # end tag for bitmap tags array
 
         return tag, self.buffer
+
+    def __eq__(a, b):
+        if type(a) == type(b):
+            if a.bitmaps == b.bitmaps:
+                return True
+        return False
 
 
 class ShapeDrawBitmapCommand(Writable):
@@ -304,3 +310,11 @@ class ShapeDrawBitmapCommand(Writable):
         xy_x, xy_y = get_size(self.xy_coords)
 
         return uv_x / xy_x, uv_y / xy_y
+
+    def __eq__(a, b):
+        if a.max_rects == b.max_rects\
+                and a.uv_coords == b.uv_coords\
+                and a.xy_coords == b.xy_coords\
+                and a.texture_index == b.texture_index:
+            return True
+        return False
