@@ -21,7 +21,6 @@ BLENDMODES = [
 
 
 class Modifier(Enum):
-    Unknown = 37
     Mask = 38
     Masked = 39
     Unmasked = 40

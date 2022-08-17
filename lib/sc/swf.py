@@ -323,13 +323,13 @@ class SupercellSWF:
             Console.warning(f"{self.filename} has unknown tag {tag} with length {tag_length}! Skipped...")
             self.reader.skip(tag_length)
     
-    def save(self, filepath: str, use_external_texture: bool = False):
+    def save(self, filepath: str):
         Console.info(f"Writing {filepath} SupercellFlash asset file...")
         print()
 
         self.filename = filepath
 
-        self.save_internal(filepath, use_external_texture, False, False)
+        self.save_internal(filepath, False, False)
 
         if self.has_external_texture:
             texture_filename = os.path.splitext(self.filename)[0] + self.TEXTURE_EXTENSION
@@ -337,15 +337,15 @@ class SupercellSWF:
             lowres_path = f"{os.path.splitext(self.filename)[0]}{self.lowres_texture_postfix}{self.TEXTURE_EXTENSION}"
 
             if self.use_uncommon_texture:
-                self.save_internal(highres_path, False, True, False)
+                self.save_internal(highres_path, True, False)
 
             else:
-                self.save_internal(texture_filename, False, True, False)
+                self.save_internal(texture_filename, True, False)
 
             if self.use_lowres_texture:
-                self.save_internal(lowres_path, False, True, True)
+                self.save_internal(lowres_path, True, True)
 
-    def save_internal(self, filepath: str, use_external_texture: bool, is_texture: bool, is_lowres: bool):
+    def save_internal(self, filepath: str, is_texture: bool, is_lowres: bool):
         self.writer = BinaryWriter()
 
         sorted_resources_id = []
@@ -426,19 +426,20 @@ class SupercellSWF:
             Console.info("Writing external texture asset file...")
             print()
 
-        self.save_tags((sorted_resources_id, sorted_resources), id_list, use_external_texture, is_texture, is_lowres)
+        self.save_tags((sorted_resources_id, sorted_resources), id_list, is_texture, is_lowres)
         print()
 
         with open(filepath, 'wb') as file:
             Console.info("File compressing...")
             compressor = Compressor()
-            compressed = compressor.compress(self.writer.buffer, Signatures.SC, 1)
+            #compressed = compressor.compress(self.writer.buffer, Signatures.SC, 1)
             Console.info("Writing to file..")
-            file.write(compressed)
+            file.write(self.writer.buffer)
+            #file.write(compressed)
 
         Console.info("Writing completed.")
 
-    def save_tags(self, resources, id_list, use_external_texture: bool, is_texture: bool, is_lowres: bool):
+    def save_tags(self, resources, id_list, is_texture: bool, is_lowres: bool):
         written_shapes = 0
         written_movieclips = 0
         written_fields = 0
@@ -455,16 +456,14 @@ class SupercellSWF:
                     w, h = texture.image.size
                     texture.image = texture.image.resize((int(w / 2), int(h / 2)))
 
-                texture.linear = True
-                tag, data = texture.save(use_external_texture)
+                tag, data = texture.save(False)
                 save_tag(tag, data)
-            
             return
         
         if self.use_uncommon_texture:
             save_tag(SupercellSWF.USE_UNCOMMON_RESOLUTION_TAG, bytes())
 
-        if use_external_texture:
+        if self.has_external_texture:
             save_tag(SupercellSWF.USE_EXTERNAL_TEXTURE_TAG, bytes())
 
         if not self.use_uncommon_texture and self.use_lowres_texture:
@@ -475,7 +474,7 @@ class SupercellSWF:
                 texture = copy.deepcopy(texture)
                 texture.linear = False
 
-            tag, data = texture.save(use_external_texture)
+            tag, data = texture.save(self.has_external_texture)
             save_tag(tag, data)
 
         if self.movieclip_modifiers_count:

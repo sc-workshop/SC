@@ -191,7 +191,7 @@ class SWFTexture(Writable):
             self.mag_filter = "GL_NEAREST"
             self.min_filter = "GL_NEAREST"
 
-        self.linear = tag in [27, 28, 29]
+        self.linear = tag not in [27, 28, 29]
         self.downscaling = tag in [1, 16, 28, 29]
 
         self.width = swf.reader.read_ushort()
@@ -208,7 +208,7 @@ class SWFTexture(Writable):
 
             read_pixel = PIXEL_READ_FUNCTIONS[self.pixel_internal_format]
 
-            if not self.linear:
+            if self.linear:
                 for y in range(self.height):
                     for x in range(self.width):
                         loaded[x, y] = read_pixel(swf)
@@ -279,7 +279,7 @@ class SWFTexture(Writable):
 
         tag = 1
         if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_NEAREST"):
-            if self.linear:
+            if not self.linear:
                 tag = 27 if not self.downscaling else 28
             else:
                 tag = 24 if not self.downscaling else 1
@@ -306,7 +306,7 @@ class SWFTexture(Writable):
 
             write_pixel = PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format]
 
-            if self.linear:
+            if not self.linear:
                 loaded_clone = self.image.copy().load()
 
                 def add_pixel(pixel: tuple):

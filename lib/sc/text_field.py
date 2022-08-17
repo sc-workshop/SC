@@ -144,7 +144,6 @@ class TextField(Resource, Writable):
                     and a.bold == b.bold\
                     and a.italic == b.italic\
                     and a.multiline == b.multiline\
-                    and a.uppercase == b.uppercase\
                     and a.left_corner == b.left_corner\
                     and a.top_corner == b.top_corner\
                     and a.right_corner == b.right_corner\
