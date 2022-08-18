@@ -1,458 +1,281 @@
-from xml.etree.ElementTree import *
+from lxml.etree import *
 from os import path
 import numpy as np
 
 
+class Enum:
+    def __init__(self, key=None, value=None) -> None:
+        self.key = key
+        self.value = value
 
+
+class Map:
+    def __init__(self, type: str, keys: list, values: list) -> None:
+        self.type = type
+
+        self.keys = keys
+        self.values = values
+
+
+class Rect:
+    def __init__(self, left: int, right: int, bottom: int, top: int) -> None:
+        self.left = left
+        self.right = right
+        self.bottom = bottom
+        self.top = top
+
+
+class PointF:
+    def __init__(self, x: float, y: float) -> None:
+        self.x = x
+        self.y = y
+
+
+class QSize:
+    def __init__(self, width: int, height: int) -> None:
+        self.width = width
+        self.height = height
+
+
+class FileName:
+    def __init__(self, filename: str) -> None:
+        self.filename = filename
+
+
+def load_variable(variable):
+    tag = variable.tag
+
+    if tag == 'string':
+        if not variable.text:
+            return ""
+        return variable.text
+
+    elif tag == 'int':
+        return int(variable.text)
+
+    elif tag == "uint":
+        return np.uint(int(variable.text))
+
+    elif tag == 'true':
+        return True
+
+    elif tag == 'false':
+        return False
+
+    elif tag == 'double':
+        return float(variable.text)
+
+    elif tag == 'array':
+        return [load_variable(var) for var in variable]
+
+    elif tag == 'enum':
+        return Enum(variable.attrib["type"], variable.text)
+
+    elif tag == 'map':
+        map_keys = []
+        map_values = []
+
+        active_key_index = 0
+        active_key = False
+        for i, map_key in enumerate(variable):
+            if map_key.tag == "key":
+                if active_key:
+                    map_keys[active_key_index].append(map_key.text)
+                else:
+                    active_key = True
+                    map_keys.append([map_key.text])
+                    active_key_index = map_keys.index([map_key.text])
+            else:
+                active_key = False
+                map_values.append(load_variable(map_key))
+
+        return Map(variable.attrib['type'], map_keys, map_values)
+
+    elif tag == 'struct':
+        return {variable.attrib["type"]:
+                    {struct_var.text: load_variable(variable[i + 1]) for i, struct_var in enumerate(variable) if struct_var.tag == "key"}}
+
+    elif tag == 'rect':
+        point = variable.text.split(',')
+        return Rect(float(point[0]), float(point[1]), float(point[2]), float(point[3]))
+
+    elif tag == 'point_f':
+        point = variable.text.split(',')
+        return PointF(float(point[0]), float(point[1]))
+
+    elif tag == 'QSize':
+        width = 0
+        height = 0
+        for i, key in enumerate(variable):
+            if key.tag == "key":
+                if key.text == "width":
+                    width = load_variable(variable[i + 1])
+                elif key.text == "height":
+                    height = load_variable(variable[i + 1])
+
+        return QSize(width, height)
+
+    elif tag == 'filename':
+        return FileName(variable.text)
+
+    else:
+        raise TypeError(f"Unknown TexturePacker data type {tag}!")
+
+def write_variable(variable):
+
+    if isinstance(variable, bool):
+        element = Element('true' if variable else 'false')
+
+    elif isinstance(variable, str):
+        element = Element('string')
+        element.text = variable
+
+    elif isinstance(variable, int):
+        element = Element('int')
+        element.text = str(variable)
+
+    elif isinstance(variable, np.uint):
+        element = Element('uint')
+        element.text = str(variable)
+
+    elif isinstance(variable, float):
+        element = Element('double')
+        element.text = str(variable)
+
+    elif isinstance(variable, Enum):
+        element = Element('enum', {"type": variable.key})
+        element.text = variable.value
+
+    elif isinstance(variable, list):
+        element = Element("array")
+        for array in variable:
+            element.append(write_variable(array))
+
+    elif isinstance(variable, Map):
+        element = Element("map", {'type': variable.type})
+
+        for keys, value in zip(variable.keys, variable.values):
+            for key in keys:
+                map_key = Element('key')
+                map_key.text = key
+                element.append(map_key)
+            element.append(write_variable(value))
+
+    elif isinstance(variable, dict):
+        key = list(variable)[0]
+        element = Element('struct', {'type': key})
+        for value in variable[key]:
+            key_element = Element("key")
+            key_element.text = value
+            element.append(key_element)
+            element.append(write_variable(variable[key][value]))
+
+    elif isinstance(variable, Rect):
+        element = Element('rect')
+        element.text = f"{variable.left},{variable.right},{variable.top},{variable.bottom}"
+
+    elif isinstance(variable, PointF):
+        element = Element("point_f")
+        element.text = f"{variable.x},{variable.y}"
+
+    elif isinstance(variable, QSize):
+        element = Element("QSize")
+        width = Element("key")
+        width.text = "width"
+        height = Element("key")
+        height.text = "height"
+
+        element.append(width)
+        element.append(write_variable(variable.width))
+        element.append(height)
+        element.append(write_variable(variable.height))
+
+    elif isinstance(variable, FileName):
+        element = Element("filename")
+        element.text = variable.filename
+
+    else:
+        raise TypeError(f"Unknown data type {type(variable)}")
+
+    return element
 
 class TexturePackerProject:
-    class Settings:
-        def __init__(self) -> None:
-            pass
-    
-    class Enum:
-        def __init__(self, key = None, value = None) -> None:
-            self.key = key
-            self.value = value
-
-    class Map:
-        def __init__(self, type: str, keys: list, values: list) -> None:
-            self.type = type
-
-            self.keys = keys
-            self.values = values
-
-    class Rect:
-        def __init__(self, left: int, right: int, bottom: int, top: int) -> None:
-            self.left = left
-            self.right = right
-            self.bottom = bottom
-            self.top = top
-
-    class PointF:
-        def __init__(self, x: float, y: float) -> None:
-            self.x = x
-            self.y = y
-
-    class QSize:
-        def __init__(self, width: int, height: int) -> None:
-            self.width = width
-            self.height = height
-
-    class FileName:
-        def __init__(self, filename: str) -> None:
-            self.filename = filename
-
     def __init__(self) -> None:
         self.data: list = []
-    
+
+    def init(self):
+        self.data = [{'Settings':
+                          {'fileFormatVersion': 5,
+                           'texturePackerVersion': '6.0.1',
+                           'allowRotation': True,
+                           'shapeDebug': False,
+                           'dpi': 72,
+                           'dataFormat': 'json-array',
+                           'textureFileName': FileName(""),
+                           'ditherType': Enum("SettingsBase::DitherType", "NearestNeighbour"),
+                           'backgroundColor': 0,
+                            'shapePadding': 0,
+                           'jpgQuality': 80,
+                           'pngOptimizationLevel': 1,
+                           'textureSubPath': "",
+                           'textureFormat': Enum("SettingsBase::TextureFormat", "png"),
+                           'borderPadding': 0,
+                           'maxTextureSize': QSize(2048, 2048),
+                           'fixedTextureSize': QSize(-1, -1),
+                           'algorithmSettings':
+                               {'AlgorithmSettings':
+                                    {'algorithm': Enum("AlgorithmSettings::AlgorithmId", "MaxRects"),
+                                     'freeSizeMode': Enum("AlgorithmSettings::AlgorithmFreeSizeMode", "Best"),
+                                     'sizeConstraints': Enum("AlgorithmSettings::SizeConstraints", "AnySize"),
+                                     'forceSquared': False,
+                                     'maxRects':
+                                         {'AlgorithmMaxRectsSettings':
+                                              {'heuristic': Enum("AlgorithmMaxRectsSettings::Heuristic", "Best")}},
+                                     'basic':
+                                         {'AlgorithmBasicSettings':
+                                              {'sortBy': Enum("AlgorithmBasicSettings::SortBy", "Best"),
+                                               'order': Enum("AlgorithmBasicSettings::Order", "Ascending")}},
+                                     'polygon':
+                                         {'AlgorithmPolygonSettings':
+                                              {'alignToGrid': 1}}}},
+                           'dataFileNames': Map("GFileNameMap", ["data"], [[{"DataFile": {"name": FileName()}}]]),
+                           'multiPack': False,
+                           'forceIdenticalLayout': False,
+                           'outputFormat': Enum("SettingsBase::OutputFormat", "RGBA8888"),
+                           'alphaHandling': Enum("SettingsBase::AlphaHandling", "ClearTransparentPixels"),
+                            'trimSpriteNames': False,
+                           'prependSmartFolderName': False,
+                           'autodetectAnimations': True,
+                           'globalSpriteSettings':
+                               {'SpriteSettings':
+                                    {'scale': 1.0,
+                                     'scaleMode': Enum("ScaleMode", "Smooth"),
+                                     'extrude': 1,
+                                     'trimThreshold': 1,
+                                     'trimMargin': 1,
+                                     'trimMode': Enum("SpriteSettings::TrimMode", "Trim"),
+                                     'tracerTolerance': 200,
+                                     'heuristicMask': False,
+                                     'defaultPivotPoint': PointF(0.5, 0.5),
+                                     'writePivotPoints': False}},
+                           'individualSpriteSettings': Map("IndividualSpriteSettingsMap", [], []),
+                           'fileList': [],
+                           'ignoreFileList': [],
+                           'replaceList': [],
+                           'ignoredWarnings': [],
+                            'exporterProperties': Map("ExporterProperties", [], [])}}]
+
     def load(self, filepath: str):
-        def load_variable(variable):
-            tag = variable.tag
+        parsed = parse(filepath)
+        xml = parsed.getroot()
 
-            if tag == 'string':
-                return variable.text
-            
-            elif tag in ('int', 'uint'):
-                return int(variable.text)
-            
-            elif tag == 'true':
-                return True
-            
-            elif tag == 'false':
-                return False
-            
-            elif tag == 'double':
-                return float(variable.text)
-            
-            elif tag == 'array':
-                return [load_variable(var) for var in variable]
-            
-            elif tag == 'enum':
-                return TexturePackerProject.Enum(variable.attrib["type"], variable.text)
-
-            elif tag == 'map':
-                pass
-
-            elif tag == 'struct':
-                pass
-
-            elif tag == 'rect':
-                point = variable.text.split(',')
-                return TexturePackerProject.Rect(float(point[0]), float(point[1]), float(point[2]), float(point[3]))
-
-            elif tag == 'point_f':
-                point = variable.text.split(',')
-                return TexturePackerProject.PointF(float(point[0]), float(point[1]))
-
-            elif tag == 'QSize':
-                pass
-
-            elif tag == 'filename':
-                pass
-
-            else:
-                raise TypeError(f"Unknown TexturePacker data type {tag}!")
+        for variable in xml:
+            self.data.append(load_variable(variable))
 
     def save(self, filepath: str):
-        pass
+        root = Element("data", {"version": "1.0"})
 
+        for data_set in self.data:
+            root.append(write_variable(data_set))
 
-# TODO: Finish it.
-
-
-# class enum:
-#     def __init__(self, key=None, value=None):
-#         self.key = key
-#         self.value = value
-
-#     def save(self):
-#         res = Element("enum", {"type": str(self.key)})
-#         res.text = str(self.value)
-#         return res
-
-
-# class map:
-#     def __init__(self, type=None, keys=[], values=[]):
-#         self.type = type
-#         self.keys = keys
-#         self.values = values
-
-#     def save(self):
-#         res = Element("map", {"type": self.type})
-
-#         return res
-
-
-# class point_f:
-#     def __init__(self, x=0.0, y=0.0):
-#         self.x = x
-#         self.y = y
-
-#     def save(self):
-#         res = Element("point_f")
-#         res.text = f"{self.x},{self.y}"
-#         return res
-
-
-# class filename:
-#     def __init__(self):
-#         self.filepath = None
-
-#     def save(self):
-#         res = Element("filename")
-#         if self.filepath is not None:
-#             res.text = path.relpath(self.filepath)
-
-#         return res
-
-
-# class rect:
-#     def __init__(self):
-#         self.left = 0
-#         self.right = 0
-#         self.top = 0
-#         self.bottom = 0
-
-#     def save(self):
-#         res = Element("rect")
-#         res.text = f"{self.left},{self.right},{self.top},{self.bottom}"
-#         return res
-
-
-# class texture_packer:
-#     def __init__(self):
-#         self.file_version: int = 5
-
-#         self.packer_version: str = "6.0.0"
-
-#         self.allow_rotation: bool = True
-
-#         self.shape_debug: bool = False
-
-#         self.data_format: str = "sc_export"
-
-#         self.texture_file_name: str = filename()
-
-#         self.shape_padding = np.uint(0)
-
-#         self.png_optimization = np.uint(0)
-
-#         self.texture_format = enum("SettingsBase::TextureFormat", "png")
-
-#         self.border_padding = np.uint(0)
-
-#         self.max_texture_size = [4096, 4096]  # QSize
-
-#         self.fixed_texture_size = [-1, -1]  # QSize
-
-#         self.algorithm_settings = {"AlgorithmSettings": {"algorithm": enum("AlgorithmSettings::AlgorithmId", "Polygon"),
-#                                                          "freeSizeMode": enum(
-#                                                              "AlgorithmSettings::AlgorithmFreeSizeMode", "Best"),
-#                                                          "sizeConstraints": enum("AlgorithmSettings::SizeConstraints",
-#                                                                                  "AnySize"),
-#                                                          "forceSquared": False,
-#                                                          "maxRects":
-#                                                              {"AlgorithmMaxRectsSettings":
-#                                                                  {"heuristic": enum(
-#                                                                      "AlgorithmMaxRectsSettings::Heuristic",
-#                                                                      "AreaFit")}}},
-#                                    "basic":
-#                                        {"AlgorithmBasicSettings":
-#                                             {"sortBy": enum("AlgorithmBasicSettings::SortBy", "Best"),
-#                                              "order": enum("AlgorithmBasicSettings::Order", "Ascending")}},
-#                                    "polygon": {
-#                                        "AlgorithmPolygonSettings": {
-#                                            "alignToGrid": np.uint(1)
-#                                        }
-#                                    }}  # Struct
-
-#         self.data_file_names = map("GFileNameMap", [["sc_atlas_data"]], [{"DataFile": {"name": filename()}}])  # Map
-
-#         self.multipack = True
-
-#         self.output_format = enum("SettingsBase::OutputFormat", "RGBA8888")  # Enum
-
-#         self.alpha_handling = enum("SettingsBase::AlphaHandling", "ClearTransparentPixels")  # Enum
-
-#         self.sprite_settings = {"SpriteSettings": {"scale": 1.0,
-#                                                    "scaleMode": enum("ScaleMode", "Smooth"),
-#                                                    "extrude": np.uint(2),
-#                                                    "trimThreshold": np.uint(1),
-#                                                    "trimMargin": np.uint(1),
-#                                                    "trimMode": enum("SpriteSettings::TrimMode", "Polygon"),
-#                                                    "tracerTolerance": 300,
-#                                                    "heuristicMask": False,
-#                                                    "defaultPivotPoint": point_f(0.5, 0.5),
-#                                                    "writePivotPoints": False}}  # Struct
-
-#         self.file_list = []  # Array
-#         self.individual_sprite_settings = map("IndividualSpriteSettingsMap")
-
-#     def read(self, filepath):
-#         def parse_variable(var):
-#             if var.tag == "int":
-#                 return np.int(int(var.text))
-
-#             if var.tag == "uint":
-#                 return np.uint(int(var.text))
-
-#             if var.tag == "double":
-#                 return float(var.text)
-
-#             if var.tag == "string":
-#                 if var.text is None:
-#                     return None
-#                 return var.text
-
-#             if var.tag == "filename":
-#                 var_res = filename()
-#                 if var.text is not None:
-#                     var_res.filepath = var.text
-#                 return var_res
-
-#             if var.tag == "true":
-#                 return True
-
-#             if var.tag == "false":
-#                 return False
-
-#             if var.tag == "enum":
-#                 var_res = enum()
-#                 var_res.key = var.attrib['type']
-#                 var_res.value = var.text
-#                 return var_res
-
-#             if var.tag == "QSize":
-#                 width = 0
-#                 height = 0
-#                 for i, key in enumerate(var):
-#                     if key.tag == "key":
-#                         if key.text == "width":
-#                             width = parse_variable(var[i + 1])
-#                         if key.text == "height":
-#                             height = parse_variable(var[i + 1])
-#                 return [width, height]
-
-#             if var.tag == "struct":
-#                 return {
-#                     var.attrib["type"]: {struct_var.text: parse_variable(var[i + 1]) for i, struct_var in enumerate(var)
-#                                          if struct_var.tag == "key"}}
-
-#             if var.tag == "map":
-#                 map_keys = []
-#                 map_values = []
-
-#                 active_key_index = 0
-#                 active_key = False
-#                 for i, map_key in enumerate(var):
-#                     if map_key.tag == "key":
-#                         if active_key:
-#                             map_keys[active_key_index].append(map_key.text)
-#                         else:
-#                             active_key = True
-#                             map_keys.append([map_key.text])
-#                             active_key_index = map_keys.index([map_key.text])
-#                     else:
-#                         active_key = False
-#                         map_values.append(parse_variable(map_key))
-
-#                 return map(var.attrib['type'], map_keys, map_values)
-
-#             if var.tag == "point_f":
-#                 points = [float(num) for num in var.text.split(",")]
-#                 var_points = point_f()
-#                 var_points.x = points[0]
-#                 var_points.y = points[0]
-#                 return var_points
-
-#             if var.tag == "rect":
-#                 rect_points = [int(num) for num in var.text.split(",")]
-#                 var_rect = rect()
-#                 var_rect.left = rect_points[0]
-#                 var_rect.right = rect_points[1]
-#                 var_rect.top = rect_points[2]
-#                 var_rect.bottom = rect_points[3]
-#                 return var_rect
-
-#             if var.tag == "array":
-#                 return [parse_variable(array) for array in var]
-
-#         parsed = parse(filepath)
-#         xml = parsed.getroot()
-
-#         for settings in xml:
-#             if settings.attrib['type'] == "Settings":
-#                 for i, key in enumerate(settings):
-#                     if key.tag == "key":
-#                         txt = key.text
-#                         if txt == "fileFormatVersion":
-#                             self.file_version = parse_variable(settings[i + 1])
-#                             if self.file_version != 5:
-#                                 raise Exception()
-#                         if txt == "texturePackerVersion":
-#                             self.packer_version == parse_variable(settings[i + 1])
-#                         if txt == "allowRotation":
-#                             self.allow_rotation == parse_variable(settings[i + 1])
-#                         if txt == "shapeDebug":
-#                             self.shape_debug == parse_variable(settings[i + 1])
-#                         if txt == "dataFormat":
-#                             self.data_format == parse_variable(settings[i + 1])
-#                         if txt == "textureFileName":
-#                             self.texture_file_name = parse_variable(settings[i + 1])
-#                         if txt == "shapePadding":
-#                             self.shape_padding = parse_variable(settings[i + 1])
-#                         if txt == "pngOptimizationLevel":
-#                             self.png_optimization = parse_variable(settings[i + 1])
-#                         if txt == "textureFormat":
-#                             self.texture_format = parse_variable(settings[i + 1])
-#                         if txt == "borderPadding":
-#                             self.border_padding = parse_variable(settings[i + 1])
-#                         if txt == "maxTextureSize":
-#                             self.max_texture_size = parse_variable(settings[i + 1])
-#                         if txt == "fixedTextureSize":
-#                             self.fixed_texture_size = parse_variable(settings[i + 1])
-#                         if txt == "algorithmSettings":
-#                             self.algorithm_settings = parse_variable(settings[i + 1])
-#                         if txt == "dataFileNames":
-#                             self.data_file_names = parse_variable(settings[i + 1])
-#                         if txt == "multiPack":
-#                             self.multipack = parse_variable(settings[i + 1])
-#                         if txt == "outputFormat":
-#                             self.output_format = parse_variable(settings[i + 1])
-#                         if txt == "alphaHandling":
-#                             self.alpha_handling = parse_variable(settings[i + 1])
-#                         if txt == "globalSpriteSettings":
-#                             self.sprite_settings = parse_variable(settings[i + 1])
-#                         if txt == "individualSpriteSettings":
-#                             self.individual_sprite_settings = parse_variable(settings[i + 1])
-#                         if txt == "fileList":
-#                             self.file_list = parse_variable(settings[i + 1])
-
-#     def save(self, filepath):
-#         def write_variable(xml, key, value):
-#             if key is not None:
-#                 var = Element("key")
-#                 var.text = key
-#                 xml.append(var)
-
-#             if isinstance(value, bool):
-#                 value_res = Element(str(value).lower())
-
-#             elif isinstance(value, int):
-#                 value_res = Element('int')
-#                 value_res.text = str(value)
-
-#             elif isinstance(value, np.uint):
-#                 value_res = Element('uint')
-#                 value_res.text = str(value)
-
-#             elif isinstance(value, str):
-#                 value_res = Element('string')
-#                 value_res.text = str(value)
-
-#             elif isinstance(value, float):
-#                 value_res = Element("double")
-#                 value_res.text = str(value)
-
-#             elif type(value) in [filename, rect, point_f, enum]:
-#                 value_res = value.save()
-
-#             elif isinstance(value, list) and len(value) == 2:
-#                 value_res = Element("QSize")
-
-#                 write_variable(value_res, "width", value[0])
-#                 write_variable(value_res, "height", value[1])
-
-#             elif isinstance(value, list):
-#                 value_res = Element("array")
-#                 for value_array in value:
-#                     write_variable(value_res, None, value_array)
-
-#             elif isinstance(value, dict):
-#                 root_key = list(value)[0]
-#                 value_res = Element("struct", {'type': root_key})
-#                 var_struct = value[root_key]
-#                 for struct_key in var_struct:
-#                     write_variable(value_res, struct_key, var_struct[struct_key])
-
-#             elif isinstance(value, map):
-#                 value_res = Element("map", {'type': value.type})
-
-#                 for i, key_list in enumerate(value.keys):
-#                     for key in key_list:
-#                         map_key = Element("key")
-#                         map_key.text = key
-#                         value_res.append(map_key)
-#                     write_variable(value_res, None, value.values[i])
-
-#             xml.append(value_res)
-
-#         xml = Element("data", {"version": "1.0"})
-
-#         settings = Element("struct", {"type": "Settings"})
-#         xml.append(settings)
-
-#         write_variable(settings, "fileFormatVersion", self.file_version)
-#         write_variable(settings, "texturePackerVersion", self.packer_version)
-#         write_variable(settings, "allowRotation", self.allow_rotation)
-#         write_variable(settings, "shapeDebug", self.shape_debug)
-#         write_variable(settings, "dataFormat", self.data_format)
-#         write_variable(settings, "textureFileName", self.texture_file_name)
-#         write_variable(settings, "shapePadding", self.shape_padding)
-#         write_variable(settings, "pngOptimizationLevel", self.png_optimization)
-#         write_variable(settings, "textureFormat", self.texture_format)
-#         write_variable(settings, "maxTextureSize", self.max_texture_size)
-#         write_variable(settings, "fixedTextureSize", self.fixed_texture_size)
-#         write_variable(settings, "algorithmSettings", self.algorithm_settings)
-#         write_variable(settings, "dataFileNames", self.data_file_names)
-#         write_variable(settings, "multiPack", self.multipack)
-#         write_variable(settings, "outputFormat", self.output_format)
-#         write_variable(settings, "alphaHandling", self.alpha_handling)
-#         write_variable(settings, "globalSpriteSettings", self.sprite_settings)
-#         write_variable(settings, "individualSpriteSettings", self.individual_sprite_settings)
-#         write_variable(settings, "fileList", self.file_list)
-
-#         with open(filepath, "wb") as f:
-#             f.write(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-#             f.write(tostring(xml))
+        ElementTree(root).write(filepath, xml_declaration = True, encoding='UTF-8', pretty_print = True)

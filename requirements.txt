@@ -3,3 +3,5 @@ Pillow
 numpy
 affine6p
 colorama
+lxml
+ujson

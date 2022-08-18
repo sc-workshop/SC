@@ -14,6 +14,7 @@ shapes_with_nine_slices = {}
 def sc_to_fla(filepath):
     swf = SupercellSWF()
     swf.load(filepath)
+    print()
 
     projectdir = os.path.splitext(swf.filename)[0]
     if os.path.exists(projectdir):
@@ -68,20 +69,20 @@ def proceed_resources(fla, swf):
         Console.progress_bar("Converting SupercellFlash resources to Adobe Animate...", resource_counter,
                              swf.movieclips_count + swf.shapes_count)
         if isinstance(resource, Shape):
-            convert_shape(fla, swf, resource)
+            convert_shape(fla, swf, id, resource)
 
         elif isinstance(resource, MovieClip):
             export_names = swf.exports[id] if id in swf.exports else None
-            convert_movieclip(fla, swf, resource, export_names)
+            convert_movieclip(fla, swf, id, resource, export_names)
         else:
             continue
         resource_counter += 1
 
     print()
 
-def convert_shape(fla, swf, shape):
-    graphic = DOMSymbolItem(f"shapes/shape_{shape.id}", "graphic")
-    graphic.timeline.name = f"shape_{shape.id}"
+def convert_shape(fla, swf, id, shape):
+    graphic = DOMSymbolItem(f"shapes/shape_{id}", "graphic")
+    graphic.timeline.name = f"shape_{id}"
 
     for bitmap_index, bitmap in enumerate(reversed(shape.bitmaps)):
         layer = DOMLayer(f"shape_layer_{bitmap_index}", False)
@@ -228,7 +229,7 @@ def patch_shape_nine_slice(fla, shape):
     return shape_slice
 
 
-def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None):
+def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = None):
     movie = DOMSymbolItem()
 
     layers_instance = []
@@ -461,6 +462,6 @@ def convert_movieclip(fla, swf, movieclip: MovieClip, export_names: list = None)
             fla.symbols[movie_instance.name] = movie_instance
         return
 
-    movie.name = f"movieclips/movieclip_{movieclip.id}"
-    movie.timeline.name = f"movieclip_{movieclip.id}"
+    movie.name = f"movieclips/movieclip_{id}"
+    movie.timeline.name = f"movieclip_{id}"
     fla.symbols[movie.name] = movie

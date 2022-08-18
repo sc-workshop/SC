@@ -3,8 +3,6 @@ import os
 import time
 import argparse
 
-from lib import sc_to_fla, fla_to_sc
-
 from sc_compression.signatures import Signatures
 from sc_compression import Decompressor, Compressor
 
@@ -27,9 +25,11 @@ def main():
     start_time = time.time()
 
     if args.decompile:
+        from lib import sc_to_fla
         sc_to_fla(args.decompile)
 
     elif args.compile:
+        from lib import fla_to_sc
         fla_to_sc(args.compile)
 
     elif args.decompress:
@@ -49,8 +49,9 @@ def main():
         open(file + ".cmp", 'wb').write(compressed)
 
 
-    # elif args.decompile_json:
-    #     print("Decompile to JSON")
+    elif args.decompile_json:
+        from lib.json_import import sc_to_json
+        sc_to_json(args.decompile_json)
 
     # elif args.compile_json:
     #     print("Compile from JSON")
