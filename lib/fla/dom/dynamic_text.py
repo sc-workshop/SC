@@ -20,6 +20,8 @@ class DOMDynamicText:
 
         self.width: float = None
         self.height: float = None
+        self.top: float = 0.0
+        self.left: float = 0.0
 
         self.is_selectable: bool = None
 
@@ -78,6 +80,12 @@ class DOMDynamicText:
             for color_element in color:
                 self.color = Color()
                 self.color.load(color_element)
+
+        if "top" in xml.attrib:
+            self.top = float(xml.attrib["top"])
+
+        if "left" in xml.attrib:
+            self.left = float(xml.attrib["left"])
     
     def save(self):
         xml = Element("DOMDynamicText")
@@ -110,5 +118,11 @@ class DOMDynamicText:
         if self.color is not None:
             color = SubElement(xml, "color")
             color.append(self.color.save())
+
+        if self.top:
+            xml.attrib["top"] = str(self.top)
+
+        if self.left:
+            xml.attrib["left"] = str(self.left)
 
         return xml

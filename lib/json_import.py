@@ -3,6 +3,7 @@ import os
 from shutil import rmtree
 from PIL import Image
 from lib.console import Console
+from math import radians, degrees, atan2
 import ujson
 
 shape_bitmaps_uvs = []
@@ -16,12 +17,14 @@ def convert_shape(swf, id, shape: Shape, sprite_folder):
 
     for bitmap in shape.bitmaps:
         bitmap_base = {}
+        texture = swf.textures[bitmap.texture_index]
         uv_coords = bitmap.uv_coords
         xy_coords = bitmap.xy_coords
 
-        if uv_coords.count(uv_coords[0]) == len(uv_coords):
-            texture = swf.textures[bitmap.texture_index]
+        if texture.pixel_format in ["GL_LUMINANCE_ALPHA", "GL_LUMINANCE"]:
+            bitmap_base["Pixel type"] = texture.pixel_format
 
+        if uv_coords.count(uv_coords[0]) == len(uv_coords):
             x, y = uv_coords[0]
             pixel = texture.image.getpixel((int(x), int(y)))
 
@@ -50,15 +53,13 @@ def convert_shape(swf, id, shape: Shape, sprite_folder):
                 bitmap_base["Uri"] = os.path.abspath(f"{sprite_folder}/{uvs_index}.png")
                 matrix, _, _, _ = bitmap.get_matrix(shape_bitmaps_twips[uvs_index])
 
-            bitmap_base["Transforms"] = {}
-            bitmap_matrix = bitmap_base["Transforms"]
-            bitmap_matrix["Rot x"] = round(matrix.get_rotation_x(), 4)
-            bitmap_matrix["Rot y"] = round(matrix.get_rotation_y(), 4)
-            bitmap_matrix["Scale x"] = round(matrix.get_scale_x(), 4)
-            bitmap_matrix["Scale y"] = round(matrix.get_scale_y(), 4)
-            tx, ty = matrix.get_translation()
-            bitmap_matrix["Pos x"] = round(tx)
-            bitmap_matrix["Pos y"] = round(ty)
+            a, b, c, d, tx, ty = matrix.params
+            bitmap_base["Matrix"] = [round(a, 4),
+                                     round(b, 4),
+                                     round(c, 4),
+                                     round(d, 4),
+                                     round(tx),
+                                     round(ty)]
 
         bitmap_library.append(bitmap_base)
 
@@ -66,22 +67,29 @@ def convert_shape(swf, id, shape: Shape, sprite_folder):
 
 def convert_field(id, field: TextField):
     field_base = {"Name": id,
+
                   "Font name": field.font_name,
-                  "Outline color": field.font_color,
+                  "Font color": field.font_color,
+                  "Outline color": field.outline_color,
                   "Font size": field.font_size,
                   "Font align": field.font_align,
+
                   "Bold": field.bold,
                   "Italic": field.italic,
                   "Multiline": field.multiline,
                   "Outline": field.outline,
+
                   "Left corner": field.left_corner,
                   "Top corner": field.top_corner,
                   "Right corner": field.right_corner,
                   "Bottom corner": field.bottom_corner,
+
                   "Text": field.text,
+
                   "Flag1": field.flag1,
                   "Flag2": field.flag2,
                   "Flag3": field.flag3,
+
                   "C1": field.c1,
                   "C2": field.c2}
 
@@ -95,7 +103,7 @@ def convert_movie(swf: SupercellSWF, id, movie: MovieClip):
         movie_base["Exports"] = swf.exports[id]
 
     if movie.nine_slice:
-        movie_base["Nine slice"] = movie.nine_slice
+        movie_base["9slice"] = movie.nine_slice
 
     movie_base["Binds"] = movie.binds
 
@@ -118,9 +126,13 @@ def convert_movie(swf: SupercellSWF, id, movie: MovieClip):
 def sc_to_json(filepath):
     swf = SupercellSWF()
     swf.load(filepath)
+    print()
     filename = os.path.splitext(filepath)[0]
 
-    json_base = {"Shapes": [],
+    json_base = {"Has external texture": swf.has_external_texture,
+                 "Has lowres texture": swf.use_lowres_texture,
+                 "Uses uncommon texture": swf.use_uncommon_texture,
+                    "Shapes": [],
                     "Textfields": [],
                     "Modifiers": [],
                     "Movieclips": []}

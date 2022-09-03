@@ -1,6 +1,8 @@
 from lxml.etree import *
-from os import path
+import os
 import numpy as np
+from lib.console import Console
+import ujson
 
 
 class Enum:
@@ -201,30 +203,30 @@ def write_variable(variable):
 
 class TexturePackerProject:
     def __init__(self) -> None:
-        self.data: list = []
+        self.data: dict = {}
 
     def init(self):
-        self.data = [{'Settings':
+        self.data = {'Settings':
                           {'fileFormatVersion': 5,
                            'texturePackerVersion': '6.0.1',
                            'allowRotation': True,
                            'shapeDebug': False,
-                           'dpi': 72,
-                           'dataFormat': 'json-array',
+                           'dpi': np.uint(72),
+                           'dataFormat': 'sc_atlas',
                            'textureFileName': FileName(""),
                            'ditherType': Enum("SettingsBase::DitherType", "NearestNeighbour"),
-                           'backgroundColor': 0,
-                            'shapePadding': 0,
-                           'jpgQuality': 80,
-                           'pngOptimizationLevel': 1,
+                           'backgroundColor': np.uint(0),
+                            'shapePadding': np.uint(0),
+                           'jpgQuality': np.uint(80),
+                           'pngOptimizationLevel': np.uint(1),
                            'textureSubPath': "",
                            'textureFormat': Enum("SettingsBase::TextureFormat", "png"),
-                           'borderPadding': 0,
+                           'borderPadding': np.uint(0),
                            'maxTextureSize': QSize(2048, 2048),
                            'fixedTextureSize': QSize(-1, -1),
                            'algorithmSettings':
                                {'AlgorithmSettings':
-                                    {'algorithm': Enum("AlgorithmSettings::AlgorithmId", "MaxRects"),
+                                    {'algorithm': Enum("AlgorithmSettings::AlgorithmId", "Polygon"),
                                      'freeSizeMode': Enum("AlgorithmSettings::AlgorithmFreeSizeMode", "Best"),
                                      'sizeConstraints': Enum("AlgorithmSettings::SizeConstraints", "AnySize"),
                                      'forceSquared': False,
@@ -237,9 +239,9 @@ class TexturePackerProject:
                                                'order': Enum("AlgorithmBasicSettings::Order", "Ascending")}},
                                      'polygon':
                                          {'AlgorithmPolygonSettings':
-                                              {'alignToGrid': 1}}}},
-                           'dataFileNames': Map("GFileNameMap", ["data"], [[{"DataFile": {"name": FileName()}}]]),
-                           'multiPack': False,
+                                              {'alignToGrid': np.uint(1)}}}},
+                           'dataFileNames': Map("GFileNameMap", [["json"]], [{"DataFile": {"name": FileName("")}}]),
+                           'multiPack': True,
                            'forceIdenticalLayout': False,
                            'outputFormat': Enum("SettingsBase::OutputFormat", "RGBA8888"),
                            'alphaHandling': Enum("SettingsBase::AlphaHandling", "ClearTransparentPixels"),
@@ -250,11 +252,11 @@ class TexturePackerProject:
                                {'SpriteSettings':
                                     {'scale': 1.0,
                                      'scaleMode': Enum("ScaleMode", "Smooth"),
-                                     'extrude': 1,
-                                     'trimThreshold': 1,
-                                     'trimMargin': 1,
+                                     'extrude': np.uint(1),
+                                     'trimThreshold': np.uint(1),
+                                     'trimMargin': np.uint(10),
                                      'trimMode': Enum("SpriteSettings::TrimMode", "Trim"),
-                                     'tracerTolerance': 200,
+                                     'tracerTolerance': 700,
                                      'heuristicMask': False,
                                      'defaultPivotPoint': PointF(0.5, 0.5),
                                      'writePivotPoints': False}},
@@ -263,19 +265,58 @@ class TexturePackerProject:
                            'ignoreFileList': [],
                            'replaceList': [],
                            'ignoredWarnings': [],
-                            'exporterProperties': Map("ExporterProperties", [], [])}}]
+                            'exporterProperties': Map("ExporterProperties", [["sc_atlas::downscaling", "sc_atlas::linear"],
+                                                                             ["sc_atlas::max_filter", "sc_atlas::min_filter"]],
+                                                      [{"ExporterProperty": {"value": "true"}}, {"ExporterProperty": {"value": "LINEAR"}}])}}
 
     def load(self, filepath: str):
         parsed = parse(filepath)
         xml = parsed.getroot()
 
         for variable in xml:
-            self.data.append(load_variable(variable))
+            data_set = load_variable(variable)
+            data_key = list(data_set)[0]
+            self.data[data_key] = data_set[data_key]
 
     def save(self, filepath: str):
         root = Element("data", {"version": "1.0"})
 
-        for data_set in self.data:
-            root.append(write_variable(data_set))
+        for data_key in self.data:
+            root.append(write_variable({data_key: self.data[data_key]}))
 
         ElementTree(root).write(filepath, xml_declaration = True, encoding='UTF-8', pretty_print = True)
+
+    def create_atlas(self, filenames: list, output_path: str, project_name: str):
+        os.chdir(output_path)
+        project_file = f"{output_path}/{project_name}.tps"
+        settings = self.data['Settings']
+
+        settings['fileList'] = []
+        for file in filenames:
+            settings['fileList'].append(FileName(file))
+
+        self.save(project_file)
+        Console.info(f"Please open {project_file} in Texture Packer, publish sprite sheet with your settings, save project and press any button in console...\nFor details, you can look at our github")
+        while True:
+            input()
+            temp = TexturePackerProject()
+            temp.load(project_file)
+            data_names = temp.data["Settings"]["dataFileNames"]
+            for i, keys in enumerate(data_names.keys):
+                if "json" in keys:
+                    data_files = data_names.values[i]
+                    if "DataFile" in data_files:
+                        path = data_files["DataFile"]["name"].filename
+                        if path:
+                            abs_path = os.path.abspath(path)
+                            if os.path.exists(abs_path):
+                                Console.info("Sheet successfully found.")
+                                return ujson.load(open(abs_path, "r"))
+
+                Console.error("Something is wrong with project. Try again.")
+
+
+
+
+
+

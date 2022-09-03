@@ -4,6 +4,24 @@ from PIL import Image
 
 from lib.console import Console
 
+PACKER_FILTER_TABLE = {
+    "LINEAR": "GL_LINEAR",
+    "NEAREST": "GL_NEAREST",
+    "MIPMAP": "GL_LINEAR_MIPMAP_NEAREST"
+}
+
+PACKER_PIXEL_TYPES =[
+    "RGBA8888",
+    "BGRA8888",
+    "RGBA4444",
+    "RGBA5551",
+    "RGB565",
+    "RGBA8888",
+    "ALPHA_INTENSITY",
+    "RGBA8888",
+    "RGBA8888",
+    "ALPHA"
+]
 
 MODES_TABLE = {
     "GL_RGBA": "RGBA",

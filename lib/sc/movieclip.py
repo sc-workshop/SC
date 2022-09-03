@@ -2,7 +2,6 @@ from enum import Enum
 
 from lib.console import Console
 
-from .resource import Resource
 from .writable import Writable
 
 
@@ -25,8 +24,7 @@ class Modifier(Enum):
     Masked = 39
     Unmasked = 40
 
-
-class MovieClipModifier(Resource, Writable):
+class MovieClipModifier(Writable):
     def __init__(self) -> None:
         super().__init__()
 
@@ -54,7 +52,7 @@ class MovieClipModifier(Resource, Writable):
         return False
 
 
-class MovieClip(Resource, Writable):
+class MovieClip(Writable):
 
     MOVIECLIP_END_FRAME_TAG = 0
 

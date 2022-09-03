@@ -1,10 +1,6 @@
-from .resource import Resource
 from .writable import Writable
 
-from lib.console import Console
-
-
-class TextField(Resource, Writable):
+class TextField(Writable):
     def __init__(self) -> None:
         super().__init__()
 

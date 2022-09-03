@@ -52,7 +52,6 @@ class DOMTextAttrs:
         
         if "alpha" in xml.attrib:
             self.alpha = float(xml.attrib["alpha"])
-    
     def save(self):
         xml = Element("DOMTextAttrs")
 

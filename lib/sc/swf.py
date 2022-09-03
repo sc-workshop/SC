@@ -3,7 +3,6 @@ import os
 
 from lib.utils import BinaryReader, BinaryWriter
 
-from .resource import Resource
 
 from .texture import SWFTexture
 from .shape import Shape
@@ -67,9 +66,6 @@ class SupercellSWF:
         self.reader: BinaryReader = None
         self.writer: BinaryWriter = None
     
-    def add_resource(self, resource: Resource):
-        self.resources[resource.id] = resource
-    
     def load(self, filepath: str):
         Console.info(f"Reading {filepath} SupercellFlash asset file...")
         print()
@@ -106,7 +102,7 @@ class SupercellSWF:
                 else:
                     Console.error(f"Cannot find external texture file {texture_filename} for {self.filename}! Textures not loaded! Aborting...")
                     raise TypeError()
-                
+
 
 
     def load_internal(self, filepath: str, is_texture: bool):
@@ -432,10 +428,9 @@ class SupercellSWF:
         with open(filepath, 'wb') as file:
             Console.info("File compressing...")
             compressor = Compressor()
-            #compressed = compressor.compress(self.writer.buffer, Signatures.SC, 1)
+            compressed = compressor.compress(self.writer.buffer, Signatures.SC, 1)
             Console.info("Writing to file..")
-            file.write(self.writer.buffer)
-            #file.write(compressed)
+            file.write(compressed)
 
         Console.info("Writing completed.")
 

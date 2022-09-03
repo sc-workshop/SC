@@ -53,8 +53,9 @@ def main():
         from lib.json_import import sc_to_json
         sc_to_json(args.decompile_json)
 
-    # elif args.compile_json:
-    #     print("Compile from JSON")
+    elif args.compile_json:
+        from lib.json_export import json_to_sc
+        json_to_sc(args.compile_json)
 
     else:
         Console.title("SC tool by SCW Make - github.com/scwmake/SC")
@@ -62,6 +63,8 @@ def main():
         print("-c, --compile : Convert *.fla to *.sc file")
         print("-dx, --decompress : Decompress *.sc files with Supercell compression")
         print("-cx, --compress : Compress *.sc files with Supercell compression (LZMA | SC | version 1)")
+        print("-dj, --decompile-json : Convert *.sc file to *.json file")
+        print("-cj, --compile-json : Convert *.json file to *.sc file")
         exit(0)
 
     result_time = time.time() - start_time

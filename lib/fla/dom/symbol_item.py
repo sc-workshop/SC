@@ -79,4 +79,4 @@ class DOMSymbolItem:
             timeline.append(self.timeline.save())
 
 
-        ElementTree(xml).write(filepath)
+        ElementTree(xml).write(filepath, pretty_print=True)

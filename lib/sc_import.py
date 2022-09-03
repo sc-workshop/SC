@@ -14,7 +14,6 @@ shapes_with_nine_slices = {}
 def sc_to_fla(filepath):
     swf = SupercellSWF()
     swf.load(filepath)
-    print()
 
     projectdir = os.path.splitext(swf.filename)[0]
     if os.path.exists(projectdir):
@@ -178,13 +177,10 @@ def convert_shape(fla, swf, id, shape):
     fla.symbols[graphic.name] = graphic
 
 
-def patch_shape_nine_slice(fla, shape):
-    if shape.id in shapes_with_nine_slices:
-        return shapes_with_nine_slices[shape.id]
-
+def patch_shape_nine_slice(fla, id, shape):
     shape_slice = DOMGroup()
 
-    shape_symbol = fla.symbols[f"shapes/shape_{shape.id}"]
+    shape_symbol = fla.symbols[f"shapes/shape_{id}"]
 
     for l, layer in enumerate(shape_symbol.timeline.layers):
         for f, frame in enumerate(layer.frames):
@@ -225,7 +221,7 @@ def patch_shape_nine_slice(fla, shape):
 
                     shape_symbol.timeline.layers[l].frames[f].elements[e] = slice
 
-    shapes_with_nine_slices[shape.id] = shape_slice
+    shapes_with_nine_slices[id] = shape_slice
     return shape_slice
 
 
@@ -256,31 +252,44 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
 
             # Symbols instance
             if isinstance(bind_resource, Shape):
-                '''if movieclip.nine_slice:
-                    bind_instance = patch_shape_nine_slice(fla, bind_resource)
+                if movieclip.nine_slice:
+                    if id in shapes_with_nine_slices:
+                        bind_instance = shapes_with_nine_slices[id]
+                    else:
+                        bind_instance = patch_shape_nine_slice(fla, bind['id'], bind_resource)
 
-                else:'''
-                bind_instance = DOMSymbolInstance(library_item_name=f"shapes/shape_{bind['id']}")
+                else:
+                    bind_instance = DOMSymbolInstance(library_item_name=f"shapes/shape_{bind['id']}")
 
             elif isinstance(bind_resource, MovieClip):
+                if bind["id"] in swf.exports and f"movieclips/movieclip_{bind['id']}" not in fla.symbols:
+                    convert_movieclip(fla, swf, bind["id"], bind_resource)
+
                 bind_instance = DOMSymbolInstance(name=bind["name"],
-                                                library_item_name=f"movieclips/movieclip_{bind['id']}"
-                                                if bind['id'] not in swf.exports
-                                                else f"exports/{swf.exports[bind['id']][-1]}")
+                                                library_item_name=f"movieclips/movieclip_{bind['id']}")
                 bind_instance.blend_mode = bind['blend']
 
-            elif isinstance(bind_resource, TextField):
-                bind_instance = DOMDynamicText(name=bind["name"])  # Спасибо, Солнышко :)
 
-                # Subtracting4 because inside files it is lower by 4 than inside scene, idk why and how it works.
-                bind_instance.width = bind_resource.right_corner - bind_resource.left_corner - 4
-                bind_instance.height = bind_resource.bottom_corner - bind_resource.top_corner - 4
+
+            elif isinstance(bind_resource, TextField):
+                bind_instance = DOMDynamicText(name=bind["name"])
+
+                bind_instance.width = bind_resource.left_corner - bind_resource.top_corner
+                bind_instance.height = bind_resource.right_corner - bind_resource.bottom_corner
+                bind_instance.top = bind_resource.bottom_corner
+                bind_instance.left = bind_resource.top_corner
 
                 if bind_resource.multiline:
                     bind_instance.line_type = "multiline no wrap"
 
                 text_run = DOMTextRun()
                 text_attrs = DOMTextAttrs()
+
+                match bind_resource.font_align:
+                    case 18:
+                        text_attrs.alignment = "center"
+                    case _:
+                        print(bind_resource.font_align, id, export_names)
 
                 if bind_resource.text is not None:
                     text_run.characters = bind_resource.text
@@ -300,9 +309,6 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
 
                 text_attrs.fill_color = bind_resource.font_color & 0xFFFFFF00
                 text_attrs.alpha = (bind_resource.font_color & 0x000000FF) / 255
-
-                text_attrs.line_spacing = 0
-                text_attrs.left_margin = bind_resource.font_align
 
                 if bind_resource.outline_color:
                     glow_filter = GlowFilter()

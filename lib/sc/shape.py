@@ -1,8 +1,7 @@
-from math import ceil, degrees, radians, atan2
+from math import ceil, degrees, radians, atan2, cos, sin
 
 from lib.console import Console
 
-from .resource import Resource
 from .writable import Writable
 
 import numpy as np
@@ -20,7 +19,7 @@ def get_size(coords):
     return right - left or 1, bottom - top or 1
 
 
-class Shape(Resource, Writable):
+class Shape(Writable):
     SHAAPE_END_COMMAND_TAG = 0
 
     SHAAPE_DRAW_BITMAP_COMMAND_TAGS = (4, 17, 22)
@@ -131,7 +130,6 @@ class ShapeDrawBitmapCommand(Writable):
             u, v = [ceil(i) for i in [w, h]]
 
             self.uv_coords.append([u, v])
-
     def save(self, swf):
         super().save()
 
@@ -168,9 +166,14 @@ class ShapeDrawBitmapCommand(Writable):
     def get_image(self, swf) -> Image:
         texture = swf.textures[self.texture_index]
         w, h = self.get_size(self.uv_coords)
+        if w == 0:
+            w = 1
+        if h == 0:
+            h = 1
+
         if w + h == 2:
-            pix = self.uv_coords[-1]
-            return Image.new(texture.image.mode, (1, 1), texture[pix[0], pix[1]])
+            x, y = self.uv_coords[-1]
+            return Image.new(texture.image.mode, (1, 1), texture.image.getpixel((x, y)))
 
         mask = Image.new("L", (texture.width, texture.height), 0)
 
@@ -213,6 +216,8 @@ class ShapeDrawBitmapCommand(Writable):
                 ).dot(point).tolist() for point in self.uv_coords
             ]
 
+            uv_coords = [[round(x), round(y)] for x, y in uv_coords]
+
             if mirroring:
                 uv_coords = [[-x, y] for x, y, in uv_coords]
 
@@ -225,8 +230,8 @@ class ShapeDrawBitmapCommand(Writable):
                 x_distance = uv_coords[idx][0] - uv_coords[idx - 1][0]
                 y_distance = uv_coords[idx][1] - uv_coords[idx - 1][1]
 
-                sprite_box.append([sprite_box[idx - 1][0] + x_distance,
-                                   sprite_box[idx - 1][1] + y_distance])
+                sprite_box.append([round(sprite_box[idx - 1][0] + x_distance, 3),
+                                   round(sprite_box[idx - 1][1] + y_distance, 3)])
 
             if sprite_box[idx][0] < 0:
                 sprite_box = [[x - sprite_box[idx][0], y] for x, y in sprite_box]
@@ -234,20 +239,74 @@ class ShapeDrawBitmapCommand(Writable):
             if sprite_box[idx][1] < 0:
                 sprite_box = [[x, y - sprite_box[idx][1]] for x, y in sprite_box]
 
-        scale_x, scale_y = self.get_size(sprite_box)
-        if scale_x <= 1:
-            sprite_box = [[0, scale_y], [1, scale_y], [1, 0], [0, 0]]
-        elif scale_y <= 1:
-            sprite_box = [[0, 0], [scale_x, 0], [scale_x, 1], [0, 1]]
-        try:
-            transform = estimate(sprite_box, self.xy_coords)
-        except:
-            print()
+        w, h = self.get_size(uv_coords)
+        if w == 0 or h == 0:
+            sprite_box = self.get_right_uv(False, sprite_box)
 
-
+        transform = estimate(sprite_box, self.xy_coords)
 
         return transform, sprite_box, rotation, mirroring
+    @staticmethod
+    def scale_around(point, center, scale):
+        c_x, c_y = center
+        x, y = point
+        sx, sy = scale
+        return [round(((x - c_x) * sx)), round(((y - c_y) * sy))]
+    @staticmethod
+    def move_by_angle(point, angle, distance):
+        x, y = point
 
+        x += distance * sin(angle)
+        y += distance * cos(angle)
+
+        return [round(x) or 0, round(y) or 0]
+    @staticmethod
+    def find_angle(p1, p2):
+        x1, y1 = p1
+        x2, y2 = p2
+        dX = x2 - x1
+        dY = y2 - y1
+        rads = atan2(-dY, dX)
+        return degrees(rads)
+    def get_right_uv(self, inside: bool, custom: list = None):
+        coords = custom if custom is not None else self.uv_coords
+
+        res = coords.copy()
+        w, h = ShapeDrawBitmapCommand.get_size(coords)
+
+        if len(coords) == 4:
+            if not inside and w == 0 or h == 0:
+                unique_points = [list(x) for x in set(tuple(x) for x in coords)]
+                for index, point in enumerate(unique_points):
+                    if coords[0] == coords[1]:
+                        point_idx = index + 1
+                    else:
+                        point_idx = 3 - (list(reversed(res)).index(point))
+
+                    res[point_idx] = [res[point_idx][0] + (1 if w == 0 else 0),
+                                      res[point_idx][1] + (1 if h == 0 else 0)]
+
+                return res
+            else:
+                w_m = (w + 2) if not inside else (w - 2 if w > 2 else 0)
+                h_m = (h + 2) if not inside else (h - 2 if h > 2 else 0)
+
+                c_x, c_y = [sum([x for x, _ in coords]) / len(coords), sum([y for _, y in coords]) / len(coords)]
+
+                return [[round((w_m / w) * (x - c_x) + c_x), round((h_m / h) * (y - c_y) + c_y)] for x, y in coords]
+
+        else:
+            for i, point in enumerate(coords):
+                if i == 0:
+                    last = len(coords) - 1
+                else:
+                    last = i - 1
+
+                angle = radians(self.find_angle(coords[last], coords[i]) - 45)
+
+                res[i] = self.move_by_angle(coords[i], angle, -1 if inside else 1)
+
+            return res
     def get_translation(self, centroid: bool = False):
         if centroid:
             x_coords = [x for x, _ in self.xy_coords]
@@ -297,17 +356,18 @@ class ShapeDrawBitmapCommand(Writable):
 
         return angle, mirroring
 
-    def get_size(self, coords):
+    @staticmethod
+    def get_size(coords):
         left = min(coord[0] for coord in coords)
         top = min(coord[1] for coord in coords)
         right = max(coord[0] for coord in coords)
         bottom = max(coord[1] for coord in coords)
 
-        return right - left or 1, bottom - top or 1
+        return right - left, bottom - top
 
     def get_scale(self):
-        uv_x, uv_y = get_size(self.uv_coords)
-        xy_x, xy_y = get_size(self.xy_coords)
+        uv_x, uv_y = self.get_size(self.uv_coords)
+        xy_x, xy_y = self.get_size(self.xy_coords)
 
         return uv_x / xy_x, uv_y / xy_y
 
