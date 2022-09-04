@@ -24,7 +24,7 @@ class DOMGroup:
                 self.matrix = Matrix()
                 self.matrix.load(matrix_element)
         
-        for member in xml.find("./xfl:elements", NAMESPACES):
+        for member in xml.find("./xfl:members", NAMESPACES):
             if member.tag.endswith("DOMBitmapInstance"):
                     bitmap_instance = DOMBitmapInstance()
                     bitmap_instance.load(member)

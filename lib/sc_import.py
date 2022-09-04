@@ -16,27 +16,23 @@ def sc_to_fla(filepath):
     swf.load(filepath)
 
     projectdir = os.path.splitext(swf.filename)[0]
-    if os.path.exists(projectdir):
-        rmtree(projectdir)
 
-    os.makedirs(projectdir, exist_ok=True)
+    fla = prepare_document(projectdir)
 
-    fla = prepare_document()
+    startup = DOMDocument("lib/scwmake_credit")
+    startup.load()
 
-    # startup = DOMDocument()
-    # startup.load("lib/scwmake_credit")
-
-    # fla.timelines = startup.timelines
+    fla.timelines = startup.timelines
 
     proceed_resources(fla, swf)
 
-    fla.save(projectdir)
+    fla.save()
 
 
-def prepare_document():
+def prepare_document(path):
     Console.info("Creating DOMDocument for Adobe Animate...")
 
-    fla = DOMDocument()
+    fla = DOMDocument(path)
 
     fla.xfl_version = 2.971
 
@@ -49,15 +45,10 @@ def prepare_document():
 
     fla.creator_info = "File generated with SC tool by SCW Make! (VK: vk.com/scwmake, GITHUB: github.com/scwmake/SC)"
 
-    folder_shapes = DOMFolderItem("shapes")
-    folder_movieclips = DOMFolderItem("movieclips")
-    folder_exports = DOMFolderItem("exports")
-    folder_resources = DOMFolderItem("resources")
-
-    fla.folders.append(folder_shapes)
-    fla.folders.append(folder_movieclips)
-    fla.folders.append(folder_exports)
-    fla.folders.append(folder_resources)
+    fla.folders.add(DOMFolderItem("shapes"))
+    fla.folders.add(DOMFolderItem("movieclips"))
+    fla.folders.add(DOMFolderItem("exports"))
+    fla.folders.add(DOMFolderItem("resources"))
 
     return fla
 
@@ -174,13 +165,13 @@ def convert_shape(fla, swf, id, shape):
         layer.frames.append(frame)
         graphic.timeline.layers.append(layer)
 
-    fla.symbols[graphic.name] = graphic
+    fla.symbols.add(graphic.name, graphic)
 
 
 def patch_shape_nine_slice(fla, id, shape):
     shape_slice = DOMGroup()
 
-    shape_symbol = fla.symbols[f"shapes/shape_{id}"]
+    shape_symbol = fla.symbols.get(f"shapes/shape_{id}")
 
     for l, layer in enumerate(shape_symbol.timeline.layers):
         for f, frame in enumerate(layer.frames):
@@ -289,7 +280,7 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
                     case 18:
                         text_attrs.alignment = "center"
                     case _:
-                        print(bind_resource.font_align, id, export_names)
+                        pass
 
                 if bind_resource.text is not None:
                     text_run.characters = bind_resource.text
@@ -465,9 +456,9 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
             movie_instance = copy.deepcopy(movie)
             movie_instance.name = f"exports/{export}"
             movie_instance.timeline.name = export
-            fla.symbols[movie_instance.name] = movie_instance
+            fla.symbols.add(movie_instance.name, movie_instance)
         return
 
     movie.name = f"movieclips/movieclip_{id}"
     movie.timeline.name = f"movieclip_{id}"
-    fla.symbols[movie.name] = movie
+    fla.symbols.add(movie.name, movie)

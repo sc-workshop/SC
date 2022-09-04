@@ -1,6 +1,7 @@
 import os
 
 from lxml.etree import *
+from shutil import rmtree
 
 from PIL import Image
 
@@ -15,10 +16,40 @@ from . import NAMESPACES
 
 from lib.console import Console
 
+class folders(list):
+    def __init__(self, library: str):
+        self.library = library
+
+    def add(self, folder_item):
+        if isinstance(folder_item, DOMFolderItem):
+            os.makedirs(os.path.join(self.library, folder_item.name), exist_ok=True)
+            self.append(folder_item)
+
+    def delete(self, index):
+        object = self[index]
+        rmtree(os.path.join(self.library, object.name))
+        del self[index]
+
+class symbols(dict):
+    def __init__(self, library: str):
+        self.library = library
+
+    def add(self, key, value):
+        path = os.path.join(self.library, str(key) + ".xml")
+        value.save(path)
+
+        self[key] = path
+
+    def get(self, key):
+        symbol = DOMSymbolItem()
+        symbol.load(self[key])
+        return symbol
+
+
 class DOMDocument:
-    def __init__(self) -> None:
+    def __init__(self, filepath: str) -> None:
         # class fields
-        self.filepath: str = None
+        self.filepath = filepath
 
         # attributes
         self.xfl_version: float = 2.971
@@ -32,10 +63,16 @@ class DOMDocument:
         self.background_color: int = 0x666666
 
         # elements
-        self.folders: list = []
+        self.folders = folders(self.librarypath)
         self.media: dict = {}
-        self.symbols: dict = {}
+        self.symbols = symbols(self.librarypath)
         self.timelines: list = []
+
+        if not os.path.exists(self.binarypath):
+            os.mkdir(self.binarypath)
+
+        if not os.path.exists(self.librarypath):
+            os.mkdir(self.librarypath)
     
     @property
     def librarypath(self):
@@ -51,9 +88,7 @@ class DOMDocument:
             os.makedirs(path)
         return path
     
-    def load(self, filepath: str):
-        self.filepath = filepath
-
+    def load(self):
         parsed = parse(os.path.join(self.filepath, "DOMDocument.xml"))
         xml = parsed.getroot()
 
@@ -107,7 +142,7 @@ class DOMDocument:
             for symbol_element in symbols:
                 symbol = DOMSymbolItem()
                 symbol.load(os.path.join(self.librarypath, symbol_element.attrib["href"]))
-                self.symbols[symbol.name] = symbol
+                self.symbols[symbol.name] = os.path.join(self.librarypath, symbol_element.attrib["href"])
         
         if timelines is not None:
             for timeline_element in timelines:
@@ -115,18 +150,7 @@ class DOMDocument:
                 timeline.load(timeline_element)
                 self.timelines.append(timeline)
 
-    def save(self, filepath: str):
-        self.filepath = filepath
-
-        if not os.path.exists(filepath):
-            os.mkdir(filepath)
-
-        if not os.path.exists(self.binarypath):
-            os.mkdir(self.binarypath)
-
-        if not os.path.exists(self.librarypath):
-            os.mkdir(self.librarypath)
-        
+    def save(self):
         for folder in self.folders:
             if folder.name is not None and folder.name != "":
                 if not os.path.exists(os.path.join(self.librarypath, folder.name)):
@@ -178,25 +202,11 @@ class DOMDocument:
             Console.progress_bar("Adobe binary images saving...", i, len(self.media))
         print()
         
-        for i, symbol_name in enumerate(self.symbols):
-            symbol = self.symbols[symbol_name]
-
-            href = str(symbol_name) + ".xml"
-
-            symbol.save(os.path.join(self.librarypath, href))
-            
+        for symbol_name, symbol in self.symbols.items():
             include = Element("Include")
-            include.attrib["href"] = href
-
-            if symbol.symbol_type == "graphic":
-                include.attrib["itemIcon"] = "1"
-            
-            include.attrib["loadImmediate"] = "true"
+            include.attrib["href"] = str(symbol_name) + ".xml"
 
             symbols.append(include)
-
-            Console.progress_bar("Saving symbols...", i, len(self.symbols))
-        print()
 
         for timeline in self.timelines:
             timelines.append(timeline.save())
