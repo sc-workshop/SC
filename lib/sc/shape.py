@@ -301,10 +301,16 @@ class ShapeDrawBitmapCommand(Writable):
                     last = len(coords) - 1
                 else:
                     last = i - 1
+                    
+                if i == (len(coords) - 1):
+                    first = 0
+                else:
+                    first = i + 1
 
-                angle = radians(self.find_angle(coords[last], coords[i]) - 45)
+                last_angle = radians(self.find_angle(coords[last], coords[i]) - 45)/2
+                first_angle = radians(self.find_angle(coords[i], coords[first]) - 45)/2
 
-                res[i] = self.move_by_angle(coords[i], angle, -1 if inside else 1)
+                res[i] = self.move_by_angle(coords[i], last_angle + first_angle, -1 if inside else 1)
 
             return res
     def get_translation(self, centroid: bool = False):
