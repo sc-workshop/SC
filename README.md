@@ -9,6 +9,8 @@ Tool created by <a href="https://github.com/Fred-31">Fred-31</a> and <a href="ht
 
 ## About
 
+**THE RELEASE IS PREMATURE AND THE TOOL IS NOT FULLY COMPLETED (REPOSITORY IS OPEN DUE TO THE CURRENT CIRCUMSTANCES) !!!**
+
 This tool is designed to import and export 2D assets (`*.sc`, `*_dl.sc`, `*_tex.sc` files) from Supercell games using Adobe Animate 2019. At the moment, the tool is very slow when working with large files (so we do not advise you to import large files like ui.sc if you have a weak PC, 8Gb RAM and fast CPU is recommended ). Maybe we rewrite it with C++ or C# in future...
 
 There are also a lot of bugs and errors in the tool, if you find them, please let us know in <a href="https://github.com/scwmake/SC/issues">Issues</a> or our <a href="https://discord.gg/spFcna3xFJ">Discord server</a>!
