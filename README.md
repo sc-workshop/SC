@@ -23,13 +23,15 @@ There are also a lot of bugs and errors in the tool, if you find them, please le
 
 ## How To Use
 
-Please **WATCH ALL THE VIDEOS BELOW** before using this tool!
+Leak... not implemented...
 
-1. Converting `.sc` to Adobe Animate project file.
-2. Organizing your Adobe Animate project.
-3. Saving your Adobe Animate project for converting it to `.sc` file.
-4. Creating sprite sheets/texture atlases in TexturePacker.
-5. Converting Adobe Animate project to `.sc` file.
+~~Please **WATCH ALL THE VIDEOS BELOW** before using this tool!~~
+
+~~1. Converting `.sc` to Adobe Animate project file.~~
+~~2. Organizing your Adobe Animate project.~~
+~~3. Saving your Adobe Animate project for converting it to `.sc` file.~~
+~~4. Creating sprite sheets/texture atlases in TexturePacker.~~
+~~5. Converting Adobe Animate project to `.sc` file.~~
 
 ## TODO
 - Add TexturePacker projects support.
@@ -37,3 +39,5 @@ Please **WATCH ALL THE VIDEOS BELOW** before using this tool!
 - Write code in ```lib/fla```.
 - Add ```sc_export.py``` functional.
 - Rewrite it with C++ or C# in future...
+
+Hi Garlfin and Vorono4ka!
