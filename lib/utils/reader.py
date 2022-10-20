@@ -4,10 +4,10 @@ from io import BytesIO
 class BinaryReader(BytesIO):
     def __init__(self, initial_bytes: bytes) -> None:
         super().__init__(initial_bytes)
-    
+
     def skip(self, size: int):
         self.read(size)
-    
+
     def read_bool(self):
         return self.read_uchar() >= 1
 

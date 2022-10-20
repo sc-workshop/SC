@@ -120,16 +120,15 @@ class XFL:
         raise Exception(f"Project does not exist: {projectpath}")
 
     @staticmethod
-    def save(filepath: str, document: DOMDocument):
-        if os.path.splitext(filepath)[1] != ".fla":
-            raise Exception(f"File must be \".fla\": {filepath}")
+    def save(document: DOMDocument):
+        filepath = document.filepath + ".fla"
 
-        projectpath = os.path.splitext(filepath)[0]
+        projectpath = document.filepath
 
         if not os.path.exists(projectpath):
             os.mkdir(projectpath)
 
-        document.save(projectpath)
+        document.save()
 
         with ZipFile(filepath, 'w') as file:
             for root, _, files in os.walk(projectpath):

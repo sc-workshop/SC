@@ -165,6 +165,8 @@ class ShapeDrawBitmapCommand(Writable):
 
     def get_image(self, swf) -> Image:
         texture = swf.textures[self.texture_index]
+        image = texture.get_image()
+
         w, h = self.get_size(self.uv_coords)
         if w == 0:
             w = 1
@@ -192,8 +194,8 @@ class ShapeDrawBitmapCommand(Writable):
 
         bbox = left, top, right, bottom
 
-        sprite = Image.new(texture.image.mode, (w, h))
-        sprite.paste(texture.image.crop(bbox), (0, 0), mask.crop(bbox))
+        sprite = Image.new(image.mode, (w, h))
+        sprite.paste(image.crop(bbox), (0, 0), mask.crop(bbox))
 
         return sprite
 
@@ -274,43 +276,36 @@ class ShapeDrawBitmapCommand(Writable):
         res = coords.copy()
         w, h = ShapeDrawBitmapCommand.get_size(coords)
 
-        if len(coords) == 4:
-            if not inside and w == 0 or h == 0:
-                unique_points = [list(x) for x in set(tuple(x) for x in coords)]
-                for index, point in enumerate(unique_points):
-                    if coords[0] == coords[1]:
-                        point_idx = index + 1
-                    else:
-                        point_idx = 3 - (list(reversed(res)).index(point))
+        if not inside and w == 0 or h == 0:
+            unique_points = [list(x) for x in set(tuple(x) for x in coords)]
+            for index, point in enumerate(unique_points):
+                if coords[0] == coords[1]:
+                    point_idx = index + 1
+                else:
+                    point_idx = 3 - (list(reversed(res)).index(point))
 
-                    res[point_idx] = [res[point_idx][0] + (1 if w == 0 else 0),
-                                      res[point_idx][1] + (1 if h == 0 else 0)]
+                res[point_idx] = [res[point_idx][0] + (1 if w == 0 else 0),
+                                  res[point_idx][1] + (1 if h == 0 else 0)]
 
-                return res
-            else:
-                w_m = (w + 2) if not inside else (w - 2 if w > 2 else 0)
-                h_m = (h + 2) if not inside else (h - 2 if h > 2 else 0)
+            return res
+        else:
+            if len(coords) <= 4:
+                w_m = (w + 2) if inside else (w - 2 if w > 2 else 0)
+                h_m = (h + 2) if inside else (h - 2 if h > 2 else 0)
 
                 c_x, c_y = [sum([x for x, _ in coords]) / len(coords), sum([y for _, y in coords]) / len(coords)]
 
                 return [[round((w_m / w) * (x - c_x) + c_x), round((h_m / h) * (y - c_y) + c_y)] for x, y in coords]
 
-        else:
             for i, point in enumerate(coords):
                 if i == 0:
                     last = len(coords) - 1
                 else:
                     last = i - 1
-                    
-                if i == (len(coords) - 1):
-                    first = 0
-                else:
-                    first = i + 1
 
-                last_angle = radians(self.find_angle(coords[last], coords[i]) - 45)/2
-                first_angle = radians(self.find_angle(coords[i], coords[first]) - 45)/2
+                angle = radians(self.find_angle(coords[last], coords[i]) - 45)
 
-                res[i] = self.move_by_angle(coords[i], last_angle + first_angle, -1 if inside else 1)
+                res[i] = self.move_by_angle(coords[i], angle, -1 if inside else 1)
 
             return res
     def get_translation(self, centroid: bool = False):

@@ -7,7 +7,7 @@ from lib.utils import BinaryReader, BinaryWriter
 from .texture import SWFTexture
 from .shape import Shape
 from .text_field import TextField
-from .matrix_bank import MatrixBank
+from .matrix_bank import MatrixBank, Matrix
 from .movieclip import MovieClipModifier, MovieClip
 
 from sc_compression.signatures import Signatures
@@ -55,7 +55,7 @@ class SupercellSWF:
         self.has_external_texture: bool = None
 
         self.textures: list = []
-        self.matrix_banks: list = []
+        self.matrix_banks: list = [MatrixBank()]
         self.resources: dict = {}
 
         self.exports: dict = {}
@@ -120,9 +120,7 @@ class SupercellSWF:
             self.textures_count = self.reader.read_ushort()
             self.text_fields_count = self.reader.read_ushort()
 
-            matrix_bank = MatrixBank()
-            matrix_bank.load(self)
-            self.matrix_banks.append(matrix_bank)
+            self.matrix_banks[-1].load(self)
 
             self.reader.skip(5)  # unused
 
@@ -244,7 +242,7 @@ class SupercellSWF:
                 if text_fields_loaded > self.text_fields_count:
                     Console.error("Trying to load too many TextFields! Aborting...")
                     raise TypeError()
-                
+
                 continue
 
             elif tag == SupercellSWF.MATRIX_BANK_TAG:
@@ -260,19 +258,7 @@ class SupercellSWF:
             elif tag in SupercellSWF.MATRIX_TAGS:
                 Console.progress_bar("Matrices loading...", matrices_loaded, self.matrix_banks[-1].matrices_count)
 
-                matrix = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-
-                divider = 1024 if tag == 8 else 65535
-
-                matrix[0] = self.reader.read_int() / divider  # scale x
-                matrix[1] = self.reader.read_int() / divider  # rotation x
-                matrix[2] = self.reader.read_int() / divider  # rotation y
-                matrix[3] = self.reader.read_int() / divider  # scale y
-
-                matrix[4] = self.reader.read_twip()  # tx
-                matrix[5] = self.reader.read_twip()  # ty
-
-                self.matrix_banks[-1].matrices[matrices_loaded] = matrix
+                self.matrix_banks[-1].matrices[matrices_loaded].load(self, tag)
 
                 matrices_loaded += 1
                 if matrices_loaded == self.matrix_banks[-1].matrices_count:
@@ -283,18 +269,7 @@ class SupercellSWF:
             elif tag == SupercellSWF.COLOR_TRANSFORM_TAG:
                 Console.progress_bar("ColorTransforms loading...", color_transforms_loaded, self.matrix_banks[-1].color_transforms_count)
 
-                color = [0, 0, 0, 0, 1.0, 1.0, 1.0, 1.0]
-
-                color[0] = self.reader.read_uchar()  # red addition
-                color[1] = self.reader.read_uchar()  # green addition
-                color[2] = self.reader.read_uchar()  # blue addition
-
-                color[7] = self.reader.read_uchar() / 255  # alpha multiplier
-                color[4] = self.reader.read_uchar() / 255  # red multiplier
-                color[5] = self.reader.read_uchar() / 255  # green multiplier
-                color[6] = self.reader.read_uchar() / 255  # blue multiplier
-
-                self.matrix_banks[-1].color_transforms[color_transforms_loaded] = color
+                self.matrix_banks[-1].color_transforms[color_transforms_loaded].load(self, tag)
 
                 color_transforms_loaded += 1
                 if color_transforms_loaded == self.matrix_banks[-1].color_transforms_count:
@@ -351,11 +326,21 @@ class SupercellSWF:
         if not is_texture:
             Console.info("Writing main asset file...")
 
-            self.shapes_count = len([shape for shape in self.resources.values() if isinstance(shape, Shape)])
             self.textures_count = len(self.textures)
-            self.movieclips_count = len([movieclip for movieclip in self.resources.values() if isinstance(movieclip, MovieClip)])
-            self.text_fields_count = len([field for field in self.resources.values() if isinstance(field, TextField)])
-            self.movieclip_modifiers_count = len([modifier for modifier in self.resources.values() if isinstance(modifier, MovieClipModifier)])
+            self.shapes_count = 0
+            self.movieclips_count = 0
+            self.text_fields_count = 0
+            self.movieclip_modifiers_count = 0
+
+            for resource in self.resources.values():
+                if isinstance(resource, Shape):
+                    self.shapes_count += 1
+                if isinstance(resource, MovieClip):
+                    self.movieclips_count += 1
+                if isinstance(resource, TextField):
+                    self.text_fields_count += 1
+                if isinstance(resource, MovieClipModifier):
+                    self.movieclip_modifiers_count += 1
 
             self.writer.write_ushort(self.shapes_count)
             self.writer.write_ushort(self.movieclips_count)
@@ -448,8 +433,9 @@ class SupercellSWF:
                 texture = copy.deepcopy(texture)
                 if is_lowres:
                     Console.info("Writing lowres texture asset...")
-                    w, h = texture.image.size
-                    texture.image = texture.image.resize((int(w / 2), int(h / 2)))
+                    sheet = texture.get_image()
+                    w, h = sheet.size
+                    texture.set_image(sheet.resize((int(w / 2), int(h / 2))))
 
                 tag, data = texture.save(False)
                 save_tag(tag, data)
@@ -505,18 +491,8 @@ class SupercellSWF:
 
                 for matrix in resource.matrices:
                     Console.progress_bar(f"Matrices bank {resource.index} writing...", written_transforms, len(resource.matrices))
-                    a, b, c, d, tx, ty = matrix
 
-                    self.writer.write_uchar(8)
-                    self.writer.write_int(24)
-
-                    self.writer.write_int(int(round(a * 1024)))
-                    self.writer.write_int(int(round(b * 1024)))
-                    self.writer.write_int(int(round(c * 1024)))
-                    self.writer.write_int(int(round(d * 1024)))
-
-                    self.writer.write_twip(tx)
-                    self.writer.write_twip(ty)
+                    matrix.save(self)
 
                     written_transforms += 1
                 print()
@@ -524,19 +500,7 @@ class SupercellSWF:
                 for color_transform in resource.color_transforms:
                     Console.progress_bar(f"Colors bank {resource.index} writing...", written_transforms,
                                          len(resource.color_transforms))
-                    r_add, g_add, b_add, _, r_mul, g_mul, b_mul, a_mul = color_transform
-
-                    self.writer.write_uchar(9)
-                    self.writer.write_int(7)
-
-                    self.writer.write_uchar(round(r_add))
-                    self.writer.write_uchar(round(g_add))
-                    self.writer.write_uchar(round(b_add))
-
-                    self.writer.write_uchar(round(a_mul * 255))
-                    self.writer.write_uchar(round(r_mul * 255))
-                    self.writer.write_uchar(round(g_mul * 255))
-                    self.writer.write_uchar(round(b_mul * 255))
+                    color_transform.save(self)
 
                     written_transforms += 1
                 print()

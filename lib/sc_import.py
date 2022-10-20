@@ -26,7 +26,7 @@ def sc_to_fla(filepath):
 
     proceed_resources(fla, swf)
 
-    fla.save()
+    XFL.save(fla)
 
 
 def prepare_document(path):
@@ -84,9 +84,10 @@ def convert_shape(fla, swf, id, shape):
         if uv_coords.count(uv_coords[0]) == len(uv_coords):  # color fills is always 1x1
             color_fill = DOMShape()
             texture = swf.textures[bitmap.texture_index]
+            image = texture.get_image()
 
             x, y = uv_coords[0]
-            pixel = texture.image.getpixel((int(x), int(y)))
+            pixel = image.getpixel((int(x), int(y)))
 
             color = 0
             alpha = 1.0
@@ -401,21 +402,20 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
 
 
                     if element["matrix"] != 0xFFFF:
-                        a, b, c, d, tx, ty = swf.matrix_banks[movieclip.matrix_bank].matrices[element["matrix"]]
-                        instance.matrix = Matrix(a, b, c, d, tx, ty)
+                        m = swf.matrix_banks[movieclip.matrix_bank].matrices[element["matrix"]]
+                        instance.matrix = Matrix(m.a, m.b, m.c, m.d, m.tx, m.ty)
 
                     if element["color"] != 0xFFFF:
-                        r_add, g_add, b_add, a_add, r_multi, g_multi, b_multi, a_multi = \
-                            swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
+                        c = swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
                         bind_color = Color()
-                        bind_color.red_offset = r_add
-                        bind_color.green_offset = g_add
-                        bind_color.blue_offset = b_add
-                        bind_color.alpha_offset = a_add
-                        bind_color.red_multiplier = r_multi
-                        bind_color.green_multiplier = g_multi
-                        bind_color.blue_multiplier = b_multi
-                        bind_color.alpha_multiplier = a_multi
+                        bind_color.red_offset = c.r_add
+                        bind_color.green_offset = c.g_add
+                        bind_color.blue_offset = c.b_add
+                        bind_color.alpha_offset = 0
+                        bind_color.red_multiplier = c.r_mul
+                        bind_color.green_multiplier = c.g_mul
+                        bind_color.blue_multiplier = c.b_mul
+                        bind_color.alpha_multiplier = c.a_mul
                         instance.color = bind_color
 
                     layer_frame.elements.append(instance)

@@ -191,7 +191,7 @@ class SWFTexture(Writable):
         self.width: int = 0
         self.height: int = 0
 
-        self.image: Image = None
+        self._image: Image = None
 
     def load(self, swf, tag: int, has_external_texture: bool):
         pixel_type_index = swf.reader.read_uchar()
@@ -219,10 +219,10 @@ class SWFTexture(Writable):
             Console.info(
                 f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
 
-            self.image = Image.new(MODES_TABLE[self.pixel_format], (self.width, self.height))
-            loaded = self.image.load()
+            self._image = Image.new(MODES_TABLE[self.pixel_format], (self.width, self.height))
+            loaded = self._image.load()
 
-            self.channels = CHANNLES_TABLE[self.image.mode]
+            self.channels = CHANNLES_TABLE[self._image.mode]
 
             read_pixel = PIXEL_READ_FUNCTIONS[self.pixel_internal_format]
 
@@ -262,37 +262,6 @@ class SWFTexture(Writable):
     def save(self, has_external_texture: bool):
         super().save()
 
-        if self.image is not None:
-            self.channels = CHANNLES_TABLE[self.image.mode]
-            self.width, self.height = self.image.size
-
-        if self.channels == 4:
-            self.pixel_format = "GL_RGBA"
-
-            if self.pixel_type == "GL_UNSIGNED_BYTE":
-                self.pixel_internal_format = "GL_RGBA8"
-
-            elif self.pixel_type == "GL_UNSIGNED_SHORT_4_4_4_4":
-                self.pixel_internal_format = "GL_RGBA4"
-
-            else:
-                self.pixel_internal_format = "GL_RGB5_A1"
-
-        elif self.channels == 3:
-            self.pixel_format = "GL_RGB"
-            self.pixel_type = "GL_UNSIGNED_SHORT_5_6_5"
-            self.pixel_internal_format = "GL_RGB565"
-
-        elif self.channels == 2:
-            self.pixel_format = "GL_LUMINANCE_ALPHA"
-            self.pixel_type = "GL_UNSIGNED_BYTE"
-            self.pixel_internal_format = "GL_LUMINANCE8_ALPHA8"
-
-        else:
-            self.pixel_format = "GL_LUMINANCE"
-            self.pixel_type = "GL_UNSIGNED_BYTE"
-            self.pixel_internal_format = "GL_LUMINANCE8"
-
         pixel_type_index = PIXEL_INTERNAL_FORMATS.index(self.pixel_internal_format)
 
         tag = 1
@@ -320,12 +289,12 @@ class SWFTexture(Writable):
             f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
 
         if not has_external_texture:
-            loaded = self.image.load()
+            loaded = self._image.load()
 
             write_pixel = PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format]
 
             if not self.linear:
-                loaded_clone = self.image.copy().load()
+                loaded_clone = self._image.copy().load()
 
                 def add_pixel(pixel: tuple):
                     loaded[pixel_index % self.width, pixel_index // self.width] = pixel
@@ -363,3 +332,40 @@ class SWFTexture(Writable):
             print()
 
         return tag, self.buffer
+
+    def get_image(self):
+        return self._image
+    def set_image(self, img: Image):
+        self._image = img
+
+        self.channels = CHANNLES_TABLE[self._image.mode]
+        self.width, self.height = self._image.size
+
+        if self.channels == 4:
+            self.pixel_format = "GL_RGBA"
+
+            if self.pixel_type == "GL_UNSIGNED_BYTE":
+                self.pixel_internal_format = "GL_RGBA8"
+
+            elif self.pixel_type == "GL_UNSIGNED_SHORT_4_4_4_4":
+                self.pixel_internal_format = "GL_RGBA4"
+
+            else:
+                self.pixel_internal_format = "GL_RGB5_A1"
+
+        elif self.channels == 3:
+            self.pixel_format = "GL_RGB"
+            self.pixel_type = "GL_UNSIGNED_SHORT_5_6_5"
+            self.pixel_internal_format = "GL_RGB565"
+
+        elif self.channels == 2:
+            self.pixel_format = "GL_LUMINANCE_ALPHA"
+            self.pixel_type = "GL_UNSIGNED_BYTE"
+            self.pixel_internal_format = "GL_LUMINANCE8_ALPHA8"
+
+        else:
+            self.pixel_format = "GL_LUMINANCE"
+            self.pixel_type = "GL_UNSIGNED_BYTE"
+            self.pixel_internal_format = "GL_LUMINANCE8"
+
+
