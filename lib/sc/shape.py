@@ -175,7 +175,7 @@ class ShapeDrawBitmapCommand(Writable):
 
         if w + h == 2:
             x, y = self.uv_coords[-1]
-            return Image.new(texture.image.mode, (1, 1), texture.image.getpixel((x, y)))
+            return Image.new(image.mode, (1, 1), image.getpixel((x, y)))
 
         mask = Image.new("L", (texture.width, texture.height), 0)
 

@@ -1,0 +1,21 @@
+{
+	"skip": [],
+	"split": [],
+	"example": {
+		"skip": [
+			{
+				"ui.sc": [
+					"emoji_*"
+				]
+			}
+		],
+		"split": [
+			{
+				"loading.sc": [
+					"loading_screen"
+				]
+			},
+			"hero_icon_*"
+		]
+	}
+}
