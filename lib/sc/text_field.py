@@ -1,12 +1,15 @@
-from .writable import Writable
+from .resource import Resource
+from .savable import Savable
+from ..utils import BinaryWriter
 
-class TextField(Writable):
+
+class TextField(Resource, Savable):
     def __init__(self) -> None:
         super().__init__()
 
-        self.font_name: str = None
+        self.font_name: str or None = None
         self.font_color: int = -1
-        self.outline_color: int = None # -1
+        self.outline_color: int or None = None  # -1
         self.font_size: int = 0
         self.font_align: int = 0
 
@@ -20,18 +23,18 @@ class TextField(Writable):
         self.right_corner: int = 0
         self.bottom_corner: int = 0
 
-        self.text: str = None
+        self.text: str or None = None
 
-        self.flag1: bool = None  # False
-        self.flag2: bool = None  # False
-        self.flag3: bool = None  # False
+        self.flag1: bool or None = None  # False
+        self.flag2: bool or None = None  # False
+        self.flag3: bool or None = None  # False
 
-        self.c1: int = None  # 0
-        self.c2: int = None  # 0
+        self.c1: int or None = None  # 0
+        self.c2: int or None = None  # 0
 
-    def load(self, swf, tag: int):
-        id = swf.reader.read_ushort()
-        
+    def load(self, swf, tag: int) -> None:
+        self.id = swf.reader.read_ushort()
+
         self.font_name = swf.reader.read_ascii()
         self.font_color = swf.reader.read_int()
 
@@ -52,7 +55,7 @@ class TextField(Writable):
         self.text = swf.reader.read_ascii()
 
         if tag == 7:
-            return id
+            return self.id
 
         self.flag1 = swf.reader.read_bool()
 
@@ -72,83 +75,88 @@ class TextField(Writable):
         if tag > 43:
             self.flag3 = swf.reader.read_bool()
 
-        return id
+    def save(self, stream: BinaryWriter):
+        stream.write_ushort(self.id)
 
-    def save(self, id: int):
-        super().save()
+        stream.write_ascii(self.font_name)
+        stream.write_int(self.font_color)
 
-        tag = 7
+        stream.write_bool(self.bold)
+        stream.write_bool(self.italic)
+        stream.write_bool(self.multiline)
+        stream.write_bool(False)  # unused
 
-        self.write_ushort(id)
+        stream.write_uchar(self.font_align)
+        stream.write_uchar(self.font_size)
 
-        self.write_ascii(self.font_name)
-        self.write_int(self.font_color)
+        stream.write_short(self.top_corner)
+        stream.write_short(self.bottom_corner)
+        stream.write_short(self.left_corner)
+        stream.write_short(self.right_corner)
 
-        self.write_bool(self.bold)
-        self.write_bool(self.italic)
-        self.write_bool(self.multiline)
-        self.write_bool(False)  # unused
-
-        self.write_uchar(self.font_align)
-        self.write_uchar(self.font_size)
-
-        self.write_short(self.top_corner)
-        self.write_short(self.bottom_corner)
-        self.write_short(self.left_corner)
-        self.write_short(self.right_corner)
-
-        self.write_bool(self.outline)
-        self.write_ascii(self.text)
+        stream.write_bool(self.outline)
+        stream.write_ascii(self.text)
 
         if self.flag1 is not None:
-            tag = 15
-            self.write_bool(self.flag1)
+            stream.write_bool(self.flag1)
 
             if self.flag2 is not None:
-                if self.flag2:
-                    tag = 20
-                else:
+                if not self.flag2:
                     if self.outline_color is not None:
-                        tag = 21
-                        self.write_int(self.outline_color)
+                        stream.write_int(self.outline_color)
 
                         if self.c1 is not None:
-                            tag = 25
-                            self.write_short(self.c1)
-                            self.write_short(0)  # unused
+                            stream.write_short(self.c1)
+                            stream.write_short(0)  # unused
 
                             if self.c2 is not None:
-                                tag = 33
-                                self.write_short(self.c2)
+                                stream.write_short(self.c2)
 
                                 if self.flag3 is not None:
-                                    tag = 43
                                     if self.flag3:
-                                        tag = 44
-                                        self.write_bool(self.flag3)
+                                        stream.write_bool(self.flag3)
 
-        return tag, self.buffer
+    def get_tag(self) -> int:
+        if self.flag1 is None:
+            return 7
+        if self.flag2 is None or self.outline_color is None:
+            return 15
+        if self.flag2:
+            return 20
 
-    def __eq__(a, b):
-        if type(a) == type(b):
-            if a.font_name == b.font_name\
-                    and a.font_color == b.font_color\
-                    and a.outline_color == b.outline_color\
-                    and a.font_size == b.font_size\
-                    and a.font_size == b.font_size\
-                    and a.font_align == b.font_align\
-                    and a.bold == b.bold\
-                    and a.italic == b.italic\
-                    and a.multiline == b.multiline\
-                    and a.left_corner == b.left_corner\
-                    and a.top_corner == b.top_corner\
-                    and a.right_corner == b.right_corner\
-                    and a.bottom_corner == b.bottom_corner\
-                    and a.text == b.text\
-                    and a.flag1 == b.flag1\
-                    and a.flag2 == b.flag2\
-                    and a.flag3 == b.flag3\
-                    and a.c1 == b.c1\
-                    and a.c2 == b.c2:
+        if self.c1 is None:
+            return 21
+        if self.c2 is None:
+            return 25
+
+        if self.flag3 is None:
+            return 33
+
+        if self.flag3:
+            return 44
+        else:
+            return 43
+
+    def __eq__(self, other):
+        if type(self) == type(other):
+            if self.font_name == other.font_name \
+                    and self.font_color == other.font_color \
+                    and self.outline_color == other.outline_color \
+                    and self.font_size == other.font_size \
+                    and self.font_size == other.font_size \
+                    and self.font_align == other.font_align \
+                    and self.bold == other.bold \
+                    and self.italic == other.italic \
+                    and self.multiline == other.multiline \
+                    and self.left_corner == other.left_corner \
+                    and self.top_corner == other.top_corner \
+                    and self.right_corner == other.right_corner \
+                    and self.bottom_corner == other.bottom_corner \
+                    and self.text == other.text \
+                    and self.flag1 == other.flag1 \
+                    and self.flag2 == other.flag2 \
+                    and self.flag3 == other.flag3 \
+                    and self.c1 == other.c1 \
+                    and self.c2 == other.c2:
                 return True
         return False

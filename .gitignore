@@ -1,3 +1,9 @@
+# Project files (IDE, environment)
+/.idea/
+/venv/
+/*.iml
+
+# Python compiled files
 *.pyc
+
 assets
-__pycache__

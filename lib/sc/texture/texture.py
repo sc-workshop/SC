@@ -1,8 +1,10 @@
-from .writable import Writable
-
 from PIL import Image
 
 from lib.console import Console
+from lib.sc.savable import Savable
+from lib.sc.texture.read_functions import *
+from lib.sc.texture.write_functions import *
+from lib.utils import BinaryWriter
 
 PACKER_FILTER_TABLE = {
     "LINEAR": "GL_LINEAR",
@@ -10,7 +12,7 @@ PACKER_FILTER_TABLE = {
     "MIPMAP": "GL_LINEAR_MIPMAP_NEAREST"
 }
 
-PACKER_PIXEL_TYPES =[
+PACKER_PIXEL_TYPES = [
     "RGBA8888",
     "BGRA8888",
     "RGBA4444",
@@ -79,82 +81,6 @@ PIXEL_INTERNAL_FORMATS = [
     "GL_LUMINANCE8"
 ]
 
-def read_rgba8(swf):
-    r = swf.reader.read_uchar()
-    g = swf.reader.read_uchar()
-    b = swf.reader.read_uchar()
-    a = swf.reader.read_uchar()
-    return r, g, b, a
-
-
-def read_rgba4(swf):
-    p = swf.reader.read_ushort()
-    r = ((p >> 12) & 15) << 4
-    g = ((p >> 8) & 15) << 4
-    b = ((p >> 4) & 15) << 4
-    a = (p & 15) << 4
-    return r, g, b, a
-
-
-def read_rgb5_a1(swf):
-    p = swf.reader.read_ushort()
-    r = ((p >> 11) & 31) << 3
-    g = ((p >> 6) & 31) << 3
-    b = ((p >> 1) & 31) << 3
-    a = (p & 255) << 7
-    return r, g, b, a
-
-
-def read_rgb565(swf):
-    p = swf.reader.read_ushort()
-    r = ((p >> 11) & 31) << 3
-    g = ((p >> 5) & 63) << 2
-    b = (p & 31) << 3
-    return r, g, b
-
-
-def read_luminance8_alpha8(swf):
-    a = swf.reader.read_uchar()
-    l = swf.reader.read_uchar()
-    return l, a
-
-
-def read_luminance8(swf):
-    return swf.reader.read_uchar()
-
-
-def write_rgba8(swf, pixel):
-    r, g, b, a = pixel
-    swf.write_uchar(r)
-    swf.write_uchar(g)
-    swf.write_uchar(b)
-    swf.write_uchar(a)
-
-
-def write_rgba4(swf, pixel):
-    r, g, b, a = pixel
-    swf.write_ushort(a >> 4 | b >> 4 << 4 | g >> 4 << 8 | r >> 4 << 12)
-
-
-def write_rgb5_a1(swf, pixel):
-    r, g, b, a = pixel
-    swf.write_ushort(a >> 7 | b >> 3 << 1 | g >> 3 << 6 | r >> 3 << 11)
-
-
-def write_rgb565(swf, pixel):
-    r, g, b = pixel
-    swf.write_ushort(int(b >> 3 | g >> 2 << 5 | r >> 3 << 11))
-
-
-def write_luminance8_alpha8(swf, pixel):
-    l, a = pixel
-    swf.write_ushort(l << 8 | a)
-
-
-def write_luminance8(swf, pixel):
-    swf.write_uchar(int(pixel))
-
-
 PIXEL_READ_FUNCTIONS = {
     "GL_RGBA8": read_rgba8,
     "GL_RGBA4": read_rgba4,
@@ -174,7 +100,7 @@ PIXEL_WRITE_FUNCTIONS = {
 }
 
 
-class SWFTexture(Writable):
+class SWFTexture(Savable):
     def __init__(self) -> None:
         self.channels: int = 4
 
@@ -192,6 +118,7 @@ class SWFTexture(Writable):
         self.height: int = 0
 
         self._image: Image = None
+        self._has_external_texture: bool = False
 
     def load(self, swf, tag: int, has_external_texture: bool):
         pixel_type_index = swf.reader.read_uchar()
@@ -230,10 +157,10 @@ class SWFTexture(Writable):
                 for y in range(self.height):
                     for x in range(self.width):
                         loaded[x, y] = read_pixel(swf)
-                    
+
                     Console.progress_bar("Loading texture data...", y, self.height)
                 print()
-            
+
             else:
                 block_size = 32
 
@@ -255,40 +182,24 @@ class SWFTexture(Writable):
                                     break
 
                                 loaded[pixel_x, pixel_y] = read_pixel(swf)
-                    
+
                     Console.progress_bar("Loading splitted texture data...", y_block, y_blocks + 1)
             print()
 
-    def save(self, has_external_texture: bool):
-        super().save()
-
+    def save(self, stream: BinaryWriter) -> None:
         pixel_type_index = PIXEL_INTERNAL_FORMATS.index(self.pixel_internal_format)
 
-        tag = 1
-        if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_NEAREST"):
-            if not self.linear:
-                tag = 27 if not self.downscaling else 28
-            else:
-                tag = 24 if not self.downscaling else 1
+        stream.write_uchar(pixel_type_index)
 
-        if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_LINEAR_MIPMAP_NEAREST"):
-            if not self.linear and not self.downscaling:
-                tag = 29
-            else:
-                tag = 19 if not self.downscaling else 16
-
-        if (self.mag_filter, self.min_filter) == ("GL_NEAREST", "GL_NEAREST"):
-            tag = 34
-
-        self.write_uchar(pixel_type_index)
-
-        self.write_ushort(self.width)
-        self.write_ushort(self.height)
+        stream.write_ushort(self.width)
+        stream.write_ushort(self.height)
 
         Console.info(
-            f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
+            f"SWFTexture: {self.width}x{self.height} - "
+            f"Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}"
+        )
 
-        if not has_external_texture:
+        if not self._has_external_texture:
             loaded = self._image.load()
 
             write_pixel = PIXEL_WRITE_FUNCTIONS[self.pixel_internal_format]
@@ -331,10 +242,30 @@ class SWFTexture(Writable):
 
             print()
 
-        return tag, self.buffer
+    def get_tag(self) -> int:
+        tag = 1
+        if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_NEAREST"):
+            if not self.linear:
+                tag = 27 if not self.downscaling else 28
+            else:
+                tag = 24 if not self.downscaling else 1
+
+        if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_LINEAR_MIPMAP_NEAREST"):
+            if not self.linear and not self.downscaling:
+                tag = 29
+            else:
+                tag = 19 if not self.downscaling else 16
+
+        if (self.mag_filter, self.min_filter) == ("GL_NEAREST", "GL_NEAREST"):
+            tag = 34
+        return tag
+
+    def set_has_external_texture(self, has_external_texture: bool):
+        self._has_external_texture = has_external_texture
 
     def get_image(self):
         return self._image
+
     def set_image(self, img: Image):
         self._image = img
 
@@ -369,3 +300,9 @@ class SWFTexture(Writable):
             self.pixel_internal_format = "GL_LUMINANCE8"
 
 
+def save_texture(texture: SWFTexture, has_external_texture: bool):
+    def wrapper(stream: BinaryWriter):
+        texture.set_has_external_texture(has_external_texture)
+        texture.save(stream)
+
+    return wrapper

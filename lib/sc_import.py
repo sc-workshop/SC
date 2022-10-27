@@ -5,6 +5,7 @@ from PIL import Image
 
 from lib.sc import *
 from lib.fla import *
+from lib.sc.movie_clip import MovieClip, MovieClipModifier
 
 shape_bitmaps_uvs = []
 shape_bitmaps_twips = []
@@ -15,9 +16,9 @@ def sc_to_fla(filepath):
     swf = SupercellSWF()
     swf.load(filepath)
 
-    projectdir = os.path.splitext(swf.filename)[0]
+    project_directory = os.path.splitext(swf.filename)[0]
 
-    fla = prepare_document(projectdir)
+    fla = prepare_document(project_directory)
 
     startup = DOMDocument("lib/scwmake_credit")
     startup.load()
@@ -29,7 +30,7 @@ def sc_to_fla(filepath):
     XFL.save(fla)
 
 
-def prepare_document(path):
+def prepare_document(path: str) -> DOMDocument:
     Console.info("Creating DOMDocument for Adobe Animate...")
 
     fla = DOMDocument(path)
@@ -53,33 +54,34 @@ def prepare_document(path):
     return fla
 
 
-def proceed_resources(fla, swf):
+def proceed_resources(fla: DOMDocument, swf: SupercellSWF):
     resource_counter = 0
-    for id, resource in swf.resources.items():
+    for resource_id, resource in swf.resources.items():
         Console.progress_bar("Converting SupercellFlash resources to Adobe Animate...", resource_counter,
                              swf.movieclips_count + swf.shapes_count)
         if isinstance(resource, Shape):
-            convert_shape(fla, swf, id, resource)
+            convert_shape(fla, swf, resource_id, resource)
 
         elif isinstance(resource, MovieClip):
-            export_names = swf.exports[id] if id in swf.exports else None
-            convert_movieclip(fla, swf, id, resource, export_names)
+            export_names = swf.exports[resource_id] if resource_id in swf.exports else None
+            convert_movie_clip(fla, swf, resource_id, resource, export_names)
         else:
             continue
         resource_counter += 1
 
     print()
 
-def convert_shape(fla, swf, id, shape):
-    graphic = DOMSymbolItem(f"shapes/shape_{id}", "graphic")
-    graphic.timeline.name = f"shape_{id}"
+
+def convert_shape(fla, swf: SupercellSWF, resource_id: int, shape: Shape):
+    graphic = DOMSymbolItem(f"shapes/shape_{resource_id}", "graphic")
+    graphic.timeline.name = f"shape_{resource_id}"
 
     for bitmap_index, bitmap in enumerate(reversed(shape.bitmaps)):
         layer = DOMLayer(f"shape_layer_{bitmap_index}", False)
         frame = DOMFrame(index=0)
 
-        uv_coords = bitmap.uv_coords
-        xy_coords = bitmap.xy_coords
+        uv_coords = bitmap.uv_coordinates
+        xy_coords = bitmap.xy_coordinates
 
         if uv_coords.count(uv_coords[0]) == len(uv_coords):  # color fills is always 1x1
             color_fill = DOMShape()
@@ -143,7 +145,7 @@ def convert_shape(fla, swf, id, shape):
                 bitmap_item.source_external_filepath = f"LIBRARY/resources/{uvs_index}.png"
 
                 sprite = bitmap.get_image(swf)
-                sprite = sprite.rotate(-rotation, expand = True)
+                sprite = sprite.rotate(-rotation, expand=True)
                 if mirror:
                     sprite = sprite.transpose(Image.FLIP_LEFT_RIGHT)
                 bitmap_item.image = sprite
@@ -169,7 +171,7 @@ def convert_shape(fla, swf, id, shape):
     fla.symbols.add(graphic.name, graphic)
 
 
-def patch_shape_nine_slice(fla, id, shape):
+def patch_shape_nine_slice(fla: DOMDocument, id: int, shape):
     shape_slice = DOMGroup()
 
     shape_symbol = fla.symbols.get(f"shapes/shape_{id}")
@@ -188,8 +190,8 @@ def patch_shape_nine_slice(fla, id, shape):
 
                     sprite_twip = [[0, 0], [w, 0], [w, h], [0, h]]
 
-                    slice = DOMShape()
-                    slice.is_drawing_object = True
+                    slice_shape = DOMShape()
+                    slice_shape.is_drawing_object = True
 
                     edge_shape = ""
                     for x, curr in enumerate(sprite_twip):
@@ -201,23 +203,23 @@ def patch_shape_nine_slice(fla, id, shape):
                     slice_bitmap_fill.matrix = Matrix(20, 0, 0, 20, -1, -1)
                     slice_style.data = slice_bitmap_fill
 
-                    slice_shape = Edge()
-                    slice_shape.edges = edge_shape
-                    slice_shape.fill_style1 = 1
+                    slice_edge = Edge()
+                    slice_edge.edges = edge_shape
+                    slice_edge.fill_style1 = 1
 
-                    slice.fills.append(slice_style)
-                    slice.edges.append(slice_shape)
-                    slice.matrix = element.matrix
+                    slice_shape.fills.append(slice_style)
+                    slice_shape.edges.append(slice_edge)
+                    slice_shape.matrix = element.matrix
 
-                    shape_slice.members.append(slice)
+                    shape_slice.members.append(slice_shape)
 
-                    shape_symbol.timeline.layers[l].frames[f].elements[e] = slice
+                    shape_symbol.timeline.layers[l].frames[f].elements[e] = slice_shape
 
     shapes_with_nine_slices[id] = shape_slice
     return shape_slice
 
 
-def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = None):
+def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: MovieClip, export_names: list = None):
     movie = DOMSymbolItem()
 
     layers_instance = []
@@ -244,7 +246,7 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
 
             # Symbols instance
             if isinstance(bind_resource, Shape):
-                if movieclip.nine_slice:
+                if movieclip.scaling_grid:
                     if id in shapes_with_nine_slices:
                         bind_instance = shapes_with_nine_slices[id]
                     else:
@@ -252,17 +254,13 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
 
                 else:
                     bind_instance = DOMSymbolInstance(library_item_name=f"shapes/shape_{bind['id']}")
-
             elif isinstance(bind_resource, MovieClip):
                 if bind["id"] in swf.exports and f"movieclips/movieclip_{bind['id']}" not in fla.symbols:
-                    convert_movieclip(fla, swf, bind["id"], bind_resource)
+                    convert_movie_clip(fla, swf, bind["id"], bind_resource)
 
                 bind_instance = DOMSymbolInstance(name=bind["name"],
-                                                library_item_name=f"movieclips/movieclip_{bind['id']}")
+                                                  library_item_name=f"movieclips/movieclip_{bind['id']}")
                 bind_instance.blend_mode = bind['blend']
-
-
-
             elif isinstance(bind_resource, TextField):
                 bind_instance = DOMDynamicText(name=bind["name"])
 
@@ -343,7 +341,8 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
     # Converting frames
     for i, frame in enumerate(movieclip.frames):
         elements = [element['bind'] for element in frame.elements]
-        elements_idx = [element for element in elements if not isinstance(swf.resources[movieclip.binds[element]['id']], MovieClipModifier)]
+        elements_idx = [element for element in elements if
+                        not isinstance(swf.resources[movieclip.binds[element]['id']], MovieClipModifier)]
 
         for element in elements_idx:
             for comparative in elements_idx:
@@ -393,13 +392,12 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
                     element = frame.elements[elements.index(layer_idx)]
 
                     if curr_layer.frames and i:
-                        if element in movieclip.frames[i-1].elements:
+                        if element in movieclip.frames[i - 1].elements:
                             curr_layer.frames[-1].duration += 1
                             continue
 
                     layer_frame = DOMFrame(i)
                     instance = copy.deepcopy(symbols_instance[layer_idx])
-
 
                     if element["matrix"] != 0xFFFF:
                         m = swf.matrix_banks[movieclip.matrix_bank].matrices[element["matrix"]]
@@ -443,8 +441,8 @@ def convert_movieclip(fla, swf, id, movieclip: MovieClip, export_names: list = N
                 masked_layer.parent_layer_index = mask_layer_index
                 movie.timeline.layers.insert(mask_layer_index + 1, masked_layer)
 
-    if movieclip.nine_slice:
-        x, y, width, height = movieclip.nine_slice
+    if movieclip.scaling_grid:
+        x, y, width, height = movieclip.scaling_grid
 
         movie.scale_grid_left = x
         movie.scale_grid_top = y

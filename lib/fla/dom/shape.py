@@ -18,7 +18,7 @@ class DOMShape:
         self.edges: list = []
         self.fills: list = []
         self.strokes: list = []
-        self.matrix: Matrix = None
+        self.matrix: Matrix or None = None
     
     def load(self, xml: Element):
         if "isDrawingObject" in xml.attrib:

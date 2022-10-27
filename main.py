@@ -1,56 +1,55 @@
-import os
-
-import time
 import argparse
+import time
 
-from sc_compression.signatures import Signatures
 from sc_compression import Decompressor, Compressor
+from sc_compression.signatures import Signatures
 
-from lib.console import Console, Time
+from lib.console import time_to_string
+
 
 def main():
     parser = argparse.ArgumentParser(description="SC tool by SCW Make - github.com/scwmake/SC")
 
     parser.add_argument("-d", "--decompile", help="Convert *.sc file to *.fla", type=str)
     parser.add_argument("-dx", "--decompress", help="Decompress *.sc files with Supercell compression", type=str)
-    parser.add_argument("-cx", "--compress", help="Compress *.sc files with Supercell compression (LZMA | SC | version 1)", type=str)
+    parser.add_argument("-cx", "--compress",
+                        help="Compress *.sc files with Supercell compression (LZMA | SC | version 1)", type=str)
 
     args = parser.parse_args()
+
+    args.decompile = "C:\\Users\\Admin\\Desktop\\sc\\ui.sc"
 
     start_time = time.time()
 
     if args.decompile:
         from lib import sc_to_fla
         sc_to_fla(args.decompile)
-
     elif args.decompress:
-        file = args.decompress
+        file_path = args.decompress
 
-        decompressor = Decompressor()
-        decompressed = decompressor.decompress(open(file, 'rb').read().split(b"START")[0])
+        with open(file_path, 'rb') as file:
+            decompressor = Decompressor()
+            decompressed = decompressor.decompress(file.read().split(b"START")[0])
 
-        open(file + ".dec", 'wb').write(decompressed)
-
+        with open(file_path + ".dec", 'wb') as decompressed_file:
+            decompressed_file.write(decompressed)
     elif args.compress:
-        file = args.compress
+        file_path = args.compress
 
-        compressor = Compressor()
-        compressed = compressor.compress(open(file, 'rb').read(), Signatures.SC, 1)
+        with open(file_path, 'rb') as file:
+            compressor = Compressor()
+            compressed = compressor.compress(file.read(), Signatures.SC, 1)
 
-        open(file + ".cmp", 'wb').write(compressed)
-
-
+        with open(file_path + ".cmp", 'wb') as compressed_file:
+            compressed_file.write(compressed)
     else:
-        Console.title("SC tool by SCW Make - github.com/scwmake/SC")
-        print("-d, --decompile : Convert *.sc file to *.fla")
-        print("-dx, --decompress : Decompress *.sc files with Supercell compression")
-        print("-cx, --compress : Compress *.sc files with Supercell compression (LZMA | SC | version 1)")
-        exit(0)
+        parser.print_help()
 
-    result_time = time.time() - start_time
-
-    print(f"Done in {Time(result_time)} seconds!")
+    print(f"Done in {time_to_string(time.time() - start_time)} seconds!")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass

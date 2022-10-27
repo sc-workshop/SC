@@ -12,7 +12,7 @@ class SolidStroke:
         self.weight = weight
 
         # elements
-        self.fill: SolidColor = None
+        self.fill: SolidColor or None = None
     
     def load(self, xml: Element):
         if "scaleMode" in xml.attrib:

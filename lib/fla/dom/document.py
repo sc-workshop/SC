@@ -16,7 +16,8 @@ from . import NAMESPACES
 
 from lib.console import Console
 
-class folders(list):
+
+class Folders(list):
     def __init__(self, library: str):
         self.library = library
 
@@ -26,11 +27,11 @@ class folders(list):
             self.append(folder_item)
 
     def delete(self, index):
-        object = self[index]
-        rmtree(os.path.join(self.library, object.name))
+        rmtree(os.path.join(self.library, self[index].name))
         del self[index]
 
-class symbols(dict):
+
+class Symbols(dict):
     def __init__(self, library: str):
         self.library = library
 
@@ -63,56 +64,56 @@ class DOMDocument:
         self.background_color: int = 0x666666
 
         # elements
-        self.folders = folders(self.librarypath)
+        self.folders = Folders(self.library_path)
         self.media: dict = {}
-        self.symbols = symbols(self.librarypath)
+        self.symbols = Symbols(self.library_path)
         self.timelines: list = []
 
-        if not os.path.exists(self.binarypath):
-            os.mkdir(self.binarypath)
+        if not os.path.exists(self.binary_path):
+            os.mkdir(self.binary_path)
 
-        if not os.path.exists(self.librarypath):
-            os.mkdir(self.librarypath)
-    
+        if not os.path.exists(self.library_path):
+            os.mkdir(self.library_path)
+
     @property
-    def librarypath(self):
+    def library_path(self):
         path = f"{self.filepath}/LIBRARY"
         if not os.path.exists(path):
             os.makedirs(path)
         return path
-    
+
     @property
-    def binarypath(self):
+    def binary_path(self):
         path = f"{self.filepath}/bin"
         if not os.path.exists(path):
             os.makedirs(path)
         return path
-    
+
     def load(self):
         parsed = parse(os.path.join(self.filepath, "DOMDocument.xml"))
         xml = parsed.getroot()
 
         if "xflVersion" in xml.attrib:
             self.xfl_version = float(xml.attrib["xflVersion"])
-        
+
         if "creatorInfo" in xml.attrib:
             self.creator_info = xml.attrib["creatorInfo"]
-        
+
         if "width" in xml.attrib:
             self.width = int(xml.attrib["width"])
-        
+
         if "height" in xml.attrib:
             self.height = int(xml.attrib["height"])
-        
+
         if "frameRate" in xml.attrib:
             self.frame_rate = int(xml.attrib["frameRate"])
-        
+
         if "currentTimeline" in xml.attrib:
             self.current_timeline = int(xml.attrib["currentTimeline"])
-        
+
         if "backgroundColor" in xml.attrib:
             self.background_color = int(xml.attrib["backgroundColor"].replace("#", "0x"), 0)
-        
+
         folders = xml.find("./xfl:folders", NAMESPACES)
         media = xml.find("./xfl:media", NAMESPACES)
         symbols = xml.find("./xfl:symbols", NAMESPACES)
@@ -123,27 +124,28 @@ class DOMDocument:
                 folder = DOMFolderItem()
                 folder.load(folder_element)
                 self.folders.append(folder)
-        
+
         if media is not None:
             for media_element in media:
                 bitmap = DOMBitmapItem()
                 bitmap.load(media_element)
 
                 if bitmap.bitmap_data_href is not None:
-                    bitmap.image = Bitmap.load(os.path.join(self.binarypath, bitmap.bitmap_data_href))
+                    bitmap.image = Bitmap.load(os.path.join(self.binary_path, bitmap.bitmap_data_href))
 
                     # TODO: external source image loading
                     if bitmap.source_external_filepath is not None:
-                        bitmap.image = Image.open(os.path.join(self.filepath, os.path.normpath(bitmap.source_external_filepath)))
+                        bitmap.image = Image.open(
+                            os.path.join(self.filepath, os.path.normpath(bitmap.source_external_filepath)))
 
                 self.media[bitmap.name] = bitmap
-        
+
         if symbols is not None:
             for symbol_element in symbols:
                 symbol = DOMSymbolItem()
-                symbol.load(os.path.join(self.librarypath, symbol_element.attrib["href"]))
-                self.symbols[symbol.name] = os.path.join(self.librarypath, symbol_element.attrib["href"])
-        
+                symbol.load(os.path.join(self.library_path, symbol_element.attrib["href"]))
+                self.symbols[symbol.name] = os.path.join(self.library_path, symbol_element.attrib["href"])
+
         if timelines is not None:
             for timeline_element in timelines:
                 timeline = DOMTimeline()
@@ -153,32 +155,31 @@ class DOMDocument:
     def save(self):
         for folder in self.folders:
             if folder.name is not None and folder.name != "":
-                if not os.path.exists(os.path.join(self.librarypath, folder.name)):
-                    os.mkdir(os.path.join(self.librarypath, folder.name))
-        XSI = "http://www.w3.org/2001/XMLSchema-instance"
+                if not os.path.exists(os.path.join(self.library_path, folder.name)):
+                    os.mkdir(os.path.join(self.library_path, folder.name))
         xml = Element("DOMDocument", {"xmlns": NAMESPACES["xfl"]}, nsmap={'xsi': NAMESPACES["xsi"]})
 
         if self.xfl_version is not None:
             xml.attrib["xflVersion"] = str(self.xfl_version)
-        
+
         if self.creator_info is not None and self.creator_info != "":
             xml.attrib["creatorInfo"] = str(self.creator_info)
-        
+
         if self.width is not None:
             xml.attrib["width"] = str(self.width)
-        
+
         if self.height is not None:
             xml.attrib["height"] = str(self.height)
-        
+
         if self.frame_rate is not None:
             xml.attrib["frameRate"] = str(self.frame_rate)
-        
+
         if self.current_timeline is not None:
             xml.attrib["currentTimeline"] = str(self.current_timeline)
-        
+
         if self.background_color is not None:
             xml.attrib["backgroundColor"] = "#" + str(hex(self.background_color).lstrip("0x").zfill(6))
-        
+
         folders = SubElement(xml, "folders")
         media = SubElement(xml, "media")
         symbols = SubElement(xml, "symbols")
@@ -197,11 +198,11 @@ class DOMDocument:
                 medium.image.save(os.path.join(self.filepath, os.path.normpath(medium.source_external_filepath)), "PNG")
 
             if medium.image is not None:
-                Bitmap.save(os.path.join(self.binarypath, medium.bitmap_data_href), medium.image)
+                Bitmap.save(os.path.join(self.binary_path, medium.bitmap_data_href), medium.image)
 
             Console.progress_bar("Adobe binary images saving...", i, len(self.media))
         print()
-        
+
         for symbol_name, symbol in self.symbols.items():
             include = Element("Include")
             include.attrib["href"] = str(symbol_name) + ".xml"
@@ -212,6 +213,6 @@ class DOMDocument:
             timelines.append(timeline.save())
 
         ElementTree(xml).write(os.path.join(self.filepath, "DOMDocument.xml"))
-        
+
         with open(os.path.join(self.filepath, os.path.basename(self.filepath) + ".xfl"), 'w') as file:
             file.write("PROXY-CS5")

@@ -1,62 +1,56 @@
+import io
 import os
-
+import struct
+import zipfile
 from shutil import rmtree
-
-from zipfile import ZipFile
 from zipfile import BadZipfile
+from zipfile import ZipFile
 
-from lib.fla.dom.document import DOMDocument
-from lib.fla.dom.folder_item import DOMFolderItem
+from lib.fla.dat.bitmap import Bitmap
+from lib.fla.dom.bitmap_instance import DOMBitmapInstance
 from lib.fla.dom.bitmap_item import DOMBitmapItem
-from lib.fla.dom.symbol_item import DOMSymbolItem
-from lib.fla.dom.timeline import DOMTimeline
-from lib.fla.dom.layer import DOMLayer
+from lib.fla.dom.document import DOMDocument
+from lib.fla.dom.dynamic_text import DOMDynamicText
+from lib.fla.dom.folder_item import DOMFolderItem
 from lib.fla.dom.frame import DOMFrame
 from lib.fla.dom.group import DOMGroup
-from lib.fla.dom.bitmap_instance import DOMBitmapInstance
-from lib.fla.dom.symbol_instance import DOMSymbolInstance
+from lib.fla.dom.layer import DOMLayer
 from lib.fla.dom.shape import DOMShape
 from lib.fla.dom.static_text import DOMStaticText
-from lib.fla.dom.dynamic_text import DOMDynamicText
-from lib.fla.dom.text_run import DOMTextRun
+from lib.fla.dom.symbol_instance import DOMSymbolInstance
+from lib.fla.dom.symbol_item import DOMSymbolItem
 from lib.fla.dom.text_attrs import DOMTextAttrs
-
+from lib.fla.dom.text_run import DOMTextRun
+from lib.fla.dom.timeline import DOMTimeline
+from lib.fla.edge.edge import Edge
+from lib.fla.fill.bitmap_fill import BitmapFill
 from lib.fla.fill.fill_style import FillStyle
-from lib.fla.fill.solid_color import SolidColor
 from lib.fla.fill.gradient_entry import GradientEntry
 from lib.fla.fill.linear_gradient import LinearGradient
 from lib.fla.fill.radial_gradient import RadialGradient
-from lib.fla.fill.bitmap_fill import BitmapFill
-
-from lib.fla.stroke.stroke_style import StrokeStyle
-from lib.fla.stroke.solid_stroke import SolidStroke
-
-from lib.fla.edge.edge import Edge
-
-from lib.fla.filter.glow_filter import GlowFilter
+from lib.fla.fill.solid_color import SolidColor
 from lib.fla.filter.drop_shadow_filter import DrowShadowFilter
-
-from lib.fla.geom.point import Point
-from lib.fla.geom.matrix import Matrix
-from lib.fla.geom.color_transform import ColorTransform
+from lib.fla.filter.glow_filter import GlowFilter
 from lib.fla.geom.color import Color
+from lib.fla.geom.color_transform import ColorTransform
+from lib.fla.geom.matrix import Matrix
+from lib.fla.geom.point import Point
+from lib.fla.stroke.solid_stroke import SolidStroke
+from lib.fla.stroke.stroke_style import StrokeStyle
 
-from lib.fla.dat.bitmap import Bitmap
 
-import io
-import struct
 # TODO move to custom zip/fla reader
 
 
 class XFL:
     @staticmethod
-    def load(projectpath: str):
-        if os.path.isfile(projectpath):
-            if os.path.splitext(projectpath)[1] != ".fla":
-                raise Exception(f"File is not \".fla\": {projectpath}")
+    def load(project_path: str):
+        if os.path.isfile(project_path):
+            if os.path.splitext(project_path)[1] != ".fla":
+                raise Exception(f"File is not \".fla\": {project_path}")
 
-            fla_file = open(projectpath, "rb")
-            folder = os.path.splitext(projectpath)[0]
+            fla_file = open(project_path, "rb")
+            folder = os.path.splitext(project_path)[0]
 
             try:
                 with ZipFile(fla_file, 'r') as file:
@@ -112,12 +106,12 @@ class XFL:
 
             return XFL.load(folder)
 
-        elif os.path.isdir(projectpath):
-            document = DOMDocument()
-            document.load(projectpath)
+        elif os.path.isdir(project_path):
+            document = DOMDocument(project_path)
+            document.load()
             return document
 
-        raise Exception(f"Project does not exist: {projectpath}")
+        raise Exception(f"Project does not exist: {project_path}")
 
     @staticmethod
     def save(document: DOMDocument):
@@ -130,7 +124,7 @@ class XFL:
 
         document.save()
 
-        with ZipFile(filepath, 'w') as file:
+        with ZipFile(filepath, 'w', compression=zipfile.ZIP_DEFLATED) as file:
             for root, _, files in os.walk(projectpath):
                 for filename in files:
                     file.write(os.path.join(root, filename),
