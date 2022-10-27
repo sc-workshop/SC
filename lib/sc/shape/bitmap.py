@@ -116,7 +116,7 @@ class ShapeDrawBitmapCommand(Savable):
         return sprite
 
     def get_matrix(self, custom_uv_coords: list = None, use_nearest: bool = False):
-        uv_coords = custom_uv_coords or self.uv_coordinates
+        uv_coordinates = custom_uv_coords or self.uv_coordinates
 
         rotation = 0
         mirroring = False
@@ -125,7 +125,7 @@ class ShapeDrawBitmapCommand(Savable):
 
             rad = radians(rotation)
 
-            uv_coords = [
+            uv_coordinates = [
                 np.array(
                     (
                         (np.cos(rad), -np.sin(rad)),
@@ -134,30 +134,30 @@ class ShapeDrawBitmapCommand(Savable):
                 ).dot(point).tolist() for point in self.uv_coordinates
             ]
 
-            uv_coords = [[round(x), round(y)] for x, y in uv_coords]
+            uv_coordinates = [(round(x), round(y)) for x, y in uv_coordinates]
 
             if mirroring:
-                uv_coords = [[-x, y] for x, y, in uv_coords]
+                uv_coordinates = [(-x, y) for x, y, in uv_coordinates]
 
-        sprite_box = []
+        sprite_box: List[Tuple[int, int]] = []
 
-        for idx in range(len(uv_coords)):
+        for idx in range(len(uv_coordinates)):
             if idx == 0:
-                sprite_box.append([0, 0])
+                sprite_box.append((0, 0))
             else:
-                x_distance = uv_coords[idx][0] - uv_coords[idx - 1][0]
-                y_distance = uv_coords[idx][1] - uv_coords[idx - 1][1]
+                x_distance = uv_coordinates[idx][0] - uv_coordinates[idx - 1][0]
+                y_distance = uv_coordinates[idx][1] - uv_coordinates[idx - 1][1]
 
-                sprite_box.append([round(sprite_box[idx - 1][0] + x_distance, 3),
-                                   round(sprite_box[idx - 1][1] + y_distance, 3)])
+                sprite_box.append((round(sprite_box[idx - 1][0] + x_distance, 3),
+                                   round(sprite_box[idx - 1][1] + y_distance, 3)))
 
             if sprite_box[idx][0] < 0:
-                sprite_box = [[x - sprite_box[idx][0], y] for x, y in sprite_box]
+                sprite_box = [(x - sprite_box[idx][0], y) for x, y in sprite_box]
 
             if sprite_box[idx][1] < 0:
-                sprite_box = [[x, y - sprite_box[idx][1]] for x, y in sprite_box]
+                sprite_box = [(x, y - sprite_box[idx][1]) for x, y in sprite_box]
 
-        w, h = self.get_size(uv_coords)
+        w, h = self.get_size(uv_coordinates)
         if w == 0 or h == 0:
             sprite_box = self.get_right_uv(False, sprite_box)
 
@@ -169,31 +169,44 @@ class ShapeDrawBitmapCommand(Savable):
         return 4 if self.is_rectangle else len(self.xy_coordinates)
 
     @staticmethod
-    def scale_around(point, center, scale):
+    def scale_around(point: Tuple[int, int], center: Tuple[int, int], scale: Tuple[int, int]) -> (int, int):
         c_x, c_y = center
         x, y = point
         sx, sy = scale
-        return [round(((x - c_x) * sx)), round(((y - c_y) * sy))]
+        return round(((x - c_x) * sx)), round(((y - c_y) * sy))
 
     @staticmethod
-    def move_by_angle(point, angle, distance):
+    def move_by_angle(point: Tuple[int, int], angle: float, distance: float) -> (int, int):
+        """
+
+        :param point:
+        :param angle: angle, measured in radians
+        :param distance:
+        :return:
+        """
         x, y = point
 
         x += distance * sin(angle)
         y += distance * cos(angle)
 
-        return [round(x) or 0, round(y) or 0]
+        return round(x) or 0, round(y) or 0
 
     @staticmethod
-    def find_angle(p1, p2):
-        x1, y1 = p1
-        x2, y2 = p2
+    def find_angle(point1: Tuple[int, int], point2: Tuple[int, int]) -> float:
+        """Calculates an angle between two points.
+
+        :param point1: first point
+        :param point2: second point
+        :return: angle, measured in degrees
+        """
+        x1, y1 = point1
+        x2, y2 = point2
         dx = x2 - x1
         dy = y2 - y1
         rads = atan2(-dy, dx)
         return degrees(rads)
 
-    def get_right_uv(self, inside: bool, custom: list = None):
+    def get_right_uv(self, inside: bool, custom: List[Tuple[int, int]] = None):
         coordinates = custom if custom is not None else self.uv_coordinates
 
         res = coordinates.copy()
@@ -207,8 +220,8 @@ class ShapeDrawBitmapCommand(Savable):
                 else:
                     point_idx = 3 - (list(reversed(res)).index(point))
 
-                res[point_idx] = [res[point_idx][0] + (1 if w == 0 else 0),
-                                  res[point_idx][1] + (1 if h == 0 else 0)]
+                res[point_idx] = (res[point_idx][0] + (1 if w == 0 else 0),
+                                  res[point_idx][1] + (1 if h == 0 else 0))
 
             return res
         else:
@@ -234,13 +247,11 @@ class ShapeDrawBitmapCommand(Savable):
 
     def get_translation(self, centroid: bool = False):
         if centroid:
-            x_coords = [x for x, _ in self.xy_coordinates]
-            y_coords = [y for y, _ in self.xy_coordinates]
+            x_sum = sum(x for x, _ in self.xy_coordinates)
+            y_sum = sum(y for y, _ in self.xy_coordinates)
 
-            size = len(self.xy_coordinates)
-
-            x = sum(x_coords) / size
-            y = sum(y_coords) / size
+            x = x_sum / len(self.xy_coordinates)
+            y = y_sum / len(self.xy_coordinates)
 
             return x, y
 
@@ -282,11 +293,11 @@ class ShapeDrawBitmapCommand(Savable):
         return angle, mirroring
 
     @staticmethod
-    def get_size(coords):
-        left = min(coord[0] for coord in coords)
-        top = min(coord[1] for coord in coords)
-        right = max(coord[0] for coord in coords)
-        bottom = max(coord[1] for coord in coords)
+    def get_size(coordinates: List[Tuple[int, int] or List[int, int]]):
+        left = min(coord[0] for coord in coordinates)
+        top = min(coord[1] for coord in coordinates)
+        right = max(coord[0] for coord in coordinates)
+        bottom = max(coord[1] for coord in coordinates)
 
         return right - left, bottom - top
 

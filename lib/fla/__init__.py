@@ -40,6 +40,9 @@ from lib.fla.stroke.stroke_style import StrokeStyle
 
 
 # TODO move to custom zip/fla reader
+EOCD_FORMAT = "<4s4H2LH"
+EOCD_SIZE = 22
+CDIR_SIZE_CORRECTION = 54
 
 
 class XFL:
@@ -57,10 +60,6 @@ class XFL:
                     file.extractall(folder)
 
             except BadZipfile:
-                EOCD_FORMAT = "<4s4H2LH"
-                EOCD_SIZE = 22
-                CDIR_SIZE_CORRECTION = 54
-
                 real_seek = fla_file.seek
                 real_read = fla_file.read
 
@@ -117,17 +116,17 @@ class XFL:
     def save(document: DOMDocument):
         filepath = document.filepath + ".fla"
 
-        projectpath = document.filepath
+        project_path = document.filepath
 
-        if not os.path.exists(projectpath):
-            os.mkdir(projectpath)
+        if not os.path.exists(project_path):
+            os.mkdir(project_path)
 
         document.save()
 
         with ZipFile(filepath, 'w', compression=zipfile.ZIP_DEFLATED) as file:
-            for root, _, files in os.walk(projectpath):
+            for root, _, files in os.walk(project_path):
                 for filename in files:
                     file.write(os.path.join(root, filename),
-                               os.path.relpath(os.path.join(root, filename), os.path.join(projectpath, '')))
+                               os.path.relpath(os.path.join(root, filename), os.path.join(project_path, '')))
 
-        rmtree(projectpath)
+        rmtree(project_path)

@@ -17,8 +17,6 @@ def main():
 
     args = parser.parse_args()
 
-    args.decompile = "C:\\Users\\Admin\\Desktop\\sc\\ui.sc"
-
     start_time = time.time()
 
     if args.decompile:
