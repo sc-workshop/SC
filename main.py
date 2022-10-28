@@ -4,7 +4,7 @@ import time
 from sc_compression import Decompressor, Compressor
 from sc_compression.signatures import Signatures
 
-from lib.console import time_to_string
+from lib.time import time_to_string
 
 
 def main():

@@ -1,21 +1,19 @@
 from lxml.etree import *
 
-from ..geom.matrix import Matrix
-from ..geom.color import Color
-from ..geom.point import Point
-
 from . import NAMESPACES
+from ..geom.matrix import Matrix
+from ..geom.point import Point
 
 
 class DOMBitmapInstance:
     def __init__(self, library_item_name: str = None) -> None:
         # attributes
-        self.name: str = None
+        self.name: str or None = None
         self.library_item_name = library_item_name
 
         # elements
-        self.matrix: Matrix = None
-        self.transformation_point: Point = None
+        self.matrix: Matrix or None = None
+        self.transformation_point: Point or None = None
     
     def load(self, xml: Element):
         if "name" in xml.attrib:

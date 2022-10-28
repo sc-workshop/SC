@@ -1,4 +1,6 @@
 import copy
+import os
+from shutil import rmtree
 
 from lib.console import Console
 from PIL import Image
@@ -108,7 +110,8 @@ def convert_shape(fla, swf: SupercellSWF, resource_id: int, shape: Shape):
             final_edges = ""
             for x, curr in enumerate(xy_coords):
                 nxt = xy_coords[(x + 1) % len(xy_coords)]
-                final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}"  # converting pixels to twips
+                # converting pixels to twips
+                final_edges += f"!{curr[0] * 20} {curr[1] * 20}|{nxt[0] * 20} {nxt[1] * 20}"
 
             color_fill_edge = Edge()
             color_fill_edge.edges = final_edges
@@ -152,8 +155,7 @@ def convert_shape(fla, swf: SupercellSWF, resource_id: int, shape: Shape):
             bitmap_instance = DOMBitmapInstance()
             bitmap_instance.library_item_name = f"resources/{uvs_index}"
 
-            a, c, b, d, tx, ty = matrix.params
-            bitmap_instance.matrix = Matrix(a, b, c, d, tx, ty)
+            bitmap_instance.matrix = Matrix(*matrix.params)
 
             frame.elements.append(bitmap_instance)
 
@@ -172,8 +174,7 @@ def patch_shape_nine_slice(fla: DOMDocument, resource_id: int):
         for frame_index, frame in enumerate(layer.frames):
             for element_index, element in enumerate(frame.elements):
                 if isinstance(element, DOMBitmapInstance):
-                    # TODO: look and fix
-                    element_media = fla.media[int(element.library_item_name.split("/")[1])]
+                    element_media = fla.media[element.library_item_name.split("/")[1]]
                     element_sprite = element_media.image
                     w, h = element_sprite.size
 
@@ -222,7 +223,7 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
     masked_layers = {}
     masked_layers_order = {}
 
-    # Prepearing layers
+    # Preparing layers
     for i, bind in enumerate(movieclip.binds):
         bind_resource = swf.resources[bind['id']]
         if isinstance(bind_resource, MovieClipModifier):
@@ -392,12 +393,13 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
                     layer_frame = DOMFrame(i)
                     instance = copy.deepcopy(symbols_instance[layer_idx])
 
+                    _matrix_bank = swf.matrix_banks[movieclip.matrix_bank]
                     if element["matrix"] != 0xFFFF:
-                        m = swf.matrix_banks[movieclip.matrix_bank].matrices[element["matrix"]]
+                        m = _matrix_bank.matrices[element["matrix"]]
                         instance.matrix = Matrix(m.a, m.b, m.c, m.d, m.tx, m.ty)
 
                     if element["color"] != 0xFFFF:
-                        c = swf.matrix_banks[movieclip.matrix_bank].color_transforms[element["color"]]
+                        c = _matrix_bank.color_transforms[element["color"]]
                         bind_color = Color()
                         bind_color.red_offset = c.r_add
                         bind_color.green_offset = c.g_add

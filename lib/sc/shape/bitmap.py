@@ -115,8 +115,8 @@ class ShapeDrawBitmapCommand(Savable):
 
         return sprite
 
-    def get_matrix(self, custom_uv_coords: list = None, use_nearest: bool = False):
-        uv_coordinates = custom_uv_coords or self.uv_coordinates
+    def get_matrix(self, custom_uv_coordinates: list = None, use_nearest: bool = False):
+        uv_coordinates = custom_uv_coordinates or self.uv_coordinates
 
         rotation = 0
         mirroring = False
@@ -206,44 +206,50 @@ class ShapeDrawBitmapCommand(Savable):
         rads = atan2(-dy, dx)
         return degrees(rads)
 
-    def get_right_uv(self, inside: bool, custom: List[Tuple[int, int]] = None):
+    def get_right_uv(self, inside: bool, custom: List[Tuple[int, int]] = None) -> List[Tuple[int, int]]:
         coordinates = custom if custom is not None else self.uv_coordinates
 
-        res = coordinates.copy()
-        w, h = ShapeDrawBitmapCommand.get_size(coordinates)
+        result = coordinates.copy()
+        bitmap_width, bitmap_height = ShapeDrawBitmapCommand.get_size(coordinates)
 
-        if not inside and w == 0 or h == 0:
+        if not inside and bitmap_width == 0 or bitmap_height == 0:
             unique_points = [tuple(x) for x in set(tuple(x) for x in coordinates)]
             for index, point in enumerate(unique_points):
                 if coordinates[0] == coordinates[1]:
-                    point_idx = index + 1
+                    point_index = index + 1
                 else:
-                    point_idx = 3 - (list(reversed(res)).index(point))
+                    point_index = 3 - (list(reversed(result)).index(point))
 
-                res[point_idx] = (res[point_idx][0] + (1 if w == 0 else 0),
-                                  res[point_idx][1] + (1 if h == 0 else 0))
+                result[point_index] = (
+                    result[point_index][0] + (1 if bitmap_width == 0 else 0),
+                    result[point_index][1] + (1 if bitmap_height == 0 else 0)
+                )
+        elif len(coordinates) <= 4:
+            w_m = (bitmap_width + 2) if inside else (bitmap_width - 2 if bitmap_width > 2 else 0)
+            h_m = (bitmap_height + 2) if inside else (bitmap_height - 2 if bitmap_height > 2 else 0)
 
-            return res
+            center_x = sum([x for x, _ in coordinates]) / len(coordinates)
+            center_y = sum([y for _, y in coordinates]) / len(coordinates)
+
+            return [
+                (
+                    round((w_m / bitmap_width) * (x - center_x) + center_x),
+                    round((h_m / bitmap_height) * (y - center_y) + center_y)
+                )
+                for x, y in coordinates
+            ]
         else:
-            if len(coordinates) <= 4:
-                w_m = (w + 2) if inside else (w - 2 if w > 2 else 0)
-                h_m = (h + 2) if inside else (h - 2 if h > 2 else 0)
-
-                c_x, c_y = [sum([x for x, _ in coordinates]) / len(coordinates), sum([y for _, y in coordinates]) / len(coordinates)]
-
-                return [[round((w_m / w) * (x - c_x) + c_x), round((h_m / h) * (y - c_y) + c_y)] for x, y in coordinates]
-
-            for i, point in enumerate(coordinates):
-                if i == 0:
-                    last = len(coordinates) - 1
+            for point_index, point in enumerate(coordinates):
+                if point_index == 0:
+                    previous_index = len(coordinates) - 1
                 else:
-                    last = i - 1
+                    previous_index = point_index - 1
 
-                angle = radians(self.find_angle(coordinates[last], coordinates[i]) - 45)
+                angle = radians(self.find_angle(coordinates[previous_index], coordinates[point_index]) - 45)
 
-                res[i] = self.move_by_angle(coordinates[i], angle, -1 if inside else 1)
+                result[point_index] = self.move_by_angle(coordinates[point_index], angle, -1 if inside else 1)
 
-            return res
+        return result
 
     def get_translation(self, centroid: bool = False):
         if centroid:
