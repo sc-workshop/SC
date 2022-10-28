@@ -213,7 +213,13 @@ def patch_shape_nine_slice(fla: DOMDocument, resource_id: int):
     return shape_slice
 
 
-def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: MovieClip, export_names: list = None):
+def convert_movie_clip(
+        fla: DOMDocument,
+        swf: SupercellSWF,
+        resource_id: int,
+        movie_clip: MovieClip,
+        export_names: list = None
+):
     movie = DOMSymbolItem()
 
     layers_instance = []
@@ -224,7 +230,7 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
     masked_layers_order = {}
 
     # Preparing layers
-    for i, bind in enumerate(movieclip.binds):
+    for i, bind in enumerate(movie_clip.binds):
         bind_resource = swf.resources[bind['id']]
         if isinstance(bind_resource, MovieClipModifier):
             layers_instance.append(None)
@@ -240,9 +246,9 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
 
             # Symbols instance
             if isinstance(bind_resource, Shape):
-                if movieclip.scaling_grid:
-                    if id in shapes_with_nine_slices:
-                        bind_instance = shapes_with_nine_slices[id]
+                if movie_clip.scaling_grid:
+                    if resource_id in shapes_with_nine_slices:
+                        bind_instance = shapes_with_nine_slices[resource_id]
                     else:
                         bind_instance = patch_shape_nine_slice(fla, bind['id'])
 
@@ -326,17 +332,17 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
                 bind_instance.text_runs.append(text_run)
 
             else:
-                print("Unkwnown resource type")
+                Console.error(f"Unknown resource type: {type(bind_resource)}")
                 raise TypeError()
 
             symbols_instance.append(bind_instance)
             layers_instance.append(bind_layer)
 
     # Converting frames
-    for i, frame in enumerate(movieclip.frames):
+    for i, frame in enumerate(movie_clip.frames):
         elements = [element['bind'] for element in frame.elements]
         elements_idx = [element for element in elements if
-                        not isinstance(swf.resources[movieclip.binds[element]['id']], MovieClipModifier)]
+                        not isinstance(swf.resources[movie_clip.binds[element]['id']], MovieClipModifier)]
 
         for element in elements_idx:
             for comparative in elements_idx:
@@ -386,14 +392,14 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
                     element = frame.elements[elements.index(layer_idx)]
 
                     if curr_layer.frames and i:
-                        if element in movieclip.frames[i - 1].elements:
+                        if element in movie_clip.frames[i - 1].elements:
                             curr_layer.frames[-1].duration += 1
                             continue
 
                     layer_frame = DOMFrame(i)
                     instance = copy.deepcopy(symbols_instance[layer_idx])
 
-                    _matrix_bank = swf.matrix_banks[movieclip.matrix_bank_index]
+                    _matrix_bank = swf.matrix_banks[movie_clip.matrix_bank_index]
                     if element["matrix"] != 0xFFFF:
                         m = _matrix_bank.matrices[element["matrix"]]
                         instance.matrix = Matrix(m.a, m.b, m.c, m.d, m.tx, m.ty)
@@ -436,8 +442,8 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
                 masked_layer.parent_layer_index = mask_layer_index
                 movie.timeline.layers.insert(mask_layer_index + 1, masked_layer)
 
-    if movieclip.scaling_grid:
-        x, y, width, height = movieclip.scaling_grid
+    if movie_clip.scaling_grid:
+        x, y, width, height = movie_clip.scaling_grid
 
         movie.scale_grid_left = x
         movie.scale_grid_top = y
@@ -452,6 +458,6 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
             fla.symbols.add(movie_instance.name, movie_instance)
         return
 
-    movie.name = f"movieclips/movieclip_{id}"
-    movie.timeline.name = f"movieclip_{id}"
+    movie.name = f"movieclips/movieclip_{resource_id}"
+    movie.timeline.name = f"movieclip_{resource_id}"
     fla.symbols.add(movie.name, movie)

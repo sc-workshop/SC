@@ -8,7 +8,7 @@ from lib.time import time_to_string
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SC tool by SCW Make - github.com/scwmake/SC")
+    parser = argparse.ArgumentParser(description="SC tool by SCW Make - https://github.com/scwmake/SC")
 
     parser.add_argument("-d", "--decompile", help="Convert *.sc file to *.fla", type=str)
     parser.add_argument("-dx", "--decompress", help="Decompress *.sc files with Supercell compression", type=str)
@@ -42,6 +42,7 @@ def main():
             compressed_file.write(compressed)
     else:
         parser.print_help()
+        exit()
 
     print(f"Done in {time_to_string(time.time() - start_time)} seconds!")
 

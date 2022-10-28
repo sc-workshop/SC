@@ -38,8 +38,6 @@ class MovieClip(Resource, Savable):
         self.scaling_grid: Tuple[float, float, float, float] or None = None
         self.matrix_bank_index: int = 0
 
-        self._id_list: List[int] or None = None
-
     def load(self, swf, tag: int) -> None:
         self.id = swf.reader.read_ushort()
 
@@ -137,7 +135,7 @@ class MovieClip(Resource, Savable):
         stream.write_ushort(len(self.binds))
 
         for bind in self.binds:
-            stream.write_ushort(self._id_list[bind["id"]])
+            stream.write_ushort(bind["id"])
 
         for bind in self.binds:
             stream.write_uchar(BLENDMODES.index(bind["blend"]) & 0x3F)
@@ -170,9 +168,6 @@ class MovieClip(Resource, Savable):
                 return True
 
         return False
-
-    def set_id_list(self, id_list):
-        self._id_list = id_list
 
 
 def save_scaling_grid(scaling_grid: Tuple[float, float, float, float]):

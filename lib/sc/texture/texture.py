@@ -1,4 +1,5 @@
 from PIL import Image
+from PIL.PyAccess import PyAccess
 
 from lib.console import Console
 from lib.sc.savable import Savable
@@ -32,7 +33,7 @@ MODES_TABLE = {
     "GL_LUMINANCE": "L"
 }
 
-CHANNLES_TABLE = {
+CHANNELS_TABLE = {
     "RGBA": 4,
     "RGB": 3,
     "LA": 2,
@@ -144,12 +145,17 @@ class SWFTexture(Savable):
 
         if not has_external_texture:
             Console.info(
-                f"SWFTexture: {self.width}x{self.height} - Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}")
+                f"SWFTexture: {self.width}x{self.height} - "
+                f"Format: {self.pixel_type} {self.pixel_format} {self.pixel_internal_format}"
+            )
 
             self._image = Image.new(MODES_TABLE[self.pixel_format], (self.width, self.height))
-            loaded = self._image.load()
 
-            self.channels = CHANNLES_TABLE[self._image.mode]
+            # noinspection PyTypeChecker
+            # What the shit, shy rtype of this method is None? PILLOW is a bad module.
+            loaded: PyAccess = self._image.load()
+
+            self.channels = CHANNELS_TABLE[self._image.mode]
 
             read_pixel = PIXEL_READ_FUNCTIONS[self.pixel_internal_format]
 
@@ -183,7 +189,7 @@ class SWFTexture(Savable):
 
                                 loaded[pixel_x, pixel_y] = read_pixel(swf)
 
-                    Console.progress_bar("Loading splitted texture data...", y_block, y_blocks + 1)
+                    Console.progress_bar("Loading split texture data...", y_block, y_blocks + 1)
             print()
 
     def save(self, stream: BinaryWriter) -> None:
@@ -233,8 +239,6 @@ class SWFTexture(Savable):
                                 add_pixel(loaded_clone[pixel_x, pixel_y])
                                 pixel_index += 1
 
-                loaded = loaded_clone
-
             for y in range(self.height):
                 Console.progress_bar("Writing texture data...", y, self.height)
                 for x in range(self.width):
@@ -243,22 +247,20 @@ class SWFTexture(Savable):
             print()
 
     def get_tag(self) -> int:
-        tag = 1
         if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_NEAREST"):
             if not self.linear:
-                tag = 27 if not self.downscaling else 28
-            else:
-                tag = 24 if not self.downscaling else 1
-
-        if (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_LINEAR_MIPMAP_NEAREST"):
+                return 27 if not self.downscaling else 28
+            elif not self.downscaling:
+                return 24
+        elif (self.mag_filter, self.min_filter) == ("GL_LINEAR", "GL_LINEAR_MIPMAP_NEAREST"):
             if not self.linear and not self.downscaling:
-                tag = 29
+                return 29
             else:
-                tag = 19 if not self.downscaling else 16
+                return 19 if not self.downscaling else 16
+        elif (self.mag_filter, self.min_filter) == ("GL_NEAREST", "GL_NEAREST"):
+            return 34
 
-        if (self.mag_filter, self.min_filter) == ("GL_NEAREST", "GL_NEAREST"):
-            tag = 34
-        return tag
+        return 1
 
     def set_has_external_texture(self, has_external_texture: bool):
         self._has_external_texture = has_external_texture
@@ -269,7 +271,7 @@ class SWFTexture(Savable):
     def set_image(self, img: Image):
         self._image = img
 
-        self.channels = CHANNLES_TABLE[self._image.mode]
+        self.channels = CHANNELS_TABLE[self._image.mode]
         self.width, self.height = self._image.size
 
         if self.channels == 4:

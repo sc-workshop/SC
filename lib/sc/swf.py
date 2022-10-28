@@ -11,7 +11,6 @@ from .matrix_bank import MatrixBank
 from .movie_clip import MovieClip, MovieClipModifier
 from .movie_clip.movie_clip_modifier import save_movie_clip_modifiers_count
 from .resource import Resource
-from .savable import Savable
 from .shape import Shape
 from .text_field import TextField
 from .texture import SWFTexture
@@ -84,7 +83,7 @@ class SupercellSWF:
                 if os.path.isfile(highres_path):
                     self.load_internal(highres_path, True)
                 elif os.path.isfile(lowres_path):
-                    Console.warning(f"Cannot find higrhes texture file {highres_path} for {self.filename}. Skipping...")
+                    Console.warning(f"Cannot find highres texture file {highres_path} for {self.filename}. Skipping...")
                     self.load_internal(lowres_path, True)
                 else:
                     Console.error(
@@ -158,7 +157,7 @@ class SupercellSWF:
         matrices_loaded = 0
         color_transforms_loaded = 0
 
-        movieclip_modifiers_loaded = 0
+        movie_clip_modifiers_loaded = 0
         shapes_loaded = 0
         text_fields_loaded = 0
         movieclips_loaded = 0
@@ -216,8 +215,8 @@ class SupercellSWF:
 
                 self.resources[movie_clip_modifier.id] = movie_clip_modifier
 
-                movieclip_modifiers_loaded += 1
-                if movieclip_modifiers_loaded > self.movie_clip_modifiers_count:
+                movie_clip_modifiers_loaded += 1
+                if movie_clip_modifiers_loaded > self.movie_clip_modifiers_count:
                     Console.error("Trying to load too many MovieClipModifiers! Aborting...")
                     raise TypeError()
 
@@ -286,10 +285,10 @@ class SupercellSWF:
 
             elif tag in SupercellSWF.MOVIE_CLIP_TAGS:
                 Console.progress_bar("Movieclip loading...", movieclips_loaded, self.movieclips_count)
-                movieclip = MovieClip()
-                movieclip.load(self, tag)
+                movie_clip = MovieClip()
+                movie_clip.load(self, tag)
 
-                self.resources[movieclip.id] = movieclip
+                self.resources[movie_clip.id] = movie_clip
 
                 movieclips_loaded += 1
                 if movieclips_loaded > self.movieclips_count:
@@ -328,7 +327,6 @@ class SupercellSWF:
 
         sorted_resources_id = []
         sorted_resources = []
-        id_list = {}
 
         if not is_texture:
             Console.info("Writing main asset file...")
@@ -369,20 +367,8 @@ class SupercellSWF:
                            MovieClip]
             Console.info("Resource filtering...")
 
-            resources = {}
-
-            id_counter = 0
-            for identifier, resource in self.resources.items():
-                resource_values = list(resources.values())
-                if resource in resource_values:  # TODO: change
-                    id_list[identifier] = list(resources.items())[resource_values.index(resource)]
-                else:
-                    resources[identifier] = resource
-                    id_list[identifier] = id_counter
-                    id_counter += 1
-
-            resources_keys = list(resources)
-            resources_values = list(resources.values())
+            resources_keys = list(self.resources)
+            resources_values = list(self.resources.values())
 
             sorted_resources_id = []
             sorted_resources: List[Resource] = (
@@ -401,7 +387,7 @@ class SupercellSWF:
             export_names = []
             for export_id in self.exports:
                 for export_name in self.exports[export_id]:
-                    export_ids.append(id_list[export_id])
+                    export_ids.append(export_id)
                     export_names.append(export_name)
 
             self.writer.write_ushort(len(export_ids))
@@ -416,7 +402,7 @@ class SupercellSWF:
             Console.info("Writing external texture asset file...")
             print()
 
-        self.save_tags((sorted_resources_id, sorted_resources), id_list, is_texture, is_lowres)
+        self.save_tags(sorted_resources_id, sorted_resources, is_texture, is_lowres)
         print()
 
         with open(filepath, 'wb') as file:
@@ -428,7 +414,7 @@ class SupercellSWF:
 
         Console.info("Writing completed.")
 
-    def save_tags(self, resources, id_list, is_texture: bool, is_lowres: bool):
+    def save_tags(self, ids: List[int], resources: List[Resource], is_texture: bool, is_lowres: bool):
         written_shapes = 0
         written_movieclips = 0
         written_fields = 0
@@ -445,14 +431,14 @@ class SupercellSWF:
                 write_block(self.writer, texture.get_tag(), save_texture(texture, False))
             return
 
-        if self.use_uncommon_texture:
-            write_block(self.writer, SupercellSWF.USE_UNCOMMON_RESOLUTION_TAG, None)
+        if not self.use_uncommon_texture and self.use_lowres_texture:
+            write_block(self.writer, SupercellSWF.USE_LOWRES_TEXTURE_TAG, None)
 
         if self.has_external_texture:
             write_block(self.writer, SupercellSWF.USE_EXTERNAL_TEXTURE_TAG, None)
 
-        if not self.use_uncommon_texture and self.use_lowres_texture:
-            write_block(self.writer, SupercellSWF.USE_LOWRES_TEXTURE_TAG, None)
+        if self.use_uncommon_texture:
+            write_block(self.writer, SupercellSWF.USE_UNCOMMON_RESOLUTION_TAG, None)
 
         for texture in self.textures:
             if self.has_external_texture:
@@ -468,9 +454,6 @@ class SupercellSWF:
                 save_movie_clip_modifiers_count(self.movie_clip_modifiers_count)
             )
 
-        ids, resources = resources
-        ids: List[int]
-        resources: List[Savable]
         for identifier, resource in zip(ids, resources):
             if isinstance(resource, MovieClipModifier):
                 write_block(self.writer, resource.get_tag(), resource.save)
@@ -513,7 +496,6 @@ class SupercellSWF:
 
             elif isinstance(resource, MovieClip):
                 Console.progress_bar("Movieclips writing...", written_movieclips, self.movieclips_count)
-                resource.set_id_list(id_list)
                 write_block(self.writer, resource.get_tag(), resource.save)
                 written_movieclips += 1
                 if written_movieclips == self.movieclips_count:
