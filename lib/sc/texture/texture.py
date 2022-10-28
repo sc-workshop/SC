@@ -238,7 +238,7 @@ class SWFTexture(Savable):
             for y in range(self.height):
                 Console.progress_bar("Writing texture data...", y, self.height)
                 for x in range(self.width):
-                    write_pixel(self, loaded[x, y])
+                    write_pixel(stream, loaded[x, y])
 
             print()
 

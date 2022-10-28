@@ -61,7 +61,7 @@ class MatrixBank(Resource, Savable):
         self.matrices = [_class() for _class in [Matrix] * self.matrices_count]
         self.color_transforms = [_class() for _class in [Color] * self.color_transforms_count]
 
-    def save(self, stream: BinaryWriter):
+    def save(self, stream: BinaryWriter) -> None:
         stream.write_ushort(len(self.matrices))
         stream.write_ushort(len(self.color_transforms))
 

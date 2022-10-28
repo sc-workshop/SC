@@ -358,8 +358,7 @@ class SupercellSWF:
                 self.matrix_banks.append(MatrixBank())
 
             matrix_bank = self.matrix_banks[0]
-            _, data = matrix_bank.save(self.writer)
-            self.writer.write(data)
+            matrix_bank.save(self.writer)
 
             self.writer.write(bytes(5))  # unused
 

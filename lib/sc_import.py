@@ -14,7 +14,7 @@ shape_bitmaps_twips = []
 shapes_with_nine_slices = {}
 
 
-def sc_to_fla(filepath):
+def sc_to_fla(filepath: str) -> None:
     swf = SupercellSWF()
     swf.load(filepath)
 
@@ -393,7 +393,7 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
                     layer_frame = DOMFrame(i)
                     instance = copy.deepcopy(symbols_instance[layer_idx])
 
-                    _matrix_bank = swf.matrix_banks[movieclip.matrix_bank]
+                    _matrix_bank = swf.matrix_banks[movieclip.matrix_bank_index]
                     if element["matrix"] != 0xFFFF:
                         m = _matrix_bank.matrices[element["matrix"]]
                         instance.matrix = Matrix(m.a, m.b, m.c, m.d, m.tx, m.ty)

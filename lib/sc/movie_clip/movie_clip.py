@@ -36,7 +36,7 @@ class MovieClip(Resource, Savable):
         self.frames: List[MovieClipFrame] = []
 
         self.scaling_grid: Tuple[float, float, float, float] or None = None
-        self.matrix_bank: int = 0
+        self.matrix_bank_index: int = 0
 
         self._id_list: List[int] or None = None
 
@@ -111,7 +111,7 @@ class MovieClip(Resource, Savable):
                 height = swf.reader.read_twip()
                 self.scaling_grid = (x, y, width, height)
             elif frame_tag == MovieClip.MOVIE_CLIP_MATRIX_BANK_TAG:
-                self.matrix_bank = swf.reader.read_uchar()
+                self.matrix_bank_index = swf.reader.read_uchar()
             else:
                 Console.warning(
                     f"MovieClip {self.id} has unknown frame tag {frame_tag} with length {frame_tag_length}! Skipping..."
@@ -145,8 +145,8 @@ class MovieClip(Resource, Savable):
         for bind in self.binds:
             stream.write_ascii(bind["name"])
 
-        if self.matrix_bank > 0:
-            write_block(stream, MovieClip.MOVIE_CLIP_MATRIX_BANK_TAG, save_scaling_grid(self.scaling_grid))
+        if self.matrix_bank_index > 0:
+            write_block(stream, MovieClip.MOVIE_CLIP_MATRIX_BANK_TAG, save_matrix_bank(self.matrix_bank_index))
 
         for frame in self.frames:
             write_block(stream, frame.get_tag(), frame.save)
@@ -166,7 +166,7 @@ class MovieClip(Resource, Savable):
                     and self.binds == other.binds \
                     and self.frames == other.frames \
                     and self.scaling_grid == other.scaling_grid \
-                    and self.matrix_bank == other.matrix_bank:
+                    and self.matrix_bank_index == other.matrix_bank_index:
                 return True
 
         return False
