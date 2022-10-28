@@ -2,13 +2,14 @@ from typing import List
 
 from .color import Color
 from .matrix import Matrix
+from .resource import Resource
 from .savable import Savable
 from ..utils import BinaryWriter
 
 
-class MatrixBank(Savable):
+class MatrixBank(Resource, Savable):
     def __init__(self) -> None:
-        self.index: int = 0
+        self.id: int = 0  # index
 
         self.matrices: List[Matrix] = []
         self.color_transforms: List[Color] = []

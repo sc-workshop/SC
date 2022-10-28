@@ -308,9 +308,10 @@ class ShapeDrawBitmapCommand(Savable):
         return uv_x / xy_x, uv_y / xy_y
 
     def __eq__(self, other):
-        if self.is_rectangle == other.is_rectangle \
-                and self.uv_coordinates == other.uv_coordinates \
-                and self.xy_coordinates == other.xy_coordinates \
-                and self.texture_index == other.texture_index:
-            return True
+        if isinstance(other, ShapeDrawBitmapCommand):
+            if self.is_rectangle == other.is_rectangle \
+                    and self.uv_coordinates == other.uv_coordinates \
+                    and self.xy_coordinates == other.xy_coordinates \
+                    and self.texture_index == other.texture_index:
+                return True
         return False

@@ -88,21 +88,27 @@ class SupercellSWF:
                     self.load_internal(lowres_path, True)
                 else:
                     Console.error(
-                        f"Cannot find any external texture file asset for {self.filename}! Textures not loaded! Aborting...")
+                        f"Cannot find any external texture file asset for {self.filename}! "
+                        f"Textures not loaded! Aborting..."
+                    )
                     raise TypeError()
 
             else:
                 if self.use_lowres_texture:
                     if not os.path.exists(texture_filename) and os.path.exists(lowres_path):
                         Console.info(
-                            f"Cannot find external texture file {texture_filename} for {self.filename}! Loading lowres texture asset...")
+                            f"Cannot find external texture file {texture_filename} for {self.filename}! "
+                            f"Loading lowres texture asset..."
+                        )
                         self.load_internal(lowres_path, True)
 
                 if os.path.exists(texture_filename):
                     self.load_internal(texture_filename, True)
                 else:
                     Console.error(
-                        f"Cannot find external texture file {texture_filename} for {self.filename}! Textures not loaded! Aborting...")
+                        f"Cannot find external texture file {texture_filename} for {self.filename}! "
+                        f"Textures not loaded! Aborting..."
+                    )
                     raise TypeError()
 
     def load_internal(self, filepath: str, is_texture: bool):
@@ -247,7 +253,7 @@ class SupercellSWF:
 
             elif tag == SupercellSWF.MATRIX_BANK_TAG:
                 matrix_bank = MatrixBank()
-                matrix_bank.index = len(self.matrix_banks)
+                matrix_bank.id = len(self.matrix_banks)
                 matrix_bank.load(self)
                 self.matrix_banks.append(matrix_bank)
 
@@ -336,11 +342,11 @@ class SupercellSWF:
             for resource in self.resources.values():
                 if isinstance(resource, Shape):
                     self.shapes_count += 1
-                if isinstance(resource, MovieClip):
+                elif isinstance(resource, MovieClip):
                     self.movieclips_count += 1
-                if isinstance(resource, TextField):
+                elif isinstance(resource, TextField):
                     self.text_fields_count += 1
-                if isinstance(resource, MovieClipModifier):
+                elif isinstance(resource, MovieClipModifier):
                     self.movie_clip_modifiers_count += 1
 
             self.writer.write_ushort(self.shapes_count)
@@ -380,9 +386,9 @@ class SupercellSWF:
             resources_values = list(resources.values())
 
             sorted_resources_id = []
-            sorted_resources: List[Resource or MatrixBank] = (
+            sorted_resources: List[Resource] = (
                 resources_values +
-                sorted(self.matrix_banks, key=lambda bank: bank.index)
+                sorted(self.matrix_banks, key=lambda bank: bank.id)
             )
             sorted_resources.sort(key=lambda x: data_struct.index(type(x)))
 
@@ -486,11 +492,11 @@ class SupercellSWF:
 
             elif isinstance(resource, MatrixBank):
                 written_transforms = 0
-                if resource.index > 0:
+                if resource.id > 0:
                     write_block(self.writer, resource.get_tag(), resource.save)
 
                 for matrix in resource.matrices:
-                    Console.progress_bar(f"Matrices bank {resource.index} writing...", written_transforms,
+                    Console.progress_bar(f"Matrices bank {resource.id} writing...", written_transforms,
                                          len(resource.matrices))
 
                     write_block(self.writer, matrix.get_tag(), matrix.save)
@@ -499,7 +505,7 @@ class SupercellSWF:
                 print()
                 written_transforms = 0
                 for color_transform in resource.color_transforms:
-                    Console.progress_bar(f"Colors bank {resource.index} writing...", written_transforms,
+                    Console.progress_bar(f"Colors bank {resource.id} writing...", written_transforms,
                                          len(resource.color_transforms))
                     write_block(self.writer, color_transform.get_tag(), color_transform.save)
 

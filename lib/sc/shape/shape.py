@@ -81,7 +81,7 @@ class Shape(Resource, Savable):
         return 18
 
     def __eq__(self, other):
-        if type(self) == type(other):
+        if isinstance(other, Shape):
             if self.bitmaps == other.bitmaps:
                 return True
         return False

@@ -22,7 +22,7 @@ class MovieClipModifier(Resource, Savable):
         return self.modifier.value
 
     def __eq__(self, other):
-        if type(self) == type(other):
+        if isinstance(other, MovieClipModifier):
             if self.modifier == other.modifier:
                 return True
 

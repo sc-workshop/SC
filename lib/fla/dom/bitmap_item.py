@@ -8,12 +8,12 @@ class DOMBitmapItem:
         self.image: Image = None
 
         # attributes
-        self.name = name
-        self.bitmap_data_href = bitmap_data_href
-        self.source_external_filepath: str = None
-        self.quality: int = None
-        self.use_imported_jpeg_data: bool = None
-        self.compression_type: str = None
+        self.name: str or None = name
+        self.bitmap_data_href: str or None = bitmap_data_href
+        self.source_external_filepath: str or None = None
+        self.quality: int or None = None
+        self.use_imported_jpeg_data: bool or None = None
+        self.compression_type: str or None = None
         self.allow_smoothing: bool = True
     
     def load(self, xml: Element):

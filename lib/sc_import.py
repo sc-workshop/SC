@@ -20,8 +20,9 @@ def sc_to_fla(filepath):
 
     fla = prepare_document(project_directory)
 
-    startup = DOMDocument("lib/scwmake_credit")
-    startup.load()
+    startup = DOMDocument()
+    startup.load("lib/scwmake_credit")
+    rmtree(startup.temp_path)
 
     fla.timelines = startup.timelines
 
@@ -34,15 +35,6 @@ def prepare_document(path: str) -> DOMDocument:
     Console.info("Creating DOMDocument for Adobe Animate...")
 
     fla = DOMDocument(path)
-
-    fla.xfl_version = 2.971
-
-    fla.width = 1280
-    fla.height = 720
-    fla.frame_rate = 30
-    fla.current_timeline = 1
-
-    fla.background_color = 0x666666
 
     fla.creator_info = "File generated with SC tool by SCW Make! (VK: vk.com/scwmake, GITHUB: github.com/scwmake/SC)"
 
@@ -171,15 +163,16 @@ def convert_shape(fla, swf: SupercellSWF, resource_id: int, shape: Shape):
     fla.symbols.add(graphic.name, graphic)
 
 
-def patch_shape_nine_slice(fla: DOMDocument, id: int, shape):
+def patch_shape_nine_slice(fla: DOMDocument, resource_id: int):
     shape_slice = DOMGroup()
 
-    shape_symbol = fla.symbols.get(f"shapes/shape_{id}")
+    shape_symbol = fla.symbols.get(f"shapes/shape_{resource_id}")
 
-    for l, layer in enumerate(shape_symbol.timeline.layers):
-        for f, frame in enumerate(layer.frames):
-            for e, element in enumerate(frame.elements):
+    for layer_index, layer in enumerate(shape_symbol.timeline.layers):
+        for frame_index, frame in enumerate(layer.frames):
+            for element_index, element in enumerate(frame.elements):
                 if isinstance(element, DOMBitmapInstance):
+                    # TODO: look and fix
                     element_media = fla.media[int(element.library_item_name.split("/")[1])]
                     element_sprite = element_media.image
                     w, h = element_sprite.size
@@ -213,9 +206,9 @@ def patch_shape_nine_slice(fla: DOMDocument, id: int, shape):
 
                     shape_slice.members.append(slice_shape)
 
-                    shape_symbol.timeline.layers[l].frames[f].elements[e] = slice_shape
+                    shape_symbol.timeline.layers[layer_index].frames[frame_index].elements[element_index] = slice_shape
 
-    shapes_with_nine_slices[id] = shape_slice
+    shapes_with_nine_slices[resource_id] = shape_slice
     return shape_slice
 
 
@@ -250,7 +243,7 @@ def convert_movie_clip(fla: DOMDocument, swf: SupercellSWF, id, movieclip: Movie
                     if id in shapes_with_nine_slices:
                         bind_instance = shapes_with_nine_slices[id]
                     else:
-                        bind_instance = patch_shape_nine_slice(fla, bind['id'], bind_resource)
+                        bind_instance = patch_shape_nine_slice(fla, bind['id'])
 
                 else:
                     bind_instance = DOMSymbolInstance(library_item_name=f"shapes/shape_{bind['id']}")

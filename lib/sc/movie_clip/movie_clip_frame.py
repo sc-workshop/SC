@@ -21,6 +21,7 @@ class MovieClipFrame(Savable):
         return 11
 
     def __eq__(self, other):
-        if self.name == other.name and self.elements == other.elements:
-            return False
-        return True
+        if isinstance(other, MovieClipFrame):
+            if self.name == other.name and self.elements == other.elements:
+                return True
+        return False

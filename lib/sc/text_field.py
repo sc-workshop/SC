@@ -138,7 +138,7 @@ class TextField(Resource, Savable):
             return 43
 
     def __eq__(self, other):
-        if type(self) == type(other):
+        if isinstance(other, TextField):
             if self.font_name == other.font_name \
                     and self.font_color == other.font_color \
                     and self.outline_color == other.outline_color \

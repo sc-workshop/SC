@@ -41,7 +41,7 @@ class Matrix(Savable):
         return 8
 
     def __eq__(self, other):
-        if type(self) == type(other):
+        if isinstance(other, Matrix):
             if self.a == other.a and self.b == other.b and self.c == other.c and self.d == other.d and self.tx == other.tx and self.ty == other.ty:
                 return True
 

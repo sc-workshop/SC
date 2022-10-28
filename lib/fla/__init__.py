@@ -106,25 +106,22 @@ class XFL:
             return XFL.load(folder)
 
         elif os.path.isdir(project_path):
-            document = DOMDocument(project_path)
-            document.load()
+            document = DOMDocument()
+            document.load(project_path)
             return document
 
         raise Exception(f"Project does not exist: {project_path}")
 
     @staticmethod
     def save(document: DOMDocument):
-        filepath = document.filepath + ".fla"
+        filepath = document.document_path + ".fla"
 
-        project_path = document.filepath
-
-        if not os.path.exists(project_path):
-            os.mkdir(project_path)
+        project_path = document.temp_path
 
         document.save()
 
         with ZipFile(filepath, 'w', compression=zipfile.ZIP_DEFLATED) as file:
-            for root, _, files in os.walk(project_path):
+            for root, _, files in os.walk(document.temp_path):
                 for filename in files:
                     file.write(os.path.join(root, filename),
                                os.path.relpath(os.path.join(root, filename), os.path.join(project_path, '')))

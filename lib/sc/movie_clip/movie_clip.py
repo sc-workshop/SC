@@ -161,7 +161,7 @@ class MovieClip(Resource, Savable):
         return 12
 
     def __eq__(self, other):
-        if type(self) == type(other):
+        if isinstance(other, MovieClip):
             if self.frame_rate == other.frame_rate \
                     and self.binds == other.binds \
                     and self.frames == other.frames \
