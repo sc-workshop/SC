@@ -147,16 +147,24 @@ def convert_shape(fla, swf, id, shape):
             frame.elements.append(color_fill)
 
         else:
+            rotation = 0
+            mirror = False
+
             if uv_coords not in shape_bitmaps_uvs:
                 shape_bitmaps_uvs.append(uv_coords)
-
-                uvs_index = shape_bitmaps_uvs.index(uv_coords)
-                resource_name = f"M {uvs_index}"
 
                 matrix, twips, rotation, mirror = bitmap.get_matrix(use_nearest=True)
                 shape_bitmaps_twips.append(twips)
 
-                bitmap_item = DOMBitmapItem(f"resources/{uvs_index}", f"{resource_name}.dat")
+            else:
+                matrix, _, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmaps_uvs.index(uv_coords)])
+
+            uvs_index = shape_bitmaps_uvs.index(uv_coords)
+
+            bitmap_item_name =f"resources/{uvs_index}"
+
+            if bitmap_item_name not in fla.media:
+                bitmap_item = DOMBitmapItem(bitmap_item_name, f"M {uvs_index}.dat")
 
                 bitmap_item.quality = 100
                 bitmap_item.use_imported_jpeg_data = False
@@ -165,20 +173,15 @@ def convert_shape(fla, swf, id, shape):
                 bitmap_item.source_external_filepath = f"LIBRARY/resources/{uvs_index}.png"
 
                 sprite = bitmap.get_image(swf)
-                sprite = sprite.rotate(-rotation, expand = True)
+                sprite = sprite.rotate(-rotation, expand=True)
                 if mirror:
                     sprite = sprite.transpose(Image.FLIP_LEFT_RIGHT)
                 bitmap_item.image = sprite
 
                 fla.media[uvs_index] = bitmap_item
 
-            else:
-                matrix, _, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmaps_uvs.index(uv_coords)])
-
-            uvs_index = shape_bitmaps_uvs.index(uv_coords)
-
             bitmap_instance = DOMBitmapInstance()
-            bitmap_instance.library_item_name = f"resources/{uvs_index}"
+            bitmap_instance.library_item_name = bitmap_item_name
 
             a, c, b, d, tx, ty = matrix.params
             bitmap_instance.matrix = Matrix(a, b, c, d, tx, ty)
@@ -243,22 +246,26 @@ def convert_movieclip(flas, swf, id, movieclip: MovieClip, projectdir, export_na
     if skip_list and False not in [re.match(block_name, export) != None for block_name in skip_list for export in export_names]:
         return
 
-    fla_key = movieclip.frame_rate
-    if export_names:
-        for export in export_names:
-            for split_name in split_list:
-                if re.match(split_name, export):
-                    postfix = re.sub('[^\w_.)( -]', '', split_name)
-                    fla_key = f"{fla_key}_{postfix}"
-            else:
-                continue
+    if isinstance(flas, dict):
+        fla_key = movieclip.frame_rate
+        if export_names:
+            for export in export_names:
+                for split_name in split_list:
+                    if re.match(split_name, export):
+                        postfix = re.sub('[^\w_.)( -]', '', split_name)
+                        fla_key = f"{fla_key}_{postfix}"
+                else:
+                    continue
 
-            break
+                break
 
-    if fla_key not in flas:
-        flas[fla_key] = prepare_document(f'{projectdir}_{fla_key}', movieclip.frame_rate)
+        if fla_key not in flas:
+            flas[fla_key] = prepare_document(f'{projectdir}_{fla_key}', movieclip.frame_rate)
 
-    fla = flas[fla_key]
+        fla = flas[fla_key]
+
+    else:
+        fla = flas
 
     movie = DOMSymbolItem()
 
@@ -286,7 +293,7 @@ def convert_movieclip(flas, swf, id, movieclip: MovieClip, projectdir, export_na
 
             # Symbols instance
             if isinstance(bind_resource, Shape):
-                if f"shapes/shapes_{bind['id']}" not in fla.symbols:
+                if f"shapes/shape_{bind['id']}" not in fla.symbols:
                     convert_shape(fla, swf, bind['id'], bind_resource)
                 if movieclip.nine_slice:
                     if id in shapes_with_nine_slices:
@@ -299,7 +306,7 @@ def convert_movieclip(flas, swf, id, movieclip: MovieClip, projectdir, export_na
 
             elif isinstance(bind_resource, MovieClip):
                 if f"movieclips/movieclip_{bind['id']}" not in fla.symbols:
-                    convert_movieclip(flas, swf, bind["id"], bind_resource, projectdir= projectdir)
+                    convert_movieclip(fla, swf, bind["id"], bind_resource, projectdir= projectdir)
 
                 bind_instance = DOMSymbolInstance(name=bind["name"],
                                                 library_item_name=f"movieclips/movieclip_{bind['id']}")
