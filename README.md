@@ -1,4 +1,6 @@
-<h1 align="center"> SC </h1>
+<p align="center">
+  <img src="resources/Sc_logo_v1_256x.png">
+</p>
 
 Supercell SWF (Flash) file format decompiler and compiler. Supercell's games using .sc files for almost all 2D graphics (UI, VFX, particles, characters facial animations, etc.).
 
