@@ -14,7 +14,7 @@ This tool is designed to import and export 2D assets (`*.sc`, `*_dl.sc`, `*_tex.
 There are also a lot of bugs and errors in the tool, if you find them, please let us know in <a href="https://github.com/scwmake/SC/issues">Issues</a> or our <a href="https://discord.gg/spFcna3xFJ">Discord server</a>!
 
 ## Installation and Requirements
-- <a href="https://www.python.org/">Python 3.9+</a> or newer version.
+- <a href="https://www.python.org/">Python 3.10+</a> or newer version.
 - Execute ```pip install -r requirements.txt``` command in tool directory after installing Python.
 - <a href="https://www.adobe.com/products/animate.html">Adobe Animate 2019</a> (2019 is recommended because it's more optimized than 2022!).
 - <a href="https://www.codeandweb.com/texturepacker">TexturePacker</a> (for getting and saving sprite sheets/texture atlases).
