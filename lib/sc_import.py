@@ -147,24 +147,16 @@ def convert_shape(fla, swf, id, shape):
             frame.elements.append(color_fill)
 
         else:
-            rotation = 0
-            mirror = False
-
             if uv_coords not in shape_bitmaps_uvs:
                 shape_bitmaps_uvs.append(uv_coords)
+
+                uvs_index = shape_bitmaps_uvs.index(uv_coords)
+                resource_name = f"M {uvs_index}"
 
                 matrix, twips, rotation, mirror = bitmap.get_matrix(use_nearest=True)
                 shape_bitmaps_twips.append(twips)
 
-            else:
-                matrix, _, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmaps_uvs.index(uv_coords)])
-
-            uvs_index = shape_bitmaps_uvs.index(uv_coords)
-
-            bitmap_item_name =f"resources/{uvs_index}"
-
-            if bitmap_item_name not in fla.media:
-                bitmap_item = DOMBitmapItem(bitmap_item_name, f"M {uvs_index}.dat")
+                bitmap_item = DOMBitmapItem(f"resources/{uvs_index}", f"{resource_name}.dat")
 
                 bitmap_item.quality = 100
                 bitmap_item.use_imported_jpeg_data = False
@@ -180,8 +172,13 @@ def convert_shape(fla, swf, id, shape):
 
                 fla.media[uvs_index] = bitmap_item
 
+            else:
+                matrix, _, _, _ = bitmap.get_matrix(shape_bitmaps_twips[shape_bitmaps_uvs.index(uv_coords)])
+
+            uvs_index = shape_bitmaps_uvs.index(uv_coords)
+
             bitmap_instance = DOMBitmapInstance()
-            bitmap_instance.library_item_name = bitmap_item_name
+            bitmap_instance.library_item_name = f"resources/{uvs_index}"
 
             a, c, b, d, tx, ty = matrix.params
             bitmap_instance.matrix = Matrix(a, b, c, d, tx, ty)
