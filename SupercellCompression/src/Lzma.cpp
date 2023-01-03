@@ -1,8 +1,8 @@
 #include "Lzma.h"
 #include "Utils.h"
 
-#include "LZMA/Alloc.h"
-#include "LZMA/LzmaDec.h"
+#include <LZMA/Alloc.h>
+#include <LZMA/LzmaDec.h>
 
 #define LZMA_IN_BUF_SIZE (1 << 16)
 #define LZMA_OUT_BUF_SIZE (1 << 16)

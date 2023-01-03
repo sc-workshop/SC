@@ -24,6 +24,7 @@ namespace sc {
         virtual size_t size() = 0;
         virtual bool eof() = 0;
         virtual void setEof(size_t pos) = 0;
+        virtual void close() = 0;
     };
 
     class ScFileStream: public IBinaryStream {
@@ -50,6 +51,7 @@ namespace sc {
         size_t size() override { return Utils::fileSize(file) - readEofOffset; }
         bool eof() override { return size() <= tell() - readEofOffset; };
         void setEof(size_t pos) override { readEofOffset = pos; };
+        void close() override { fclose(file); }
 
     };
 
@@ -65,6 +67,7 @@ namespace sc {
     enum class CompressErrs {
         OK = 0,
         INIT_ERROR = 10,
-        DATA_ERROR = 11
+        DATA_ERROR = 11,
+        ALLOC_ERROR = 12
     };
 }

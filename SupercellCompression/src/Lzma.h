@@ -1,7 +1,7 @@
 #pragma once
 #include "Utils.h"
 
-#include "LZMA/LzmaDec.h"
+#include <LZMA/LzmaDec.h>
 
 namespace sc {
 	class LZMA {

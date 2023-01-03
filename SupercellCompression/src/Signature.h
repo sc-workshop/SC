@@ -2,12 +2,12 @@
 #include "Utils.h"
 
 namespace sc {
-	enum CompressionSignatures {
-		NONE,
-		LZMA,
-		LZHAM,
-		ZSTD,
-		SIG // Idk about this. They probably cut it out completely, but let it be.
+	enum class CompressionSignatures{
+		NONE = 0,
+		LZMA = 1,
+		LZHAM = 2,
+		ZSTD = 3,
+		SIG = 255 // Idk about this. They probably cut it out completely, but let it be.
 	};
 
 	inline CompressionSignatures getSignature(uint32_t magic) {

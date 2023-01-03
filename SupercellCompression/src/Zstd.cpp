@@ -1,7 +1,7 @@
 #include "Utils.h"
 #include "Zstd.h"
 
-#include "ZSTD/zstd.h"
+#include <ZSTD/zstd.h>
 
 namespace sc {
 	CompressErrs ZSTD::decompress(IBinaryStream& inStream, IBinaryStream& outStream) {
@@ -30,7 +30,7 @@ namespace sc {
 
 		while (const size_t read = inStream.read(buffIn, toRead)) {
 			ZSTD_inBuffer input = { buffIn, read, 0 };
-			
+
 			while (input.pos < input.size)
 			{
 				ZSTD_outBuffer output = { buffOut, buffOutSize, 0 };

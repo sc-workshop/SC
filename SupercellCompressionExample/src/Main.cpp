@@ -8,25 +8,25 @@ void printUsage() {
 	printf("Usage: [mode] infile outfile\n");
 	printf("\n");
 	printf("Modes:\n");
-	printf("d - Decompress \"infile\" to \"cache or to outfile\"\n");
+	printf("d - Decompress \"infile\" to \"cache\"\n");
 }
 
-void processDecompressResult(sc::DECOMPRESSOR_ERROR res) {
+void processDecompressResult(sc::DecompressorErrs res) {
 	switch (res)
 	{
-	case sc::DECOMPRESSOR_ERROR::OK:
+	case sc::DecompressorErrs::OK:
 		printf("File succesfully decompressed to: ");
 		break;
-	case sc::DECOMPRESSOR_ERROR::FILE_READ_ERROR:
+	case sc::DecompressorErrs::FILE_READ_ERROR:
 		printf("[ERROR] Failed to read file.");
 		break;
-	case sc::DECOMPRESSOR_ERROR::FILE_WRITE_ERROR:
+	case sc::DecompressorErrs::FILE_WRITE_ERROR:
 		printf("[ERROR] Failed to write file.");
 		break;
-	case sc::DECOMPRESSOR_ERROR::WRONG_FILE_ERROR:
+	case sc::DecompressorErrs::WRONG_FILE_ERROR:
 		printf("[ERROR] Wrong file!\n");
 		break;
-	case sc::DECOMPRESSOR_ERROR::DECOMPRESS_ERROR:
+	case sc::DecompressorErrs::DECOMPRESS_ERROR:
 		printf("[ERROR] Decompression error!");
 		break;
 	default:
@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 		if (mode == "d") {
 			std::string inFilepath(argv[2]);
 			std::string outFilepath;
-			sc::DECOMPRESSOR_ERROR res = sc::Decompressor::decompress(inFilepath, outFilepath);
+			sc::DecompressorErrs res = sc::Decompressor::decompress(inFilepath, outFilepath);
 			processDecompressResult(res);
 			std::cout << outFilepath << std::endl;
 		}

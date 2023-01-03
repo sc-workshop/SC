@@ -5,6 +5,7 @@
 #include "Endian.h"
 
 #include "Lzma.h"
+#include "Lzham.h"
 #include "Zstd.h"
 
 #include <iostream>
@@ -18,12 +19,12 @@ namespace sc
 			return DecompressorErrs::WRONG_FILE_ERROR;
 		}
 
-		FILE* inFile = fopen(filepath.c_str(), "rb");
-		unsigned int fileSize = Utils::fileSize(inFile);
-		if (inFile == NULL || fileSize <= 0)
+		if (!Utils::fileExist(filepath)) 
 			return DecompressorErrs::FILE_READ_ERROR;
 
+		FILE* inFile = fopen(filepath.c_str(), "rb");
 		ScFileStream inputSteam = ScFileStream(inFile);
+		uint32_t fileSize = Utils::fileSize(inFile);
 
 		char* hash;
 		uint32_t hashSize;
@@ -40,7 +41,7 @@ namespace sc
 			return DecompressorErrs::OK;
 		}
 		else {
-			SwfCache::addData(filepath, hash, hashSize, fileSize);
+			// SwfCache::addData(filepath, hash, hashSize, fileSize);
 		}
 			
 		FILE* outFile = fopen(outFilepath.c_str(), "wb");
@@ -49,7 +50,12 @@ namespace sc
 
 		ScFileStream outputStream = ScFileStream(outFile);
 
-		return decompress(inputSteam, outputStream, signature);
+		DecompressorErrs res = decompress(inputSteam, outputStream, signature);
+
+		inputSteam.close();
+		outputStream.close();
+
+		return res;
 	}
 
 	int Decompressor::getHeader(
@@ -114,6 +120,9 @@ namespace sc
 			break;
 		case CompressionSignatures::ZSTD:
 			res = ZSTD::decompress(inStream, outStream);
+			break;
+		case CompressionSignatures::LZHAM:
+			res = LZHAM::decompress(inStream, outStream);
 			break;
 		default:
 			size_t size = inStream.size() - inStream.tell();
