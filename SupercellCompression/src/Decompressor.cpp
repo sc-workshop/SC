@@ -12,16 +12,16 @@
 namespace sc
 { 
 	// Decompress SC file
-	DECOMPRESSOR_ERROR Decompressor::decompress(std::string filepath, std::string& outFilepath)
+	DecompressorErrs Decompressor::decompress(std::string filepath, std::string& outFilepath)
 	{
 		if (!Utils::endsWith(filepath, ".sc")) {
-			return DECOMPRESSOR_ERROR::WRONG_FILE_ERROR;
+			return DecompressorErrs::WRONG_FILE_ERROR;
 		}
 
 		FILE* inFile = fopen(filepath.c_str(), "rb");
 		unsigned int fileSize = Utils::fileSize(inFile);
 		if (inFile == NULL || fileSize <= 0)
-			return DECOMPRESSOR_ERROR::FILE_READ_ERROR;
+			return DecompressorErrs::FILE_READ_ERROR;
 
 		ScFileStream inputSteam = ScFileStream(inFile);
 
@@ -31,13 +31,13 @@ namespace sc
 
 		int headerRes = getHeader(inputSteam, hash, hashSize, signature);
 		if (headerRes != 0) {
-			return DECOMPRESSOR_ERROR::WRONG_FILE_ERROR;
+			return DecompressorErrs::WRONG_FILE_ERROR;
 		}
 
 		outFilepath = SwfCache::getTempPath(filepath);
 		bool fileInCache = SwfCache::exist(filepath, hash, fileSize);
 		if (fileInCache) {
-			return DECOMPRESSOR_ERROR::OK;
+			return DecompressorErrs::OK;
 		}
 		else {
 			SwfCache::addData(filepath, hash, hashSize, fileSize);
@@ -45,7 +45,7 @@ namespace sc
 			
 		FILE* outFile = fopen(outFilepath.c_str(), "wb");
 		if (outFile == NULL)
-			return DECOMPRESSOR_ERROR::FILE_WRITE_ERROR;
+			return DecompressorErrs::FILE_WRITE_ERROR;
 
 		ScFileStream outputStream = ScFileStream(outFile);
 
@@ -60,7 +60,6 @@ namespace sc
 		// Check for SC file header 
 		int magic;
 		inputSteam.read(&magic, sizeof(magic));
-		// magic = SwapEndian<int>(magic); 825373489
 		if (magic != 0x4353)
 			return 1;
 
@@ -105,8 +104,8 @@ namespace sc
 		return 0;
 	}
 
-	DECOMPRESSOR_ERROR Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressionSignatures signature) {
-		COMPRESSION_ERROR res;
+	DecompressorErrs Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressionSignatures signature) {
+		CompressErrs res;
 
 		switch (signature)
 		{
@@ -122,10 +121,10 @@ namespace sc
 			inStream.read(dataBuffer, size);
 			outStream.write(dataBuffer, size);
 
-			res = COMPRESSION_ERROR::OK;
+			res = CompressErrs::OK;
 			break;
 		}
 
-		return res == COMPRESSION_ERROR::OK ? DECOMPRESSOR_ERROR::OK : DECOMPRESSOR_ERROR::DECOMPRESS_ERROR;
+		return res == CompressErrs::OK ? DecompressorErrs::OK : DecompressorErrs::DECOMPRESS_ERROR;
 	}
 }

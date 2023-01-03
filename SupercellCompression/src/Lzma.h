@@ -6,9 +6,9 @@
 namespace sc {
 	class LZMA {
 	public:
-		static COMPRESSION_ERROR decompress(IBinaryStream& inStream, IBinaryStream& outStream);
+		static CompressErrs decompress(IBinaryStream& inStream, IBinaryStream& outStream);
 
 	private:
-		static COMPRESSION_ERROR decompressStream(CLzmaDec* state, SizeT unpackSize, IBinaryStream& inStream, IBinaryStream& outStream);
+		static CompressErrs decompressStream(CLzmaDec* state, SizeT unpackSize, IBinaryStream& inStream, IBinaryStream& outStream);
 	};
 }

@@ -8,7 +8,7 @@
 #define LZMA_OUT_BUF_SIZE (1 << 16)
 
 namespace sc {
-	COMPRESSION_ERROR LZMA::decompressStream(CLzmaDec* state, SizeT unpackSize, IBinaryStream& inStream, IBinaryStream& outStream) {
+	CompressErrs LZMA::decompressStream(CLzmaDec* state, SizeT unpackSize, IBinaryStream& inStream, IBinaryStream& outStream) {
 		int thereIsSize = (unpackSize != (UInt32)(Int32)-1);
 		Byte inBuf[LZMA_IN_BUF_SIZE];
 		Byte outBuf[LZMA_OUT_BUF_SIZE];
@@ -23,7 +23,7 @@ namespace sc {
 				inPos = 0;
 			}
 			{
-				COMPRESSION_ERROR res;
+				CompressErrs res;
 				SizeT inProcessed = inSize - inPos;
 				SizeT outProcessed = LZMA_OUT_BUF_SIZE - outPos;
 				ELzmaFinishMode finishMode = LZMA_FINISH_ANY;
@@ -35,23 +35,23 @@ namespace sc {
 				}
 
 				res = LzmaDec_DecodeToBuf(state, outBuf + outPos, &outProcessed,
-					inBuf + inPos, &inProcessed, finishMode, &status) == 0 ? COMPRESSION_ERROR::OK : COMPRESSION_ERROR::DATA_ERROR;
+					inBuf + inPos, &inProcessed, finishMode, &status) == 0 ? CompressErrs::OK : CompressErrs::DATA_ERROR;
 				inPos += inProcessed;
 				outPos += outProcessed;
 				unpackSize -= outProcessed;
 
 				if (outStream.write(outBuf, outPos) != outPos)
-					return COMPRESSION_ERROR::DATA_ERROR;
+					return CompressErrs::DATA_ERROR;
 
 				outPos = 0;
 
-				if (res != COMPRESSION_ERROR::OK || (thereIsSize && unpackSize == 0))
+				if (res != CompressErrs::OK || (thereIsSize && unpackSize == 0))
 					return res;
 
 				if (inProcessed == 0 && outProcessed == 0)
 				{
 					if (thereIsSize || status != LZMA_STATUS_FINISHED_WITH_MARK)
-						return COMPRESSION_ERROR::DATA_ERROR;
+						return CompressErrs::DATA_ERROR;
 
 					return res;
 				}
@@ -59,7 +59,7 @@ namespace sc {
 		}
 	}
 
-	COMPRESSION_ERROR LZMA::decompress(IBinaryStream& inStream, IBinaryStream& outStream)
+	CompressErrs LZMA::decompress(IBinaryStream& inStream, IBinaryStream& outStream)
 	{
 		CLzmaDec state;
 		Byte header[LZMA_PROPS_SIZE];
@@ -71,7 +71,7 @@ namespace sc {
 		LzmaDec_Construct(&state);
 		LzmaDec_Allocate(&state, header, LZMA_PROPS_SIZE, &g_Alloc);
 
-		COMPRESSION_ERROR res = decompressStream(&state, unpackSize, inStream, outStream);
+		CompressErrs res = decompressStream(&state, unpackSize, inStream, outStream);
 
 		LzmaDec_Free(&state, &g_Alloc);
 

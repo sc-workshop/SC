@@ -54,7 +54,7 @@ namespace sc {
     };
 
     // Error enums
-    enum class DECOMPRESSOR_ERROR {
+    enum class DecompressorErrs {
         OK = 0,
         FILE_READ_ERROR = 1,
         FILE_WRITE_ERROR = 2,
@@ -62,7 +62,7 @@ namespace sc {
         DECOMPRESS_ERROR = 4
     };
 
-    enum class COMPRESSION_ERROR {
+    enum class CompressErrs {
         OK = 0,
         INIT_ERROR = 10,
         DATA_ERROR = 11
