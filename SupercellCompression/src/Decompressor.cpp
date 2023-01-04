@@ -4,9 +4,9 @@
 #include "Utils.h"
 #include "Endian.h"
 
-#include "Lzma.h"
-#include "Lzham.h"
-#include "Zstd.h"
+#include "LzmaCompression.h"
+#include "LzhamCompression.h"
+#include "ZstdCompression.h"
 
 #include <iostream>
 
@@ -41,7 +41,9 @@ namespace sc
 			return DecompressorErrs::OK;
 		}
 		else {
-			// SwfCache::addData(filepath, hash, hashSize, fileSize);
+#ifndef SC_DEBUG
+			SwfCache::addData(filepath, hash, hashSize, fileSize);
+#endif // !SC_DEBUG
 		}
 			
 		FILE* outFile = fopen(outFilepath.c_str(), "wb");

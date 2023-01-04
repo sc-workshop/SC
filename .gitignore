@@ -1,3 +1,26 @@
+// Build files and other trash
 .vs
 obj
 bin
+premake
+
+// Solution files
+SupercellSWF.sln
+
+// Sc compression
+SupercellCompression/SupercellCompression.vcxproj
+SupercellCompression/SupercellCompression.vcxproj.user
+
+SupercellCompression/lzham/LZHAM.vcxproj
+SupercellCompression/lzham/LZHAM.vcxproj.filters
+SupercellCompression/lzma/LZMA.vcxproj
+SupercellCompression/lzma/LZMA.vcxproj.user
+SupercellCompression/zstd/ZSTD.vcxproj
+SupercellCompression/zstd/ZSTD.vcxproj.filters
+// CLI
+SupercellCompressionCli/SupercellCompressionCli.vcxproj
+SupercellCompressionCli/SupercellCompressionCli.vcxproj.user
+
+// SupercellSWF
+
+// CLI

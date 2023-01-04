@@ -1,42 +1,32 @@
 
-project "SupercellCompression"
+project "lzhamdecomp"
     kind "StaticLib"
 
     language "C++"
-    cppdialect "C++17"
+	cppdialect "C++14"
 
     targetdir "%{wks.location}/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
     objdir "%{wks.location}/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
 
     files {
-        "src/**.h",
-        "src/**.cpp"
+		"./**.cpp",
+		"../include/lzham_exports.inc"
     }
 
     includedirs {
-        "src",
-		"lzma/include",
-		"zstd/include",
-		"lzham/include"
+        "../include",
+		"./",
+		"../lzhamcomp"
 	}
-	
-	links {
-        "LZMA",
-		"ZSTD",
-		"LZHAM"
-    }
+
 
     filter "configurations:Debug"
-        defines "SC_DEBUG;USE_CUSTOM_TEMP_PATH;"
+		defines "WIN32;_DEBUG;_LIB;"
         runtime "Debug"
         symbols "on"
     
     filter "configurations:Release"
-        defines "SC_RELEASE;_CRT_SECURE_NO_WARNINGS;"
+		defines "WIN32;NDEBUG;_LIB;"
         runtime "Release"
         optimize "on"
-		
-include "lzma"
-include "zstd"
-include "lzham"
 

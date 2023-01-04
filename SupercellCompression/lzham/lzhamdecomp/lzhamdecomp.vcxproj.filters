@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="lzham_assert.cpp" />
+    <ClCompile Include="lzham_checksum.cpp" />
+    <ClCompile Include="lzham_huffman_codes.cpp" />
+    <ClCompile Include="lzham_lzdecomp.cpp" />
+    <ClCompile Include="lzham_lzdecompbase.cpp" />
+    <ClCompile Include="lzham_mem.cpp" />
+    <ClCompile Include="lzham_platform.cpp" />
+    <ClCompile Include="lzham_prefix_coding.cpp" />
+    <ClCompile Include="lzham_symbol_codec.cpp" />
+    <ClCompile Include="lzham_timer.cpp" />
+    <ClCompile Include="lzham_vector.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\include\lzham_exports.inc">
+      <Filter>include</Filter>
+    </None>
+  </ItemGroup>
+</Project>

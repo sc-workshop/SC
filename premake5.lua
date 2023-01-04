@@ -14,5 +14,5 @@ workspace "SupercellSWF"
 
 
 include "SupercellCompression"
-include "SupercellCompressionExample"
+include "SupercellCompressionCli"
 

@@ -1,6 +1,6 @@
 
-project "SupercellCompression"
-    kind "StaticLib"
+project "SupercellCompressionCli"
+    kind "ConsoleApp"
 
     language "C++"
     cppdialect "C++17"
@@ -9,34 +9,26 @@ project "SupercellCompression"
     objdir "%{wks.location}/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
 
     files {
-        "src/**.h",
         "src/**.cpp"
     }
 
     includedirs {
         "src",
-		"lzma/include",
-		"zstd/include",
-		"lzham/include"
-	}
+		
+		"%{wks.location}/SupercellCompression/src"
+    }
 	
 	links {
-        "LZMA",
-		"ZSTD",
-		"LZHAM"
+        "SupercellCompression"
     }
-
+    
     filter "configurations:Debug"
-        defines "SC_DEBUG;USE_CUSTOM_TEMP_PATH;"
+        defines "SC_DEBUG"
         runtime "Debug"
         symbols "on"
     
     filter "configurations:Release"
-        defines "SC_RELEASE;_CRT_SECURE_NO_WARNINGS;"
+        defines "SC_RELEASE"
         runtime "Release"
         optimize "on"
-		
-include "lzma"
-include "zstd"
-include "lzham"
 
