@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include "Signature.h"
 
 #include <stdlib.h>
 #include <string>

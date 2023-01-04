@@ -1,4 +1,5 @@
 #include <string>
+#include "Utils.h"
 
 namespace sc {
 	class SwfCache {
@@ -9,6 +10,6 @@ namespace sc {
 
 		static bool exist(std::string filepath, char* hash, uint32_t fileSize);
 		static void getData(std::string filepath, char* hash, uint32_t& fileSize);
-		static void addData(std::string filepath, char* hash, uint32_t hashSize, uint32_t fileSize);
+		static void addData(std::string filepath, CompressedSwfProps header, uint32_t fileSize);
 	};
 }

@@ -111,11 +111,11 @@ namespace sc {
 		fread(&fileSize, sizeof(fileSize), 1, infoFile);
 	}
 
-	void SwfCache::addData(std::string filepath, char* hash, uint32_t hashSize, uint32_t fileSize) {
+	void SwfCache::addData(std::string filepath, CompressedSwfProps header, uint32_t fileSize) {
 		std::string infoFilePath = getInfoFilepath(filepath);
 		FILE* file = fopen(infoFilePath.c_str(), "wb");
 
-		fwrite(hash, hashSize, 1, file);
+		fwrite(header.id, header.idSize, 1, file);
 		const char nt[1]{};
 		fwrite(nt, sizeof(nt), 1, file);
 		fwrite(&fileSize, sizeof(fileSize), 1, file);

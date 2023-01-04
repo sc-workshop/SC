@@ -2,28 +2,25 @@
 #include "Utils.h"
 
 namespace sc {
-	enum class CompressionSignatures{
-		NONE = 0,
-		LZMA = 1,
-		LZHAM = 2,
-		ZSTD = 3,
-		SIG = 255 // Idk about this. They probably cut it out completely, but let it be.
+	enum CompressionSignatures : uint32_t {
+		NONE_COMPRESSION = 0,
+		LZMA_COMPRESSION = 1,
+		LZHAM_COMPRESSION = 2,
+		ZSTD_COMRESSION = 3
 	};
 
-	inline CompressionSignatures getSignature(uint32_t magic) {
+	inline uint32_t getSignatureIndex(uint32_t magic) {
 		switch (magic)
 		{
 		case 0x0400005D:
 		case 0x0400005E:
-			return CompressionSignatures::LZMA;
+			return CompressionSignatures::LZMA_COMPRESSION;
 		case 0x5A4C4353:
-			return CompressionSignatures::LZHAM;
+			return CompressionSignatures::LZHAM_COMPRESSION;
 		case 0xFD2FB528:
-			return CompressionSignatures::ZSTD;
-		case 0x3A676953:
-			return CompressionSignatures::SIG;
+			return CompressionSignatures::ZSTD_COMRESSION;
 		default:
-			return CompressionSignatures::NONE;
+			return CompressionSignatures::NONE_COMPRESSION;
 		}
 	}
 }
