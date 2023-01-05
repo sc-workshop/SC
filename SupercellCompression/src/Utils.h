@@ -1,6 +1,7 @@
 #pragma once
 #include <stdlib.h>
 #include <string>
+#include <sstream>
 
 namespace sc {
 	// Small helper functions
@@ -20,7 +21,7 @@ namespace sc {
 		virtual size_t read(void* buff, size_t buffSize) = 0;
 		virtual size_t write(void* buff, size_t buffSize) = 0;
 		virtual long tell() = 0;
-		virtual size_t set(int pos) = 0;
+		virtual int set(int pos) = 0;
 		virtual size_t size() = 0;
 		virtual bool eof() = 0;
 		virtual void setEof(size_t pos) = 0;
@@ -47,13 +48,96 @@ namespace sc {
 		size_t write(void* buff, size_t buffSize) override {
 			return fwrite(buff, 1, buffSize, file);
 		};
-		long tell() override { return ftell(file); }
-		size_t set(int pos) override { return fseek(file, pos, SEEK_SET); }
-		size_t size() override { return Utils::fileSize(file) - readEofOffset; }
-		bool eof() override { return size() <= tell() - readEofOffset; };
-		void setEof(size_t pos) override { readEofOffset = pos; };
-		void close() override { fclose(file); }
+		long tell() override {
+			return ftell(file);
+		};
+		int set(int pos) override {
+			return fseek(file, pos, SEEK_SET);
+		};
+		size_t size() override {
+			return Utils::fileSize(file) - readEofOffset;
+		};
+		bool eof() override { 
+			return size() <= tell() - readEofOffset; 
+		};
+		void setEof(size_t pos) override { 
+			readEofOffset = pos;
+		};
+		void close() override {
+			fclose(file);
+		};
 	};
+
+	/*class ScBufferStream : public IBinaryStream {
+	public:
+		ScBufferStream(char* buff, size_t size) {
+			buffer = buff;
+			bufferSize = size;
+		}
+
+	private:
+		char * buffer;
+		size_t bufferSize;
+		size_t readEofOffset = 0;
+		size_t position = 0;
+
+		std::stringstream stream;
+
+	public:
+		size_t read(void* buff, size_t buffSize) override {
+			bool eof = tell() + buffSize > size();
+			size_t toRead = eof ? size() - tell()  : buffSize;
+
+			char* readBuffer = new char[buffSize]();
+
+			for (size_t i = 0; toRead > i; i++) {
+				readBuffer[i] = buffer[position];
+				position++;
+			}
+
+			memcpy(buff, readBuffer, buffSize);
+			delete[] readBuffer;
+
+			return toRead;
+		};
+		size_t write(void* buff, size_t buffSize) override {
+			char* data;
+			data = (char*)buff;
+
+			for (size_t i = 0; buffSize > i; i++) {
+				buffer[position] = data[i];
+				position++;
+				if (eof()) {
+					bufferSize++;
+				}
+			}
+
+			return buffSize;
+		};
+		long tell() override {
+			return position;
+		};
+		int set(int pos) override {
+			if (size() > pos) {
+				position = pos;
+				return 0;
+			} else {
+				return 1;
+			}
+		};
+		size_t size() override {
+			return bufferSize;
+		};
+		bool eof() override { 
+			return size() <= tell() - readEofOffset;
+		}
+		void setEof(size_t pos) override {
+			readEofOffset = pos;
+		};
+		void close() override {
+			free(buffer);
+		};
+	};*/
 
 	// Structs
 

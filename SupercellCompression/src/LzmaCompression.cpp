@@ -9,9 +9,9 @@
 
 namespace sc {
 	CompressErrs LZMA::decompressStream(CLzmaDec* state, SizeT unpackSize, IBinaryStream& inStream, IBinaryStream& outStream) {
-		int thereIsSize = (unpackSize != (UInt32)(Int32)-1);
-		Byte inBuf[LZMA_IN_BUF_SIZE];
-		Byte outBuf[LZMA_OUT_BUF_SIZE];
+		int hasEndMarker = (unpackSize != (UInt32)(Int32)-1);
+		uint8_t inBuf[LZMA_IN_BUF_SIZE];
+		uint8_t outBuf[LZMA_OUT_BUF_SIZE];
 		size_t inPos = 0, inSize = 0, outPos = 0;
 		LzmaDec_Init(state);
 		for (;;)
@@ -24,13 +24,13 @@ namespace sc {
 			}
 			{
 				CompressErrs res;
-				SizeT inProcessed = inSize - inPos;
-				SizeT outProcessed = LZMA_OUT_BUF_SIZE - outPos;
+				size_t inProcessed = inSize - inPos;
+				size_t outProcessed = LZMA_OUT_BUF_SIZE - outPos;
 				ELzmaFinishMode finishMode = LZMA_FINISH_ANY;
 				ELzmaStatus status;
-				if (thereIsSize && outProcessed > unpackSize)
+				if (hasEndMarker && outProcessed > unpackSize)
 				{
-					outProcessed = (SizeT)unpackSize;
+					outProcessed = (size_t)unpackSize;
 					finishMode = LZMA_FINISH_END;
 				}
 
@@ -45,12 +45,12 @@ namespace sc {
 
 				outPos = 0;
 
-				if (res != CompressErrs::OK || (thereIsSize && unpackSize == 0))
+				if (res != CompressErrs::OK || (hasEndMarker && unpackSize == 0))
 					return res;
 
 				if (inProcessed == 0 && outProcessed == 0)
 				{
-					if (thereIsSize || status != LZMA_STATUS_FINISHED_WITH_MARK)
+					if (hasEndMarker || status != LZMA_STATUS_FINISHED_WITH_MARK)
 						return CompressErrs::DATA_ERROR;
 
 					return res;

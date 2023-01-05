@@ -135,7 +135,7 @@ namespace sc
 		inputSteam.read(&magic, sizeof(magic));
 
 		// Version of .sc file
-		unsigned short version;
+		uint16_t version;
 		inputSteam.read(&version, sizeof(version));
 		version = SwapEndian<short>(version);
 
@@ -153,17 +153,16 @@ namespace sc
 
 			// Metadata process
 			size_t origPos = inputSteam.tell();
-
-			inputSteam.set(inputSteam.size() - 4);
+			inputSteam.set(static_cast<uint32_t>(inputSteam.size()) - 4);
 			inputSteam.read(&metadataSize, sizeof(metadataSize));
 			metadataSize = SwapEndian<uint32_t>(metadataSize);
 
 			metadata = new char[metadataSize]();
-			inputSteam.set(inputSteam.size() - (4 + metadataSize));
+			inputSteam.set(static_cast<uint32_t>(inputSteam.size() - (metadataSize + 4)));
 			inputSteam.read(metadata, metadataSize);
 
-			inputSteam.set(origPos);
-			inputSteam.setEof(static_cast<__int64>(metadataSize) + 9);
+			inputSteam.set(static_cast<uint32_t>(origPos));
+			// inputSteam.setEof(static_cast<__int64>(metadataSize) + 9);
 		}
 		uint32_t idSize;
 		inputSteam.read(&idSize, sizeof(idSize));

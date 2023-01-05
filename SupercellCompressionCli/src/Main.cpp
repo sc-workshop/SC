@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -53,20 +54,42 @@ int main(int argc, char** argv)
 		std::cout << std::endl;
 	}
 
-	std::string mode(argv[1]);
-	std::string inFilepath(argv[2]);
-
-	if (mode.empty()) {
+	if (!argv[1]) {
 		printf("[INFO] Mode is not specified. Exit...");
+		exit(0);
+	}
+	std::string mode(argv[1]);
+
+	if (!argv[2]) {
+		printf("[ERROR] Input file path is not specified.");
+		exit(0);
 	}
 
-	if (inFilepath.empty()) {
-		printf("[ERROR] Input file path is not specified.");
+	std::string inFilepath(argv[2]);
+
+	if (!sc::Utils::fileExist(inFilepath)) {
+		printf("[ERROR] Input file does not exist.");
+		exit(0);
+	}
+
+	std::string outFilepath;
+	if (argv[3]) {
+		outFilepath = argv[3];
 	}
 
 	if (mode == "d") {
-		std::string outFilepath;
-		sc::DecompressorErrs res = sc::Decompressor::decompress(inFilepath, outFilepath);
+		
+		sc::DecompressorErrs res;
+		if (outFilepath.empty()) {
+			res = sc::Decompressor::decompress(inFilepath, outFilepath);
+		}
+		else {
+
+			sc::ScFileStream inStream = sc::ScFileStream(fopen(inFilepath.c_str(), "rb"));
+			sc::ScFileStream outStream = sc::ScFileStream(fopen(outFilepath.c_str(), "wb"));
+
+			res = sc::Decompressor::decompress(inStream, outStream);
+		}
 
 		processDecompressResult(res);
 		if (res == sc::DecompressorErrs::OK) {
