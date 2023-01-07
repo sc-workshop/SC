@@ -5,6 +5,6 @@
 namespace sc {
 	class LZHAM {
 	public:
-		static CompressErrs decompress(IBinaryStream& inStream, IBinaryStream& outStream);
+		static CompressionErrs decompress(IBinaryStream& inStream, IBinaryStream& outStream);
 	};
 }

@@ -16,12 +16,12 @@ typedef unsigned int uint32;
 #define my_min(a,b) (((a) < (b)) ? (a) : (b))
 
 namespace sc {
-	CompressErrs LZHAM::decompress(IBinaryStream& inStream, IBinaryStream& outStream) {
+	CompressionErrs LZHAM::decompress(IBinaryStream& inStream, IBinaryStream& outStream) {
 		uint32_t magic;
 		inStream.read(&magic, sizeof(magic));
 
 		if (magic != 0x5A4C4353)
-			return CompressErrs::DATA_ERROR;
+			return CompressionErrs::DATA_ERROR;
 
 		uint8_t dictSize;
 		inStream.read(&dictSize, sizeof(dictSize));
@@ -31,7 +31,7 @@ namespace sc {
 
 		if ((dictSize < LZHAM_MIN_DICT_SIZE_LOG2) || (dictSize > LZHAM_MAX_DICT_SIZE_LOG2_X64))
 		{
-			return CompressErrs::DATA_ERROR;
+			return CompressionErrs::DATA_ERROR;
 		}
 
 		int total_header_bytes = static_cast<int>(inStream.tell());
@@ -44,7 +44,7 @@ namespace sc {
 		if (!outputBuffer)
 		{
 			_aligned_free(inputBuffer);
-			return CompressErrs::ALLOC_ERROR;
+			return CompressionErrs::ALLOC_ERROR;
 		}
 
 		uint32_t inputLeft = inStream.size() - inStream.tell();
@@ -64,7 +64,7 @@ namespace sc {
 		{
 			_aligned_free(inputBuffer);
 			_aligned_free(outputBuffer);
-			return CompressErrs::INIT_ERROR;
+			return CompressionErrs::INIT_ERROR;
 		}
 
 		lzham_decompress_status_t lzham_status;
@@ -78,7 +78,7 @@ namespace sc {
                     _aligned_free(inputBuffer);
                     _aligned_free(outputBuffer);
                     lzham_decompress_deinit(decompressState);
-                    return CompressErrs::DATA_ERROR;
+                    return CompressionErrs::DATA_ERROR;
                 }
 
                 inputLeft -= decompressBufferSize;
@@ -105,7 +105,7 @@ namespace sc {
                     _aligned_free(inputBuffer);
                     _aligned_free(outputBuffer);
                     lzham_decompress_deinit(decompressState);
-					return CompressErrs::DATA_ERROR;
+					return CompressionErrs::DATA_ERROR;
                 }
 
                 if (out_num_bytes > outputLeft)
@@ -113,7 +113,7 @@ namespace sc {
                     _aligned_free(inputBuffer);
                     _aligned_free(outputBuffer);
                     lzham_decompress_deinit(decompressState);
-                    return CompressErrs::DATA_ERROR;
+                    return CompressionErrs::DATA_ERROR;
                 }
                 outputLeft -= out_num_bytes;
             }
@@ -133,6 +133,6 @@ namespace sc {
 		lzham_decompress_deinit(decompressState);
 		decompressState = NULL;
 
-		return CompressErrs::OK;
+		return CompressionErrs::OK;
 	}
 }

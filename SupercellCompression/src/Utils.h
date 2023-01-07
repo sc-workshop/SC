@@ -3,6 +3,8 @@
 #include <string>
 #include <sstream>
 
+#include "Endian.h"
+
 namespace sc {
 	// Small helper functions
 	class Utils {
@@ -26,6 +28,83 @@ namespace sc {
 		virtual bool eof() = 0;
 		virtual void setEof(size_t pos) = 0;
 		virtual void close() = 0;
+
+		// Read/Write functions for integers
+
+		// UINT8
+
+		uint8_t readUInt8() {
+			uint8_t data;
+			size_t readRes = read(&data, sizeof(uint8_t));
+
+			if (sizeof(uint8_t) == readRes) {
+				return data;
+			}
+			else {
+				return 0;
+			}
+		};
+
+		void writeUInt8(uint8_t number) {
+			write(&number, sizeof(uint8_t));
+		};
+
+		// UINT16
+
+		uint16_t readUInt16() {
+			uint16_t data;
+			size_t readRes = read(&data, sizeof(uint16_t));
+
+			if (sizeof(uint16_t) == readRes) {
+				return data;
+			}
+			else {
+				return 0;
+			}
+		};
+
+		uint16_t readUInt16BE() {
+			uint16_t data = readUInt16();
+			data = SwapEndian<uint16_t>(data);
+			return data;
+		};
+
+		void writeUInt16(uint16_t number) {
+			write(&number, sizeof(uint16_t));
+		};
+
+		void writeUInt16BE(uint16_t number) {
+			writeUInt16(SwapEndian<uint16_t>(number));
+		};
+
+		// UINT32
+
+		uint32_t readUInt32() {
+			uint32_t data;
+			size_t readRes = read(&data, sizeof(uint32_t));
+
+			if (sizeof(uint32_t) == readRes) {
+				return data;
+			}
+			else {
+				return 0;
+			}
+		};
+
+		uint32_t readUInt32BE() {
+			uint32_t data = readUInt32();
+			data = SwapEndian<uint32_t>(data);
+			return data;
+		};
+
+		void writeUInt32(uint32_t number) {
+			write(&number, sizeof(uint32_t));
+		};
+
+		void writeUInt32BE(uint32_t number) {
+			writeUInt32(SwapEndian<uint32_t>(number));
+		};
+
 	};
 
 	// Stream implementation for file
@@ -41,12 +120,21 @@ namespace sc {
 
 	public:
 		size_t read(void* buff, size_t buffSize) override {
-			size_t finalPos = tell() + buffSize;
-			const size_t readSize = fread(buff, 1, buffSize - (finalPos > size() ? finalPos - size() : 0), file);
-			return readSize;
+			size_t toRead = (tell() + buffSize) > size() ? size() - tell() : buffSize;
+			return fread(
+				buff,
+				1,
+				toRead,
+				file
+			);
 		};
 		size_t write(void* buff, size_t buffSize) override {
-			return fwrite(buff, 1, buffSize, file);
+			return fwrite(
+				buff,
+				1,
+				buffSize,
+				file
+			);
 		};
 		long tell() override {
 			return ftell(file);
@@ -150,10 +238,6 @@ namespace sc {
 		char* id{};
 		uint32_t idSize{0};
 
-		// Hash from SIG
-		char* hash{};
-		uint32_t hashSize{0};
-
 		// Metadata from version 4
 		char* metadata{};
 		uint32_t metadataSize{0};
@@ -161,23 +245,28 @@ namespace sc {
 		// Compress signature
 		uint32_t signature{0};
 
+		// Hash from SIG
+		char* hash{};
+		uint32_t hashSize{ 64 };
+
 		// Positive if data is real sc file
-		bool ok{0};
+		bool ok{false};
 	};
 
 	// Error enums
 
 	// Errors for Decompressor
-	enum class DecompressorErrs {
+	enum class CompressorErrs {
 		OK = 0,
 		FILE_READ_ERROR = 1,
 		FILE_WRITE_ERROR = 2,
 		WRONG_FILE_ERROR = 3,
-		DECOMPRESS_ERROR = 4
+		DECOMPRESS_ERROR = 4,
+		COMPRESS_ERROR = 5
 	};
 
 	// Error for LZMA, LZHAM, ZSTD compression methods
-	enum class CompressErrs {
+	enum class CompressionErrs {
 		OK = 0,
 		INIT_ERROR = 10,
 		DATA_ERROR = 11,

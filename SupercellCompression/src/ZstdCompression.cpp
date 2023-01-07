@@ -4,7 +4,7 @@
 #include <zstd.h>
 
 namespace sc {
-	CompressErrs ZSTD::decompress(IBinaryStream& inStream, IBinaryStream& outStream) {
+	CompressionErrs ZSTD::decompress(IBinaryStream& inStream, IBinaryStream& outStream) {
 		const size_t buffInSize = ZSTD_DStreamInSize();
 		const size_t buffOutSize = ZSTD_DStreamOutSize();
 
@@ -15,7 +15,7 @@ namespace sc {
 
 		if (!dStream)
 		{
-			return CompressErrs::INIT_ERROR;
+			return CompressionErrs::INIT_ERROR;
 		}
 
 		const size_t initResult = ZSTD_initDStream(dStream);
@@ -23,7 +23,7 @@ namespace sc {
 		if (ZSTD_isError(initResult))
 		{
 			ZSTD_freeDStream(dStream);
-			return CompressErrs::INIT_ERROR;
+			return CompressionErrs::INIT_ERROR;
 		}
 
 		size_t toRead = initResult;
@@ -39,7 +39,7 @@ namespace sc {
 				if (ZSTD_isError(toRead))
 				{
 					ZSTD_freeDStream(dStream);
-					return CompressErrs::DATA_ERROR;
+					return CompressionErrs::DATA_ERROR;
 				}
 				outStream.write(buffOut, output.pos);
 			}
@@ -49,6 +49,6 @@ namespace sc {
 		free(buffIn);
 		free(buffOut);
 
-		return CompressErrs::OK;
+		return CompressionErrs::OK;
 	}
 }
