@@ -48,7 +48,6 @@ namespace sc
 
 		ScFileStream outputStream = ScFileStream(outFile);
 
-
 		CompressorErrs res = decompress(inputSteam, outputStream, header);
 
 		inputSteam.close();
@@ -66,42 +65,8 @@ namespace sc
 		return decompress(inStream, outStream, header);
 	}
 
-	CompressorErrs Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps header) {
+	CompressorErrs Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressionSignatures signature) {
 		CompressionErrs res;
-
-		switch (header.signature)
-		{
-		case CompressionSignatures::LZMA_COMPRESSION:
-			res = LZMA::decompress(inStream, outStream);
-			break;
-		case CompressionSignatures::ZSTD_COMRESSION:
-			res = ZSTD::decompress(inStream, outStream);
-			break;
-		case CompressionSignatures::LZHAM_COMPRESSION:
-			res = LZHAM::decompress(inStream, outStream);
-			break;
-		default:
-			size_t size = inStream.size() - inStream.tell();
-			char* dataBuffer = new char[size]();
-			inStream.read(dataBuffer, size);
-			outStream.write(dataBuffer, size);
-
-			res = CompressionErrs::OK;
-			break;
-		}
-
-		return res == CompressionErrs::OK ? CompressorErrs::OK : CompressorErrs::DECOMPRESS_ERROR;
-	}
-
-	CompressorErrs Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream) {
-		CompressionErrs res;
-
-		inStream.set(0);
-		uint32_t magic;
-		inStream.read(&magic, sizeof(magic));
-		inStream.set(0);
-
-		uint32_t signature = getSignatureIndex(magic);
 
 		switch (signature)
 		{
@@ -116,15 +81,36 @@ namespace sc
 			break;
 		default:
 			size_t size = inStream.size() - inStream.tell();
-			char* dataBuffer = new char[size]();
+			void* dataBuffer = malloc(size);
 			inStream.read(dataBuffer, size);
 			outStream.write(dataBuffer, size);
-
+			free(dataBuffer);
 			res = CompressionErrs::OK;
 			break;
 		}
 
 		return res == CompressionErrs::OK ? CompressorErrs::OK : CompressorErrs::DECOMPRESS_ERROR;
+	}
+
+	CompressorErrs Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps header) {
+		inStream.setEof(static_cast<__int64>(header.metadataSize) + header.metadataSize != 0 ? 9 : 0);
+
+		CompressorErrs res = commonDecompress(inStream, outStream, static_cast<CompressionSignatures>(header.signature));
+
+		inStream.setEof(0);
+
+		return res;
+	}
+
+	CompressorErrs Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream) {
+		inStream.set(0);
+		uint32_t magic;
+		inStream.read(&magic, sizeof(magic));
+		inStream.set(0);
+
+		CompressionSignatures signature = getSignature(magic);
+
+		return commonDecompress(inStream, outStream, signature);
 	}
 
 	CompressedSwfProps Decompressor::getHeader(IBinaryStream& inputSteam) {
@@ -135,17 +121,18 @@ namespace sc
 		// Version of .sc file
 		uint16_t version = inputSteam.readUInt16BE();
 
-		uint32_t signature;
+		uint32_t signature = 0;
 		char* metadata{};
 		uint32_t metadataSize = 0;
 		char* hash{};
-		uint32_t hashSize = 64;
-
-		// if version is 4, then it already have a signature index and there is no need to 'brutforce' it  
-		if (version == 4) {
+		uint32_t hashSize = 0;
+		
+		if (version == 3) {
+			signature = CompressionSignatures::ZSTD_COMRESSION;
+		}
+		else if (version == 4) {
 			signature = static_cast<CompressionSignatures>(inputSteam.readUInt32BE());
 
-			// Metadata process
 			size_t origPos = inputSteam.tell();
 			inputSteam.set(static_cast<uint32_t>(inputSteam.size()) - 4);
 			metadataSize = inputSteam.readUInt32BE();
@@ -155,26 +142,33 @@ namespace sc
 			inputSteam.read(metadata, metadataSize);
 
 			inputSteam.set(static_cast<uint32_t>(origPos));
-			inputSteam.setEof(static_cast<__int64>(metadataSize) + 9);
+			//inputSteam.setEof(static_cast<__int64>(metadataSize) + 9);
 		}
 
 		uint32_t idSize = inputSteam.readUInt32BE();
 		char *id = new char[idSize]();
 		inputSteam.read(id, idSize);
 
-		if (version != 4) {
-			long origPosition = inputSteam.tell();
+		if (version == 1) {
+			auto pos = inputSteam.tell();
 			uint32_t compressMagic = inputSteam.readUInt32();
 
-			// If SIG
+			// SIG
 			if (compressMagic == 0x3A676953) {
+				hashSize = 64;
 				inputSteam.read(hash, hashSize);
-				origPosition += 4 + hashSize;
 				compressMagic = inputSteam.readUInt32();
 			}
 
-			signature = getSignatureIndex(compressMagic);
-			inputSteam.set(origPosition);
+			// SCLZ
+			if (compressMagic == 0x5A4C4353) {
+				signature = CompressionSignatures::LZHAM_COMPRESSION;
+			}
+			else {
+				signature = CompressionSignatures::LZMA_COMPRESSION;
+			}
+
+			inputSteam.set(inputSteam.tell() - 4);
 		}
 
 		CompressedSwfProps header = {

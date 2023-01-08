@@ -6,15 +6,11 @@
 
 namespace sc
 {
-	enum class CompressPressets {
-		FAST,
-		NORMAL
-	};
-
 	class Compressor
 	{
 	public:
-		static CompressorErrs compress(std::string inputFilepath, std::string outFilepath, CompressPressets presset);
+		static CompressorErrs compress(std::string inputFilepath, std::string outFilepath, CompressionSignatures signature);
 		static CompressorErrs compress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps& header);
+		static CompressorErrs commonCompress(IBinaryStream& inStream, IBinaryStream& outStream, uint32_t signatureIndex);
 	};
 }

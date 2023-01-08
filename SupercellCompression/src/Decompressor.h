@@ -29,6 +29,15 @@ namespace sc
 		static CompressorErrs Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream);
 
 		/**
+		 * Decompress function for when you already have a header.
+		 *
+		 * @param inStream: Input stream for reading.
+		 * @param outStream: Output stream for writing.
+		 * @param header: SCSWF header.
+		 */
+		static CompressorErrs decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps header);
+
+		/**
 		 * Reads information about the ss file. Contains information such as metadata, hash, compression method, and more.
 		 *
 		 * @param inStream: Input stream for reading.
@@ -43,7 +52,13 @@ namespace sc
 		 */
 		static CompressorErrs commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream);
 
-	private:
-		static CompressorErrs decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps header);
+		/**
+		 * Function to decompress assets like .csv or other compressed assets in cases where you know exactly file signature.
+		 *
+		 * @param inStream: Input stream for reading.
+		 * @param outStream: Output stream for writing.
+		 * @param signature: File compress signature
+		 */
+		static CompressorErrs commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressionSignatures signature);
 	};
 }

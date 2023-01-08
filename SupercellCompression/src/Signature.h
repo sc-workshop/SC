@@ -9,7 +9,7 @@ namespace sc {
 		ZSTD_COMRESSION = 3
 	};
 
-	inline uint32_t getSignatureIndex(uint32_t magic) {
+	inline CompressionSignatures getSignature(uint32_t magic) {
 		switch (magic)
 		{
 		case 0x0400005D:
