@@ -11,7 +11,7 @@
 #include <iostream>
 
 namespace sc
-{ 
+{
 	// Decompress SC file
 	CompressorErrs Decompressor::decompress(std::string filepath, std::string& outFilepath)
 	{
@@ -19,7 +19,7 @@ namespace sc
 			return CompressorErrs::WRONG_FILE_ERROR;
 		}
 
-		if (!Utils::fileExist(filepath)) 
+		if (!Utils::fileExist(filepath))
 			return CompressorErrs::FILE_READ_ERROR;
 
 		FILE* inFile = fopen(filepath.c_str(), "rb");
@@ -41,7 +41,7 @@ namespace sc
 			SwfCache::addData(filepath, header, fileSize);
 #endif // !SC_DEBUG
 		}
-			
+
 		FILE* outFile = fopen(outFilepath.c_str(), "wb");
 		if (outFile == NULL)
 			return CompressorErrs::FILE_WRITE_ERROR;
@@ -114,7 +114,6 @@ namespace sc
 	}
 
 	CompressedSwfProps Decompressor::getHeader(IBinaryStream& inputSteam) {
-
 		// .sc file header
 		uint32_t magic = inputSteam.readUInt32BE();
 
@@ -126,7 +125,7 @@ namespace sc
 		uint32_t metadataSize = 0;
 		char* hash{};
 		uint32_t hashSize = 0;
-		
+
 		if (version == 3) {
 			signature = CompressionSignatures::ZSTD_COMRESSION;
 		}
@@ -146,7 +145,7 @@ namespace sc
 		}
 
 		uint32_t idSize = inputSteam.readUInt32BE();
-		char *id = new char[idSize]();
+		char* id = new char[idSize]();
 		inputSteam.read(id, idSize);
 
 		if (version == 1) {
@@ -188,5 +187,4 @@ namespace sc
 
 		return header;
 	}
-
 }

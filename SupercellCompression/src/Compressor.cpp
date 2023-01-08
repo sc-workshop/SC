@@ -5,6 +5,7 @@
 
 #include "LzmaCompression.h"
 #include "ZstdCompression.h"
+#include "LzhamCompression.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -19,7 +20,7 @@ namespace sc
 		}
 
 		FILE* inFile = fopen(inputFilepath.c_str(), "rb");
-		FILE* outFile = fopen(outFilepath.c_str(),  "wb");
+		FILE* outFile = fopen(outFilepath.c_str(), "wb");
 
 		ScFileStream inputStream = ScFileStream(inFile);
 		ScFileStream outputStream = ScFileStream(outFile);
@@ -67,7 +68,7 @@ namespace sc
 
 		outStream.writeUInt32BE(header.idSize);
 		outStream.write(header.id, header.idSize);
-		
+
 		CompressorErrs res = commonCompress(inStream, outStream, header.signature);
 
 		if (header.metadataSize > 0) {
@@ -75,7 +76,7 @@ namespace sc
 			outStream.write(&header.metadata, header.metadataSize);
 			outStream.writeUInt32(header.metadataSize);
 		}
-		
+
 		return res;
 	}
 
@@ -87,6 +88,7 @@ namespace sc
 			res = LZMA::compress(inStream, outStream);
 			break;
 		case CompressionSignatures::LZHAM_COMPRESSION:
+			res = LZHAM::compress(inStream, outStream);
 			break;
 		case CompressionSignatures::ZSTD_COMRESSION:
 			res = ZSTD::compress(inStream, outStream);

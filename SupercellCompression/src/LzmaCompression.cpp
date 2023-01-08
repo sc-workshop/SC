@@ -116,7 +116,6 @@ namespace sc {
 		if (enc == 0)
 			return CompressionErrs::ALLOC_ERROR;
 
-		
 		LzmaEncProps_Init(&props);
 		props.level = 6;
 		props.pb = 2;
@@ -129,13 +128,13 @@ namespace sc {
 
 		LzmaEncProps_Normalize(&props);
 		res = LzmaEnc_SetProps(enc, &props);
-		
+
 		if (res == SZ_OK)
 		{
 			uint8_t header[LZMA_PROPS_SIZE];
 			size_t headerSize = LZMA_PROPS_SIZE;
 			res = LzmaEnc_WriteProperties(enc, header, &headerSize);
-			
+
 			outStream.write(&header, headerSize);
 
 			outStream.writeUInt32(static_cast<uint32_t>(inStream.size()));
@@ -150,7 +149,6 @@ namespace sc {
 			outWrap.vt.Write = LzmaStreamWrite;
 			outWrap.outStream = &outStream;
 			int status = LzmaEnc_Encode(enc, &outWrap.vt, &inWrap.vt, nullptr, &g_Alloc, &g_Alloc);
-			
 		}
 		LzmaEnc_Destroy(enc, &g_Alloc, &g_Alloc);
 

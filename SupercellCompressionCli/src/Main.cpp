@@ -81,7 +81,7 @@ void processCompressorErrs(sc::CompressorErrs res) {
 	case sc::CompressorErrs::FILE_READ_ERROR:
 		std::cout << "[ERROR] Failed to read file." << std::endl;
 		break;
-	case sc::CompressorErrs::FILE_WRITE_ERROR: 
+	case sc::CompressorErrs::FILE_WRITE_ERROR:
 		std::cout << "[ERROR] Failed to write file." << std::endl;
 		break;
 	case sc::CompressorErrs::WRONG_FILE_ERROR:
@@ -123,7 +123,6 @@ void processFileInfo(sc::CompressedSwfProps info) {
 	printf("Compression method: %s\n", compressionMethod.c_str());
 
 	std::cout << std::endl;
-
 }
 
 int main(int argc, char* argv[])
@@ -177,7 +176,7 @@ int main(int argc, char* argv[])
 
 			res = sc::Decompressor::decompress(inStream, outStream, headerInfo);
 		}
-		
+
 		processCompressorErrs(res);
 		if (res == sc::CompressorErrs::OK) {
 			std::cout << outFilepath << std::endl;
