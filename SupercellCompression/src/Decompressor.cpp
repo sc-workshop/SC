@@ -22,7 +22,11 @@ namespace sc
 		if (!Utils::fileExist(filepath))
 			return CompressorErrs::FILE_READ_ERROR;
 
-		FILE* inFile = fopen(filepath.c_str(), "rb");
+		FILE* inFile; //= fopen(filepath.c_str(), "rb");;
+		fopen_s(&inFile, filepath.c_str(), "rb");
+		if (!inFile)
+			return CompressorErrs::FILE_READ_ERROR;
+
 		ScFileStream inputSteam = ScFileStream(inFile);
 		uint32_t fileSize = Utils::fileSize(inFile);
 
@@ -36,14 +40,10 @@ namespace sc
 		if (fileInCache) {
 			return CompressorErrs::OK;
 		}
-		else {
-#ifndef SC_DEBUG
-			SwfCache::addData(filepath, header, fileSize);
-#endif // !SC_DEBUG
-		}
 
-		FILE* outFile = fopen(outFilepath.c_str(), "wb");
-		if (outFile == NULL)
+		FILE* outFile;
+		fopen_s(&outFile, outFilepath.c_str(), "wb");
+		if (!outFile)
 			return CompressorErrs::FILE_WRITE_ERROR;
 
 		ScFileStream outputStream = ScFileStream(outFile);
@@ -52,6 +52,12 @@ namespace sc
 
 		inputSteam.close();
 		outputStream.close();
+
+		if (res == CompressorErrs::OK && !fileInCache) {
+#ifndef DISABLE_CACHE
+			SwfCache::addData(filepath, header, fileSize);
+#endif
+		}
 
 		return res;
 	}
@@ -141,7 +147,6 @@ namespace sc
 			inputSteam.read(metadata, metadataSize);
 
 			inputSteam.set(static_cast<uint32_t>(origPos));
-			//inputSteam.setEof(static_cast<__int64>(metadataSize) + 9);
 		}
 
 		uint32_t idSize = inputSteam.readUInt32BE();

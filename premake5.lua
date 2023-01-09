@@ -8,8 +8,6 @@ workspace "SupercellSWF"
         "Release"
     }
 	
-	platforms {"Win64", "Linux" }
-	
     startproject "SupercellSWF"
 
 

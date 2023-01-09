@@ -1,18 +1,8 @@
 #include "Cache.h"
 #include "Utils.h"
 
-#include <cstdlib>
-#include <stdlib.h>
-#include <stdio.h>
-
 #include <iostream>
-#include <fstream>
-
 #include <string>
-#include <direct.h>
-
-#include <assert.h>
-
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -97,7 +87,8 @@ namespace sc {
 	// Gets data from info file in swf TEMP folder
 	void SwfCache::getData(std::string filepath, char* hash, uint32_t& fileSize) {
 		const std::string infoFilePath = getInfoFilepath(filepath);
-		FILE* infoFile = fopen(infoFilePath.c_str(), "rb");
+		FILE* infoFile;
+		fopen_s(&infoFile, infoFilePath.c_str(), "rb");
 
 		char Char;
 		int count = 0;
@@ -109,15 +100,23 @@ namespace sc {
 		}
 
 		fread(&fileSize, sizeof(fileSize), 1, infoFile);
+
+		fclose(infoFile);
 	}
 
 	void SwfCache::addData(std::string filepath, CompressedSwfProps header, uint32_t fileSize) {
 		std::string infoFilePath = getInfoFilepath(filepath);
-		FILE* file = fopen(infoFilePath.c_str(), "wb");
+
+		FILE* file;
+		fopen_s(&file, infoFilePath.c_str(), "wb");
+		if (!file)
+			return;
 
 		fwrite(header.id, header.idSize, 1, file);
 		const char nt[1]{};
 		fwrite(nt, sizeof(nt), 1, file);
 		fwrite(&fileSize, sizeof(fileSize), 1, file);
+
+		fclose(file);
 	}
 }

@@ -66,9 +66,12 @@ char* string_to_hex(char* input, uint32_t len) {
 
 void printUsage() {
 	printf("Usage: [mode] InputFilePath OutputFilePath options\n");
+	printf("Modes:\n");
+	printf("c - compress file.\n");
+	printf("d - decompress file.\n");
 	printf("Options:\n");
-	printf("m - compression mode: LZMA, LZHAM, ZSTD. Default: LZMA\n");
-	printf("c - enable cache: uses a temporary folder for unpacking files.\n");
+	printf("-m - compression mode: LZMA, LZHAM, ZSTD. Default: LZMA\n");
+	printf("--cache - enable cache: uses a temporary folder for unpacking files.\n");
 	printf("Example: c file.sc file_compressed.sc -m=ZSTD\n");
 }
 
@@ -127,7 +130,7 @@ void processFileInfo(sc::CompressedSwfProps info) {
 
 int main(int argc, char* argv[])
 {
-	bool enableCache = optionInCmd(argc, argv, "--cache") || optionInCmd(argc, argv, "-c");
+	bool enableCache = optionInCmd(argc, argv, "--cache");
 
 	printf("SC Compression - %s Command Line app - Compiled %s %s\n\n", PLATFORM, __DATE__, __TIME__);
 	if (argc <= 1) {
@@ -147,7 +150,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	std::string outFilepath(argv[3] ? argv[3] : "");
+	std::string outFilepath(argv[3] && !enableCache ? argv[3] : "");
 	if (outFilepath.empty() && !(enableCache && mode == "d")) {
 		std::cout << "[ERROR] Output file does not exist." << std::endl;
 		return 0;
@@ -163,12 +166,21 @@ int main(int argc, char* argv[])
 
 	if (mode == "d") {
 		sc::CompressorErrs res;
-		if (enableCache) {
+	if (enableCache) {
 			res = sc::Decompressor::decompress(inFilepath, outFilepath);
 		}
 		else {
-			sc::ScFileStream inStream = sc::ScFileStream(fopen(inFilepath.c_str(), "rb"));
-			sc::ScFileStream outStream = sc::ScFileStream(fopen(outFilepath.c_str(), "wb"));
+			FILE* inFile;
+			FILE* outFile;
+
+			fopen_s(&inFile, inFilepath.c_str(), "rb");
+			fopen_s(&outFile, outFilepath.c_str(), "wb");
+			if (!inFile || !outFile)
+				std::cout << "[ERROR] Failder to open files." << std::endl;
+				return 0;
+
+			sc::ScFileStream inStream = sc::ScFileStream(inFile);
+			sc::ScFileStream outStream = sc::ScFileStream(outFile);
 
 			sc::CompressedSwfProps headerInfo = sc::Decompressor::getHeader(inStream);
 
@@ -211,11 +223,11 @@ int main(int argc, char* argv[])
 
 	milliseconds msTime = duration_cast<milliseconds>(endTime - startTime);
 	if (msTime.count() < 1000) {
-		std::cout << msTime.count() << " miliseconds";
+		std::cout << msTime.count() << " miliseconds.";
 	}
 	else {
-		auto secondTime = duration_cast<seconds>(endTime - startTime);
-		std::cout << secondTime.count() << " seconds";
+		seconds secTime = duration_cast<seconds>(msTime);
+		std::cout << secTime.count() << " seconds." << std::endl;
 	}
 
 	return 0;
