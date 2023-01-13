@@ -7,6 +7,7 @@
 #include "LzmaCompression.h"
 #include "LzhamCompression.h"
 #include "ZstdCompression.h"
+#include "Bytestream.h"
 
 #include <iostream>
 
@@ -22,7 +23,7 @@ namespace sc
 		if (!Utils::fileExist(filepath))
 			return CompressorErrs::FILE_READ_ERROR;
 
-		FILE* inFile; //= fopen(filepath.c_str(), "rb");;
+		FILE* inFile;
 		fopen_s(&inFile, filepath.c_str(), "rb");
 		if (!inFile)
 			return CompressorErrs::FILE_READ_ERROR;
@@ -91,7 +92,7 @@ namespace sc
 			inStream.read(dataBuffer, size);
 			outStream.write(dataBuffer, size);
 			free(dataBuffer);
-			res = CompressionErrs::OK;
+			res = CompressionErrs::OK;                 
 			break;
 		}
 
@@ -138,6 +139,7 @@ namespace sc
 		else if (version == 4) {
 			signature = static_cast<CompressionSignatures>(inputSteam.readUInt32BE());
 
+			// Metadata processing
 			size_t origPos = inputSteam.tell();
 			inputSteam.set(static_cast<uint32_t>(inputSteam.size()) - 4);
 			metadataSize = inputSteam.readUInt32BE();
@@ -154,7 +156,6 @@ namespace sc
 		inputSteam.read(id, idSize);
 
 		if (version == 1) {
-			auto pos = inputSteam.tell();
 			uint32_t compressMagic = inputSteam.readUInt32();
 
 			// SIG
@@ -164,10 +165,11 @@ namespace sc
 				compressMagic = inputSteam.readUInt32();
 			}
 
-			// SCLZ
+			// if SCLZ
 			if (compressMagic == 0x5A4C4353) {
 				signature = CompressionSignatures::LZHAM_COMPRESSION;
 			}
+			// else LZMA
 			else {
 				signature = CompressionSignatures::LZMA_COMPRESSION;
 			}

@@ -6,7 +6,7 @@ namespace sc
 {
 	struct Export
 	{
-		int id;
-		std::string name;
+		uint16_t id = 0;
+		std::string name = std::string();
 	};
 }

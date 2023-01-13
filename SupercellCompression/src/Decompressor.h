@@ -6,6 +6,7 @@
 #include "Signature.h"
 #include "Utils.h"
 #include "Signature.h"
+#include "Bytestream.h"
 
 namespace sc
 {

@@ -1,5 +1,6 @@
 #include "LzmaCompression.h"
 #include "Utils.h"
+#include "Bytestream.h"
 
 #include <Alloc.h>
 #include <LzmaEnc.h>
@@ -68,7 +69,7 @@ namespace sc {
 				outPos += outProcessed;
 				unpackSize -= outProcessed;
 
-				if (outStream.write(outBuf, outPos) != outPos)
+				if (outStream.write(&outBuf, outPos) != outPos)
 					return CompressionErrs::DATA_ERROR;
 
 				outPos = 0;

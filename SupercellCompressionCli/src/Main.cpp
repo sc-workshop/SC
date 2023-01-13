@@ -46,21 +46,17 @@ bool optionInCmd(int argc, char* argv[], const std::string& option) {
 	return false;
 }
 
-char* string_to_hex(char* input, uint32_t len) {
-	static const char* const lut = "0123456789ABCDEF";
-	int k = 0;
-	if (len & 1)
-		return NULL;
+std::string string_to_hex(const std::string& input)
+{
+	static const char hex_digits[] = "0123456789ABCDEF";
 
-	char* output = new char[(len / 2) + 1];
-
-	for (uint32_t i = 0, j = 0; i < len; i++, j += 2) {
-		const unsigned char c = input[i];
-		output[j] = lut[c >> 4];
-		output[j + 1] = lut[c & 15];
+	std::string output;
+	output.reserve(input.length() * 2);
+	for (unsigned char c : input)
+	{
+		output.push_back(hex_digits[c >> 4]);
+		output.push_back(hex_digits[c & 15]);
 	}
-
-	output += '\0';
 	return output;
 }
 
@@ -103,7 +99,7 @@ void processFileInfo(sc::CompressedSwfProps info) {
 	printf("SCSWF compressed asset info:\n");
 
 	printf("Is .sc file : %s\n", info.ok ? "Yes" : "No");
-	// printf("id : %s\n", string_to_hex(info.id, info.idSize));
+	printf("id : %s\n", string_to_hex(std::string(info.id, info.idSize)).c_str());
 	printf("Has metadata: %s\n", info.metadataSize != 0 ? "Yes" : "No");
 	printf("Has hash: %s\n", info.hashSize != 0 ? "Yes" : "No");
 
@@ -131,6 +127,7 @@ void processFileInfo(sc::CompressedSwfProps info) {
 int main(int argc, char* argv[])
 {
 	bool enableCache = optionInCmd(argc, argv, "--cache");
+	bool memoryStream = optionInCmd(argc, argv, "--memory-stream");
 
 	printf("SC Compression - %s Command Line app - Compiled %s %s\n\n", PLATFORM, __DATE__, __TIME__);
 	if (argc <= 1) {
@@ -166,8 +163,36 @@ int main(int argc, char* argv[])
 
 	if (mode == "d") {
 		sc::CompressorErrs res;
-	if (enableCache) {
+
+		if (enableCache) {
 			res = sc::Decompressor::decompress(inFilepath, outFilepath);
+		}
+		else if (memoryStream) {
+			FILE* inFile;
+			FILE* outFile;
+
+			fopen_s(&inFile, inFilepath.c_str(), "rb");
+			fopen_s(&outFile, outFilepath.c_str(), "wb");
+
+			if (!inFile || !outFile) {
+				std::cout << "[ERROR] Failed to open files!" << std::endl;
+				return 0;
+			}
+
+			uint32_t inBufferSize = sc::Utils::fileSize(inFile);
+			std::vector<uint8_t> inBuffer(inBufferSize);
+			fread(inBuffer.data(), 1, inBufferSize, inFile);
+			sc::ScBufferStream inStream(&inBuffer);
+
+			std::vector<uint8_t> outBuffer;
+			sc::ScBufferStream outStream(&outBuffer);
+
+			res = sc::Decompressor::decompress(inStream, outStream);
+
+			fwrite(outBuffer.data(), 1, outBuffer.size(), outFile);
+
+			inStream.close();
+			outStream.close();
 		}
 		else {
 			FILE* inFile;
@@ -175,9 +200,6 @@ int main(int argc, char* argv[])
 
 			fopen_s(&inFile, inFilepath.c_str(), "rb");
 			fopen_s(&outFile, outFilepath.c_str(), "wb");
-			if (!inFile || !outFile)
-				std::cout << "[ERROR] Failder to open files." << std::endl;
-				return 0;
 
 			sc::ScFileStream inStream = sc::ScFileStream(inFile);
 			sc::ScFileStream outStream = sc::ScFileStream(outFile);

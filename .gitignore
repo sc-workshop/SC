@@ -22,5 +22,10 @@ SupercellCompressionCli/SupercellCompressionCli.vcxproj
 SupercellCompressionCli/SupercellCompressionCli.vcxproj.user
 
 // SupercellSWF
-
+SupercellSWF/SupercellSWF.vcxproj
+SupercellSWF/SupercellSWF.vcxproj.filters
+SupercellSWF/SupercellSWF.vcxproj.user
+SupercellSWF/old
 // CLI
+SupercellSWF_Test/SupercellSWF_Test.vcxproj
+SupercellSWF_Test/SupercellSWF_Test.vcxproj.user

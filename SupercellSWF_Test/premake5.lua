@@ -1,7 +1,6 @@
 
-
-project "SupercellSWF"
-    kind "StaticLib"
+project "SupercellSWF_Test"
+    kind "ConsoleApp"
 
     language "C++"
     cppdialect "C++17"
@@ -10,24 +9,25 @@ project "SupercellSWF"
     objdir "%{wks.location}/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
 
     files {
-		"src/**.cpp",
-		"src/**.h"
+        "src/**.cpp"
     }
 
     includedirs {
         "src",
-        "%{wks.location}/SupercellCompression/src"
+		"%{wks.location}/SupercellSWF/src",
+		"%{wks.location}/SupercellCompression/src"
     }
-
-    links {
-        "SupercellCompression"
+	
+	links {
+        "SupercellSWF",
+		"SupercellCompression"
     }
-
+    
     filter "configurations:Debug"
         defines "SC_DEBUG"
         runtime "Debug"
         symbols "on"
-
+    
     filter "configurations:Release"
         defines "SC_RELEASE"
         runtime "Release"

@@ -1,5 +1,6 @@
 #include "Utils.h"
 #include "ZstdCompression.h"
+#include "Bytestream.h"
 
 #include <zstd.h>
 #include <thread>

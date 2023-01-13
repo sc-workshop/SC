@@ -28,11 +28,11 @@ namespace sc {
 		return filename.filename().string();
 	}
 
-	unsigned int Utils::fileSize(FILE*& file) {
+	uint32_t Utils::fileSize(FILE*& file) {
 		long orig_pos = ftell(file);
 		fseek(file, 0, SEEK_END);
-		long size = ftell(file);
+		uint32_t size = static_cast<uint32_t>(ftell(file));
 		fseek(file, orig_pos, SEEK_SET);
-		return static_cast<unsigned int>(size);
+		return size;
 	}
 }

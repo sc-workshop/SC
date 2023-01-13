@@ -1,5 +1,6 @@
 #include "Utils.h"
 #include "LzhamCompression.h"
+#include "Bytestream.h"
 
 #include "lzham_static_lib.h"
 

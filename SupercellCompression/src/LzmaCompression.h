@@ -1,5 +1,6 @@
 #pragma once
 #include "Utils.h"
+#include "Bytestream.h"
 
 #include <LzmaDec.h>
 

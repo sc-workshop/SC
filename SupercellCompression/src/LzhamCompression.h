@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Utils.h"
+#include "Bytestream.h"
 
 namespace sc {
 	class LZHAM {

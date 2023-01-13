@@ -6,6 +6,7 @@
 #include "LzmaCompression.h"
 #include "ZstdCompression.h"
 #include "LzhamCompression.h"
+#include "Bytestream.h"
 
 #include <stdlib.h>
 #include <time.h>
