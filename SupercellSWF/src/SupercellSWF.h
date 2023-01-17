@@ -2,19 +2,18 @@
 
 #include <cstdio>
 #include <string>
+#include <vector>
 
-#include <Bytestream.h>
+#include <ByteStream.h>
 
-#include "common/Export.h"
+#include "Export.h"
 
-#include "Shape.h"
-
-//
-//#include "SupercellSWF/MovieClip.h"
-//#include "SupercellSWF/SWFTexture.h"
-//#include "SupercellSWF/TextField.h"
-//#include "SupercellSWF/MovieClipModifier.h"
-//
+#include "tag/Shape.h"
+#include "tag/MovieClip.h"
+#include "tag/SWFTexture.h"
+#include "tag/TextField.h"
+#include "tag/MatrixBank.h"
+#include "tag/MovieClipModifier.h"
 
 namespace sc
 {
@@ -25,30 +24,71 @@ namespace sc
 		~SupercellSWF();
 
 	public:
+		// we can make the SupercellSWF class inherit the ByteStream class, but I think this solution will be better (wrapping)
+		void skip(uint32_t length) { m_buffer->skip(length); }
+
+		int8_t readByte() { return m_buffer->readInt8(); }
+		uint8_t readUnsignedByte() { return m_buffer->readUInt8(); }
+
+		int16_t readShort() { return m_buffer->readInt16(); }
+		uint16_t readUnsignedShort() { return m_buffer->readUInt16(); }
+
+		int32_t readInt() { return m_buffer->readInt32(); }
+
+		bool readBool() { return (readUnsignedByte() > 0); }
+
+		std::string readAscii()
+		{
+			uint8_t length = readUnsignedByte();
+			if (length == 0xFF)
+				return {};
+
+			char* str = new char[length]();
+			m_buffer->read(str, length);
+
+			return std::string(str, length);
+		}
+
+		float readTwip() { return (float)readInt() * 0.05f; }
+
+	public:
 		void load(const std::string& filePath);
 
+		bool useLowResTexture() { return m_useLowResTexture; }
+		void setUseLowResTexture(bool use) { m_useLowResTexture = use; }
+		
+		bool useMultiResTexture() { return m_useMultiResTexture; }
+		void setUseMultiResTexture(bool use) { m_useMultiResTexture = use; }
+
 	private:
-		bool loadInternal(IBinaryStream* stream, bool isTexture);
-		bool loadTags(IBinaryStream* stream);
+		bool loadInternal(const std::string& filePath, bool isTexture);
+		bool loadTags();
 
 		void initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount);
 
 	private:
 		IBinaryStream* m_buffer;
 
-		int m_shapesCount;
-		int m_movieClipsCount;
-		int m_texturesCount;
-		int m_textFieldsCount;
-		int m_movieClipModifiersCount;
+		int m_shapesCount = 0;
+		int m_movieClipsCount = 0;
+		int m_texturesCount = 0;
+		int m_textFieldsCount = 0;
+		int m_movieClipModifiersCount = 0;
+		int m_exportsCount = 0;
 
-		int m_exportsCount;
-		Export* m_exports;
+		std::vector<Shape> m_shapes;
+		std::vector<MovieClip> m_movieClips;
+		std::vector<SWFTexture> m_textures;
+		std::vector<TextField> m_textFields;
+		std::vector<MatrixBank> m_matrixBanks;
+		std::vector<MovieClipModifier> m_movieClipModifiers;
 
-		Shape* m_shapes;
-		/*MovieClip* m_movieClips;
-		SWFTexture* m_textures;
-		TextField* m_textFields;
-		MovieClipModifier* m_movieClipModifiers;*/
+		std::vector<Export> m_exports;
+
+		bool m_useLowResTexture = false;
+		bool m_useMultiResTexture = false;
+
+		std::string m_lowResFileSuffix = "_lowres";
+		std::string m_multiResFileSuffix = "_highres";
 	};
 }

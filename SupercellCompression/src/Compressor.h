@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Utils.h"
-#include "Bytestream.h"
-
 #include <string>
+
+#include "Utils.h"
+#include "ByteStream.h"
 
 namespace sc
 {
@@ -13,16 +13,16 @@ namespace sc
 		/*
 		* Compresses a file at given path and with given compression signature
 		*/
-		static CompressorErrs compress(std::string inputFilepath, std::string outFilepath, CompressionSignatures signature);
+		static CompressorError compress(const std::string& inputFilepath, std::string outFilepath, CompressionSignature signature);
 
 		/*
 		* Compresses a filedata from input stream to out stream with given header setting
 		*/
-		static CompressorErrs compress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps& header);
+		static CompressorError compress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps& header);
 
 		/*
 		* Compresses a filedata from input stream to out stream with given compression signature
 		*/
-		static CompressorErrs commonCompress(IBinaryStream& inStream, IBinaryStream& outStream, uint32_t signatureIndex);
+		static CompressorError commonCompress(IBinaryStream& inStream, IBinaryStream& outStream, uint32_t signatureIndex);
 	};
 }

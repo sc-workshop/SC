@@ -12,92 +12,80 @@ namespace sc
 {
 	SupercellSWF::SupercellSWF()
 	{
+
 	}
 
 	SupercellSWF::~SupercellSWF()
 	{
+
 	}
 
-	void SupercellSWF::load(const std::string& filePath) {
+	void SupercellSWF::load(const std::string& filePath)
+	{
+		bool useExternalTexture = loadInternal(filePath, false);
+	}
+
+	bool SupercellSWF::loadInternal(const std::string& filePath, bool isTexture)
+	{
+		// Opening and decompressing .sc file
 		std::string cachePath;
 
-		CompressorErrs decompressResult = sc::Decompressor::decompress(filePath, cachePath);
-
-		if (decompressResult != CompressorErrs::OK) {
-			throw std::runtime_error("Failed to decompress file");
-			return;
+		CompressorError decompressResult = Decompressor::decompress(filePath, cachePath);
+		if (decompressResult != CompressorError::OK)
+		{
+			throw std::runtime_error("Failed to decompress .sc file");
 		}
 
 		FILE* file;
 		fopen_s(&file, cachePath.c_str(), "rb");
-
-		if (!file) {
+		if (!file)
+		{
 			throw std::runtime_error("Failed to open .sc file");
-			return;
 		}
 
-		ScFileStream filestream(file);
+		m_buffer = new ScFileStream(file);
 
-		loadInternal(&filestream, false);
-
-		filestream.close();
-	}
-
-	bool SupercellSWF::loadInternal(IBinaryStream* stream, bool isTexture)
-	{
+		// Reading .sc file
 		if (!isTexture)
 		{
-			m_shapesCount = stream->readUInt16();
-			m_movieClipsCount = stream->readUInt16();
-			m_texturesCount = stream->readUInt16();
-			m_textFieldsCount = stream->readUInt16();
+			m_shapesCount = readUnsignedShort();
+			for (int i = 0; i < m_shapesCount; i++) m_shapes.push_back(Shape());
 
-			uint16_t matricesCount = stream->readUInt16();
-			uint16_t colorTransformsCount = stream->readUInt16();
+			m_movieClipsCount = readUnsignedShort();
+			for (int i = 0; i < m_movieClipsCount; i++) m_movieClips.push_back(MovieClip());
+
+			m_texturesCount = readUnsignedShort();
+			for (int i = 0; i < m_texturesCount; i++) m_textures.push_back(SWFTexture());
+
+			m_textFieldsCount = readUnsignedShort();
+			for (int i = 0; i < m_textFieldsCount; i++) m_textFields.push_back(TextField());
+
+			uint16_t matricesCount = readUnsignedShort();
+			uint16_t colorTransformsCount = readUnsignedShort();
 			initMatrixBank(matricesCount, colorTransformsCount);
 
-			stream->skip(5);
+			skip(5); // unused
 
-			m_exportsCount = stream->readUInt16();
-			m_exports = new Export[m_exportsCount];
+			m_exportsCount = readUnsignedShort();
+			for (int i = 0; i < m_exportsCount; i++) m_exports.push_back(Export());
 
 			for (int i = 0; i < m_exportsCount; i++)
 			{
-				m_exports[i].id = stream->readUInt16();
+				m_exports[i].id = readUnsignedShort();
 			}
 
 			for (int i = 0; i < m_exportsCount; i++)
 			{
-				m_exports[i].name = stream->readAscii();
+				m_exports[i].name = readAscii();
 			}
-
-			// Shape shape = new Shape();
-
-			m_shapes = new Shape[m_shapesCount]();
-
-			/*m_movieClips = new MovieClip[m_movieClipsCount];
-
-			m_textures = new SWFTexture[m_texturesCount];
-			m_textFields = new TextField[m_textFieldsCount]; */
 		}
 
-#ifdef SC_DEBUG
-		printf("Asset header info:\n");
-		printf("Shape count: %u\n", m_shapesCount);
-		printf("MovieClip count: %u\n", m_movieClipsCount);
-		printf("Texture count: %u\n", m_texturesCount);
-		printf("TextField count: %u\n\n", m_textFieldsCount);
-
-		for (uint16_t i = 0; m_exportsCount > i; i++)
-			printf("[Export] Name: %s. Id: %u.\n", m_exports[i].name.c_str(), m_exports[i].id);
-#endif // SC_DEBUG
-
-		return loadTags(stream);
+		return loadTags();
 	}
 
-	bool SupercellSWF::loadTags(IBinaryStream* stream)
+	bool SupercellSWF::loadTags()
 	{
-		bool hasExternalTexture = false;
+		bool useExternalTexture = false;
 
 		int shapesLoaded = 0;
 		int movieClipsLoaded = 0;
@@ -107,93 +95,115 @@ namespace sc
 
 		while (true)
 		{
-			uint8_t tag = stream->readUInt8();
-			int32_t tagLength = stream->readInt32();
+			uint8_t tag = readUnsignedByte();
+			int32_t tagLength = readInt();
+
+			if (tagLength < 0)
+				throw std::runtime_error("Negative tag length in .sc file");
 
 			if (tag == 0)
 				break;
 
 			switch (tag)
 			{
-			case 26:
-				hasExternalTexture = true;
-#ifdef SC_DEBUG
-				printf("[Tag] Has external texture tag.\n");
-#endif // SC_DEBUG
+			case 23:
+				m_useLowResTexture = true;
+				break;
 
+			case 26:
+				useExternalTexture = true;
+				break;
+
+			case 30:
+				m_useMultiResTexture = true;
+				break;
+
+			case 32:
+				m_multiResFileSuffix = readAscii();
+				m_lowResFileSuffix = readAscii();
+				break;
+
+			case 1:
+			case 16:
+			case 19:
+			case 24:
+			case 27:
+			case 28:
+			case 29:
+			case 34:
+				m_textures[texturesLoaded].load(this, tag, useExternalTexture);
+				texturesLoaded++;
+				break;
+
+			case 37:
+				m_movieClipModifiersCount = readUnsignedShort();
+				for (int i = 0; i < m_movieClipModifiersCount; i++) m_movieClipModifiers.push_back(MovieClipModifier());
+				break;
+
+			case 38:
+			case 39:
+			case 40:
+				movieClipModifiersLoaded++;
 				break;
 
 			case 2:
 			case 18:
-				m_shapes[shapesLoaded].loadTag(stream, tag);
 				shapesLoaded++;
 				break;
 
-				/*case 3:
-				case 10:
-				case 12:
-				case 14:
-				case 35:
-					m_movieClips[movieClipsLoaded].load(this, tag);
-					movieClipsLoaded++;
-					break;
+			case 7:
+			case 15:
+			case 20:
+			case 21:
+			case 25:
+			case 33:
+			case 43:
+			case 44:
+				textFieldsLoaded++;
+				break;
 
-				case 1:
-				case 16:
-				case 19:
-				case 24:
-				case 27:
-				case 28:
-				case 29:
-				case 34:
-					m_textures[texturesLoaded].load(this, tag, hasExternalTexture);
-					texturesLoaded++;
-					break;
+			case 42:
+				int matricesCount = readUnsignedShort();
+				int colorTransformsCount = readUnsignedShort();
+				break;
 
-				case 7:
-				case 15:
-				case 20:
-				case 21:
-				case 25:
-				case 33:
-				case 43:
-				case 44:
-					m_textFields[textFieldsLoaded].load(this, tag);
-					textFieldsLoaded++;
-					break;
+			case 8:
+			case 36:
+				readInt();
+				readInt();
+				readInt();
+				readInt();
 
-				case 37:
-					m_movieClipModifiersCount = readUnsignedShort();
-					m_movieClipModifiers = new MovieClipModifier[m_movieClipModifiersCount];
-					break;
+				readTwip();
+				readTwip();
+				break;
 
-				case 38:
-				case 39:
-				case 40:
-					m_movieClipModifiers[movieClipModifiersLoaded].load(this, tag);
-					movieClipModifiersLoaded++;
-					break;
+			case 9:
+				readUnsignedByte();
+				readUnsignedByte();
+				readUnsignedByte();
 
-				case 42:
-					int matricesCount = readUnsignedShort();
-					int colorTransformsCount = readUnsignedShort();
-					break;
+				readUnsignedByte();
+				readUnsignedByte();
+				readUnsignedByte();
+				readUnsignedByte();
+				break;
 
-				case 8:
-				case 36:
-
-				case 9:*/
+			case 3:
+			case 10:
+			case 12:
+			case 14:
+			case 35:
+				movieClipsLoaded++;
+				break;
 
 			default:
-				stream->skip(tagLength);
-#ifdef SC_DEBUG
-				printf("[INFO] Unknown tag %u. Length: %u.\n", tag, tagLength);
-#endif // SC_DEBUG
+				skip(tagLength);
 				break;
 			}
 		}
 
-		return hasExternalTexture;
+		return useExternalTexture;
 	}
 
 	void SupercellSWF::initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount)

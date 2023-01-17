@@ -1,8 +1,8 @@
 
-project "ZSTD"
+project "Zstandard"
     kind "StaticLib"
 
-    language "C++"
+    language "C"
 
     targetdir "%{wks.location}/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
     objdir "%{wks.location}/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"

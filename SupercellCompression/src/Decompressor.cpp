@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "Decompressor.h"
 #include "Signature.h"
 #include "Cache.h"
@@ -7,54 +9,55 @@
 #include "LzmaCompression.h"
 #include "LzhamCompression.h"
 #include "ZstdCompression.h"
-#include "Bytestream.h"
-
-#include <iostream>
+#include "ByteStream.h"
 
 namespace sc
 {
 	// Decompress SC file
-	CompressorErrs Decompressor::decompress(std::string filepath, std::string& outFilepath)
+	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath)
 	{
 		if (!Utils::endsWith(filepath, ".sc")) {
-			return CompressorErrs::WRONG_FILE_ERROR;
+			return CompressorError::WRONG_FILE_ERROR;
 		}
 
 		if (!Utils::fileExist(filepath))
-			return CompressorErrs::FILE_READ_ERROR;
+			return CompressorError::FILE_READ_ERROR;
 
 		FILE* inFile;
 		fopen_s(&inFile, filepath.c_str(), "rb");
 		if (!inFile)
-			return CompressorErrs::FILE_READ_ERROR;
+			return CompressorError::FILE_READ_ERROR;
 
 		ScFileStream inputSteam = ScFileStream(inFile);
 		uint32_t fileSize = Utils::fileSize(inFile);
 
 		CompressedSwfProps header = getHeader(inputSteam);
-		if (!header.ok) {
-			return CompressorErrs::WRONG_FILE_ERROR;
+		if (!header.ok)
+		{
+			return CompressorError::WRONG_FILE_ERROR;
 		}
 
 		outFilepath = SwfCache::getTempPath(filepath);
 		bool fileInCache = SwfCache::exist(filepath, header.id, fileSize);
-		if (fileInCache) {
-			return CompressorErrs::OK;
+		if (fileInCache)
+		{
+			return CompressorError::OK;
 		}
 
 		FILE* outFile;
 		fopen_s(&outFile, outFilepath.c_str(), "wb");
 		if (!outFile)
-			return CompressorErrs::FILE_WRITE_ERROR;
+			return CompressorError::FILE_WRITE_ERROR;
 
 		ScFileStream outputStream = ScFileStream(outFile);
 
-		CompressorErrs res = decompress(inputSteam, outputStream, header);
+		CompressorError res = decompress(inputSteam, outputStream, header);
 
 		inputSteam.close();
 		outputStream.close();
 
-		if (res == CompressorErrs::OK && !fileInCache) {
+		if (res == CompressorError::OK && !fileInCache)
+		{
 #ifndef DISABLE_CACHE
 			SwfCache::addData(filepath, header, fileSize);
 #endif
@@ -63,59 +66,64 @@ namespace sc
 		return res;
 	}
 
-	CompressorErrs Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream)
+	CompressorError Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream)
 	{
 		CompressedSwfProps header = getHeader(inStream);
 		if (!header.ok)
-			return CompressorErrs::WRONG_FILE_ERROR;
+			return CompressorError::WRONG_FILE_ERROR;
 
 		return decompress(inStream, outStream, header);
 	}
 
-	CompressorErrs Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressionSignatures signature) {
-		CompressionErrs res;
+	CompressorError Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressionSignature signature) {
+		CompressorError res;
 
 		switch (signature)
 		{
-		case CompressionSignatures::LZMA_COMPRESSION:
+		case CompressionSignature::LZMA:
 			res = LZMA::decompress(inStream, outStream);
 			break;
-		case CompressionSignatures::ZSTD_COMRESSION:
+
+		case CompressionSignature::ZSTD:
 			res = ZSTD::decompress(inStream, outStream);
 			break;
-		case CompressionSignatures::LZHAM_COMPRESSION:
+
+		case CompressionSignature::LZHAM:
 			res = LZHAM::decompress(inStream, outStream);
 			break;
+
 		default:
 			size_t size = inStream.size() - inStream.tell();
+
 			void* dataBuffer = malloc(size);
 			inStream.read(dataBuffer, size);
 			outStream.write(dataBuffer, size);
 			free(dataBuffer);
-			res = CompressionErrs::OK;                 
+
+			res = CompressorError::OK;
 			break;
 		}
 
-		return res == CompressionErrs::OK ? CompressorErrs::OK : CompressorErrs::DECOMPRESS_ERROR;
+		return res == CompressorError::OK ? CompressorError::OK : CompressorError::DECOMPRESS_ERROR;
 	}
 
-	CompressorErrs Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps header) {
+	CompressorError Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps header) {
 		inStream.setEof(static_cast<__int64>(header.metadataSize) + header.metadataSize != 0 ? 9 : 0);
 
-		CompressorErrs res = commonDecompress(inStream, outStream, static_cast<CompressionSignatures>(header.signature));
+		CompressorError res = commonDecompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
 
 		inStream.setEof(0);
 
 		return res;
 	}
 
-	CompressorErrs Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream) {
+	CompressorError Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream) {
 		inStream.set(0);
 		uint32_t magic;
 		inStream.read(&magic, sizeof(magic));
 		inStream.set(0);
 
-		CompressionSignatures signature = getSignature(magic);
+		CompressionSignature signature = getSignature(magic);
 
 		return commonDecompress(inStream, outStream, signature);
 	}
@@ -127,17 +135,19 @@ namespace sc
 		// Version of .sc file
 		uint16_t version = inputSteam.readUInt16BE();
 
-		uint32_t signature = 0;
+		CompressionSignature signature = CompressionSignature::NONE;
 		char* metadata{};
 		uint32_t metadataSize = 0;
 		char* hash{};
 		uint32_t hashSize = 0;
 
-		if (version == 3) {
-			signature = CompressionSignatures::ZSTD_COMRESSION;
+		if (version == 3)
+		{
+			signature = CompressionSignature::ZSTD;
 		}
-		else if (version == 4) {
-			signature = static_cast<CompressionSignatures>(inputSteam.readUInt32BE());
+		else if (version == 4)
+		{
+			signature = static_cast<CompressionSignature>(inputSteam.readUInt32BE());
 
 			// Metadata processing
 			size_t origPos = inputSteam.tell();
@@ -155,23 +165,27 @@ namespace sc
 		char* id = new char[idSize]();
 		inputSteam.read(id, idSize);
 
-		if (version == 1) {
+		if (version == 1)
+		{
 			uint32_t compressMagic = inputSteam.readUInt32();
 
-			// SIG
-			if (compressMagic == 0x3A676953) {
+			// Sig:
+			if (compressMagic == 0x3A676953)
+			{
 				hashSize = 64;
 				inputSteam.read(hash, hashSize);
 				compressMagic = inputSteam.readUInt32();
 			}
 
-			// if SCLZ
-			if (compressMagic == 0x5A4C4353) {
-				signature = CompressionSignatures::LZHAM_COMPRESSION;
+			// SCLZ
+			if (compressMagic == 0x5A4C4353)
+			{
+				signature = CompressionSignature::LZHAM;
 			}
-			// else LZMA
-			else {
-				signature = CompressionSignatures::LZMA_COMPRESSION;
+			// LZMA
+			else
+			{
+				signature = CompressionSignature::LZMA;
 			}
 
 			inputSteam.set(inputSteam.tell() - 4);
@@ -184,7 +198,7 @@ namespace sc
 			metadata,
 			metadataSize,
 
-			signature,
+			static_cast<uint32_t>(signature),
 
 			hash,
 			hashSize,

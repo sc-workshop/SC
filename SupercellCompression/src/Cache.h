@@ -1,15 +1,17 @@
 #include <string>
+
 #include "Utils.h"
 
 namespace sc {
-	class SwfCache {
+	class SwfCache
+	{
 	public:
-		static std::string getInfoFilepath(std::string filepath);
+		static std::string getInfoFilepath(const std::string& filepath);
 		static std::string getTempPath();
-		static std::string getTempPath(std::string filepath);
+		static std::string getTempPath(const std::string& filepath);
 
-		static bool exist(std::string filepath, char* hash, uint32_t fileSize);
-		static void getData(std::string filepath, char* hash, uint32_t& fileSize);
-		static void addData(std::string filepath, CompressedSwfProps header, uint32_t fileSize);
+		static bool exist(const std::string& filepath, char* hash, uint32_t fileSize);
+		static void getData(const std::string& filepath, char* hash, uint32_t& fileSize);
+		static void addData(const std::string& filepath, CompressedSwfProps header, uint32_t fileSize);
 	};
 }

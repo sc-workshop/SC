@@ -1,14 +1,16 @@
 #pragma once
 
 #include <vector>
+
 #include "Utils.h"
 
 namespace sc {
-	class IBinaryStream {
+	class IBinaryStream
+	{
 	public:
 		virtual ~IBinaryStream() {};
 
-		/* virtual functions */
+		/* Virtual functions */
 
 		virtual size_t read(void* data, size_t dataSize) = 0;
 		virtual size_t write(void* data, size_t dataSize) = 0;
@@ -32,177 +34,188 @@ namespace sc {
 				set(tell() + length);
 		}
 
-		bool readBool() {
-			return readUInt8() > 0;
-		}
-
-		std::string readAscii()
-		{
-			uint8_t length = readUInt8();
-			if (length == 0xFF)
-				return std::string();
-
-			char* str = new char[length]();
-			read(str, length);
-
-			return std::string(str, length);
-		}
-
-		float readTwip()
-		{
-			return (float)readInt32() * 0.05f;
-		}
-		
 		/* Read/Write functions for integers */
-		/* UINT8 */
 
-		uint8_t readUInt8() {
+		/* 8-bit integer */
+
+		uint8_t readUInt8()
+		{
 			uint8_t data;
 			size_t readRes = read(&data, sizeof(uint8_t));
 
-			if (sizeof(uint8_t) == readRes) {
+			if (sizeof(uint8_t) == readRes)
+			{
 				return data;
 			}
-			else {
+			else
+			{
 				return 0;
 			}
 		};
 
-		int8_t readInt8() {
+		int8_t readInt8()
+		{
 			int8_t data;
 			size_t readRes = read(&data, sizeof(int8_t));
 
-			if (sizeof(int8_t) == readRes) {
+			if (sizeof(int8_t) == readRes)
+			{
 				return data;
 			}
-			else {
+			else
+			{
 				return 0;
 			}
 		};
 
-		void writeUInt8(uint8_t number) {
+		void writeUInt8(uint8_t number)
+		{
 			write(&number, sizeof(uint8_t));
 		};
 
-		void writeInt8(int8_t number) {
+		void writeInt8(int8_t number)
+		{
 			write(&number, sizeof(int8_t));
 		};
 
-		/* UINT16 */
+		/* 16-bit integer */
 
-		uint16_t readUInt16() {
+		uint16_t readUInt16()
+		{
 			uint16_t data;
 			size_t readRes = read(&data, sizeof(uint16_t));
 
-			if (sizeof(uint16_t) == readRes) {
+			if (sizeof(uint16_t) == readRes)
+			{
 				return data;
 			}
-			else {
+			else
+			{
 				return 0;
 			}
 		};
 
-		uint16_t readUInt16BE() {
+		uint16_t readUInt16BE()
+		{
 			uint16_t data = readUInt16();
 			data = SwapEndian<uint16_t>(data);
 			return data;
 		};
 
-		int16_t readInt16() {
+		int16_t readInt16()
+		{
 			int16_t data;
 			size_t readRes = read(&data, sizeof(int16_t));
 
-			if (sizeof(int16_t) == readRes) {
+			if (sizeof(int16_t) == readRes)
+			{
 				return data;
 			}
-			else {
+			else
+			{
 				return 0;
 			}
 		};
 
-		int16_t readInt16BE() {
+		int16_t readInt16BE()
+		{
 			int16_t data = readInt16();
 			data = SwapEndian<int16_t>(data);
 			return data;
 		};
 
-		void writeUInt16(uint16_t number) {
+		void writeUInt16(uint16_t number)
+		{
 			write(&number, sizeof(uint16_t));
 		};
 
-		void writeUInt16BE(uint16_t number) {
+		void writeUInt16BE(uint16_t number)
+		{
 			writeUInt16(SwapEndian<uint16_t>(number));
 		};
 
-		void writeInt16(int16_t number) {
+		void writeInt16(int16_t number)
+		{
 			write(&number, sizeof(int16_t));
 		};
 
-		void writeInt16BE(int16_t number) {
+		void writeInt16BE(int16_t number)
+		{
 			writeInt16(SwapEndian<int16_t>(number));
 		};
 
-		/* UINT32 */
+		/* 32-bit integer */
 
-		uint32_t readUInt32() {
+		uint32_t readUInt32()
+		{
 			uint32_t data;
 			size_t readRes = read(&data, sizeof(uint32_t));
 
-			if (sizeof(uint32_t) == readRes) {
+			if (sizeof(uint32_t) == readRes)
+			{
 				return data;
 			}
-			else {
+			else
+			{
 				return 0;
 			}
 		};
 
-		uint32_t readUInt32BE() {
+		uint32_t readUInt32BE()
+		{
 			uint32_t data = readUInt32();
 			data = SwapEndian<uint32_t>(data);
 			return data;
 		};
 
-		int32_t readInt32() {
+		int32_t readInt32()
+		{
 			int32_t data;
 			size_t readRes = read(&data, sizeof(int32_t));
 
-			if (sizeof(int32_t) == readRes) {
+			if (sizeof(int32_t) == readRes)
+			{
 				return data;
 			}
-			else {
+			else
+			{
 				return 0;
 			}
 		};
 
-		int32_t readInt32BE() {
+		int32_t readInt32BE()
+		{
 			uint32_t data = readInt32();
 			data = SwapEndian<int32_t>(data);
 			return data;
 		};
 
-		void writeUInt32(uint32_t number) {
+		void writeUInt32(uint32_t number)
+		{
 			write(&number, sizeof(uint32_t));
 		};
 
-		void writeUInt32BE(uint32_t number) {
+		void writeUInt32BE(uint32_t number)
+		{
 			writeUInt32(SwapEndian<uint32_t>(number));
 		};
 
-		void writeInt32(int32_t number) {
+		void writeInt32(int32_t number)
+		{
 			write(&number, sizeof(int32_t));
 		};
 
-		void writeInt32BE(int32_t number) {
+		void writeInt32BE(int32_t number)
+		{
 			writeInt32(SwapEndian<int32_t>(number));
 		};
 
 	};
 
-	// Stream implementation for file
+	// Implementation for file binary stream
 	class ScFileStream : public IBinaryStream {
 	public:
-		explicit ScFileStream(FILE* file) : file(file) {
-		}
+		explicit ScFileStream(FILE* file) : file(file) { }
 
 	private:
 		FILE* file;
@@ -210,7 +223,8 @@ namespace sc {
 
 	public:
 
-		size_t read(void* buff, size_t buffSize) override {
+		size_t read(void* buff, size_t buffSize) override
+		{
 			size_t toRead = (tell() + buffSize) > size() ? size() - tell() : buffSize;
 			return fread(
 				buff,
@@ -219,7 +233,9 @@ namespace sc {
 				file
 			);
 		};
-		size_t write(void* buff, size_t buffSize) override {
+
+		size_t write(void* buff, size_t buffSize) override
+		{
 			return fwrite(
 				buff,
 				1,
@@ -228,20 +244,26 @@ namespace sc {
 			);
 		};
 
-		uint32_t tell() override {
+		uint32_t tell() override
+		{
 			return static_cast<uint32_t>(ftell(file));
 		};
-		int set(uint32_t pos) override {
+
+		int set(uint32_t pos) override
+		{
 			return fseek(file, pos, SEEK_SET);
 		};
 
-		uint32_t size() override {
+		uint32_t size() override
+		{
 			return Utils::fileSize(file) - readEofOffset;
 		};
 
-		bool eof() override {
+		bool eof() override
+		{
 			return size() <= tell() - readEofOffset;
 		};
+
 		void setEof(uint32_t pos) override {
 			readEofOffset = pos;
 		};
@@ -251,24 +273,28 @@ namespace sc {
 		};
 	};
 
+	// Implementation for buffer binary stream
 	class ScBufferStream : public IBinaryStream {
 	public:
-		explicit ScBufferStream(std::vector<uint8_t>* buffer) : buffer(buffer) {
-		}
+		explicit ScBufferStream(std::vector<uint8_t>* buffer) : buffer(buffer) { }
 
 	private:
-		std::vector<uint8_t>* buffer;
+		std::vector<uint8_t>* buffer; // FIXME: Why is this pointer??
 
 		size_t position = 0;
 		size_t readEofOffset = 0;
 
 	public:
-		size_t read(void* data, size_t dataSize) override {
-			if (dataSize == 0 || position >= size()) {
+		size_t read(void* data, size_t dataSize) override
+		{
+			if (dataSize == 0 || position >= size())
+			{
 				return 0;
 			}
+
 			size_t toRead = size() - position;
-			if (toRead > dataSize) {
+			if (toRead > dataSize)
+			{
 				toRead = dataSize;
 			}
 
@@ -277,7 +303,9 @@ namespace sc {
 			position += toRead;
 			return toRead;
 		};
-		size_t write(void* data, size_t dataSize) override {
+
+		size_t write(void* data, size_t dataSize) override
+		{
 			auto oldSize = buffer->size();
 			buffer->resize(oldSize + dataSize);
 			memcpy(&(*buffer)[oldSize], data, dataSize);
@@ -287,31 +315,41 @@ namespace sc {
 			return dataSize;
 		};
 
-		uint32_t tell() override {
+		uint32_t tell() override
+		{
 			return static_cast<uint32_t>(position);
 		};
-		int set(uint32_t pos) override {
-			if (size() > pos) {
+
+		int set(uint32_t pos) override
+		{
+			if (size() > pos)
+			{
 				position = pos;
 				return 0;
 			}
-			else {
+			else
+			{
 				return 1;
 			}
 		};
 
-		uint32_t size() override {
+		uint32_t size() override
+		{
 			return static_cast<uint32_t>(buffer->size() - readEofOffset);
 		};
 
-		bool eof() override {
+		bool eof() override
+		{
 			return size() <= tell() - readEofOffset;
-		}
-		void setEof(uint32_t pos) override {
+		};
+
+		void setEof(uint32_t pos) override
+		{
 			readEofOffset = pos;
 		};
 
-		void close() override {
+		void close() override
+		{
 			buffer = nullptr;
 			position = 0;
 		};

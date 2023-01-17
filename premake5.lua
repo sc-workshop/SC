@@ -10,7 +10,8 @@ workspace "SupercellSWF"
 	
     startproject "SupercellSWF"
 
-include "SupercellSWF"
-include "SupercellSWF_Test"
+
 include "SupercellCompression"
 include "SupercellCompressionCli"
+include "SupercellSWF"
+include "SupercellSWF_Test"

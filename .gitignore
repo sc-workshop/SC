@@ -1,31 +1,14 @@
-// Build files and other trash
-.vs
-obj
-bin
-premake
+// Git Ignore file
 
-// Solution files
-SupercellSWF.sln
+// Visual Studio directories
+.vs/
 
-// Sc compression
-SupercellCompression/SupercellCompression.vcxproj
-SupercellCompression/SupercellCompression.vcxproj.user
+// Visual Studio files
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
 
-SupercellCompression/lzham/LZHAM.vcxproj
-SupercellCompression/lzham/LZHAM.vcxproj.filters
-SupercellCompression/lzma/LZMA.vcxproj
-SupercellCompression/lzma/LZMA.vcxproj.user
-SupercellCompression/zstd/ZSTD.vcxproj
-SupercellCompression/zstd/ZSTD.vcxproj.filters
-// CLI
-SupercellCompressionCli/SupercellCompressionCli.vcxproj
-SupercellCompressionCli/SupercellCompressionCli.vcxproj.user
-
-// SupercellSWF
-SupercellSWF/SupercellSWF.vcxproj
-SupercellSWF/SupercellSWF.vcxproj.filters
-SupercellSWF/SupercellSWF.vcxproj.user
-SupercellSWF/old
-// CLI
-SupercellSWF_Test/SupercellSWF_Test.vcxproj
-SupercellSWF_Test/SupercellSWF_Test.vcxproj.user
+// Output files directories
+obj/
+bin/

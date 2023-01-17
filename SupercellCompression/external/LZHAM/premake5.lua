@@ -1,5 +1,5 @@
 
-project "lzhamdecomp"
+project "LZHAM"
     kind "StaticLib"
 
     language "C++"
@@ -9,24 +9,38 @@ project "lzhamdecomp"
     objdir "%{wks.location}/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
 
     files {
-		"./**.cpp",
-		"../include/lzham_exports.inc"
+        "src/**.h",
+        "src/**.cpp"
     }
 
     includedirs {
-        "../include",
-		"./",
-		"../lzhamcomp"
+        "include",
+        "src/lzhamcomp",
+        "src/lzhamdecomp"
 	}
 
-
     filter "configurations:Debug"
-		defines "WIN32;_DEBUG;_LIB;"
         runtime "Debug"
+
+		defines {
+            "_DEBUG",
+            "_LIB"
+        }
+
         symbols "on"
     
     filter "configurations:Release"
-		defines "WIN32;NDEBUG;_LIB;"
         runtime "Release"
-        optimize "on"
 
+        defines {
+            "NDEBUG",
+            "_LIB"
+        }
+
+        optimize "on"
+		
+	filter "architecture:x64"
+		defines "LZHAM_64BIT"
+		
+	filter "system:windows"
+		defines "WIN32"

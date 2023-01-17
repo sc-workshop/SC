@@ -15,28 +15,39 @@ project "SupercellCompression"
 
     includedirs {
         "src",
-		"lzma/include",
-		"zstd/include",
-		"lzham/include"
+        
+        "external/LZMA/include",
+        "external/LZHAM/include",
+        "external/Zstandard/include"
 	}
 	
 	links {
         "LZMA",
-		"ZSTD",
-		"LZHAM"
+		"LZHAM",
+		"Zstandard"
     }
 
     filter "configurations:Debug"
-        defines "SC_DEBUG;USE_CUSTOM_TEMP_PATH;"
         runtime "Debug"
+
+        defines {
+            "SC_DEBUG",
+            "USE_CUSTOM_TEMP_PATH"
+        }
+
         symbols "on"
     
     filter "configurations:Release"
-        defines "SC_RELEASE;_CRT_SECURE_NO_WARNINGS;"
         runtime "Release"
-        optimize "on"
-		
-include "lzma"
-include "zstd"
-include "lzham"
 
+        defines {
+            "SC_RELEASE",
+            "_CRT_SECURE_NO_WARNINGS"
+        }
+
+        optimize "on"
+
+
+include "external/LZMA"
+include "external/LZHAM"
+include "external/Zstandard"

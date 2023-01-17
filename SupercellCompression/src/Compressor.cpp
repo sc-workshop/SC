@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <time.h>
+
 #include "Utils.h"
 #include "Signature.h"
 #include "Endian.h"
@@ -6,18 +9,17 @@
 #include "LzmaCompression.h"
 #include "ZstdCompression.h"
 #include "LzhamCompression.h"
-#include "Bytestream.h"
-
-#include <stdlib.h>
-#include <time.h>
+#include "ByteStream.h"
 
 constexpr uint32_t ID_SIZE = 16;
 
 namespace sc
 {
-	CompressorErrs Compressor::compress(std::string inputFilepath, std::string outFilepath, CompressionSignatures signature) {
-		if (!Utils::fileExist(inputFilepath)) {
-			return CompressorErrs::WRONG_FILE_ERROR;
+	CompressorError Compressor::compress(const std::string& inputFilepath, std::string outFilepath, CompressionSignature signature)
+	{
+		if (!Utils::fileExist(inputFilepath))
+		{
+			return CompressorError::WRONG_FILE_ERROR;
 		}
 
 		FILE* inFile = fopen(inputFilepath.c_str(), "rb");
@@ -31,13 +33,14 @@ namespace sc
 		header.id = new char[header.idSize]();
 
 		srand(static_cast<uint32_t>(time(NULL)));
-		for (uint32_t i = 0; header.idSize > i; i++) {
+		for (uint32_t i = 0; header.idSize > i; i++)
+		{
 			header.id[i] = rand() % 253 + (-126);
 		}
 
-		header.signature = signature;
+		header.signature = (uint32_t)signature;
 
-		CompressorErrs res = compress(inputStream, outputStream, header);
+		CompressorError res = compress(inputStream, outputStream, header);
 
 		inputStream.close();
 		outputStream.close();
@@ -45,24 +48,30 @@ namespace sc
 		return res;
 	}
 
-	CompressorErrs Compressor::compress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps& header) {
+	CompressorError Compressor::compress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps& header)
+	{
 		// SC header
 		uint32_t scMagic = 0x53430000;
 		outStream.writeUInt32BE(scMagic);
 
-		if (header.metadataSize > 0) {
+		if (header.metadataSize > 0)
+		{
 			outStream.writeUInt16BE(4);
 			outStream.writeUInt32BE(header.signature);
 		}
-		else {
-			if (header.signature == CompressionSignatures::LZMA_COMPRESSION ||
-				header.signature == CompressionSignatures::LZHAM_COMPRESSION) {
+		else
+		{
+			if (header.signature == (uint32_t)CompressionSignature::LZMA ||
+				header.signature == (uint32_t)CompressionSignature::LZHAM)
+			{
 				outStream.writeUInt16BE(1);
 			}
-			else if (header.signature == CompressionSignatures::ZSTD_COMRESSION) {
+			else if (header.signature == (uint32_t)CompressionSignature::ZSTD)
+			{
 				outStream.writeUInt16BE(3);
 			}
-			else {
+			else
+			{
 				outStream.writeUInt16BE(2);
 			}
 		}
@@ -70,9 +79,10 @@ namespace sc
 		outStream.writeUInt32BE(header.idSize);
 		outStream.write(header.id, header.idSize);
 
-		CompressorErrs res = commonCompress(inStream, outStream, header.signature);
+		CompressorError res = commonCompress(inStream, outStream, header.signature);
 
-		if (header.metadataSize > 0) {
+		if (header.metadataSize > 0)
+		{
 			outStream.write("START", 5);
 			outStream.write(&header.metadata, header.metadataSize);
 			outStream.writeUInt32(header.metadataSize);
@@ -81,19 +91,23 @@ namespace sc
 		return res;
 	}
 
-	CompressorErrs Compressor::commonCompress(IBinaryStream& inStream, IBinaryStream& outStream, uint32_t signatureIndex) {
-		CompressionErrs res = CompressionErrs::OK;
-		switch (signatureIndex)
+	CompressorError Compressor::commonCompress(IBinaryStream& inStream, IBinaryStream& outStream, uint32_t signatureIndex)
+	{
+		CompressionError res = CompressionError::OK;
+		switch ((CompressionSignature)signatureIndex)
 		{
-		case CompressionSignatures::LZMA_COMPRESSION:
+		case CompressionSignature::LZMA:
 			res = LZMA::compress(inStream, outStream);
 			break;
-		case CompressionSignatures::LZHAM_COMPRESSION:
+
+		case CompressionSignature::LZHAM:
 			res = LZHAM::compress(inStream, outStream);
 			break;
-		case CompressionSignatures::ZSTD_COMRESSION:
+
+		case CompressionSignature::ZSTD:
 			res = ZSTD::compress(inStream, outStream);
 			break;
+
 		default:
 			size_t size = inStream.size() - inStream.tell();
 			void* dataBuffer = malloc(size);
@@ -103,6 +117,6 @@ namespace sc
 			break;
 		}
 
-		return res == CompressionErrs::OK ? CompressorErrs::OK : CompressorErrs::COMPRESS_ERROR;
+		return res == CompressionError::OK ? CompressorError::OK : CompressorError::COMPRESS_ERROR;
 	}
 }

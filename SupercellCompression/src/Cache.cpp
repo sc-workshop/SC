@@ -1,9 +1,9 @@
-#include "Cache.h"
-#include "Utils.h"
-
 #include <iostream>
 #include <string>
 #include <filesystem>
+
+#include "Cache.h"
+#include "Utils.h"
 
 namespace fs = std::filesystem;
 
@@ -11,9 +11,10 @@ namespace fs = std::filesystem;
 #define CACHE_FOLDER "swf_cache"
 
 namespace sc {
-	std::string SwfCache::getInfoFilepath(std::string filepath) {
+	std::string SwfCache::getInfoFilepath(const std::string& filepath)
+	{
 		fs::path tempDir = getTempPath();
-		fs::path filename = Utils::fileBasename(filepath);
+		fs::path filename = Utils::fileBaseName(filepath);
 
 		std::string infoFilePath = (tempDir / filename.replace_extension("info")).string();
 
@@ -21,7 +22,8 @@ namespace sc {
 	}
 
 	// Path to swf TEMP folder
-	std::string SwfCache::getTempPath() {
+	std::string SwfCache::getTempPath()
+	{
 		fs::path path;
 #ifdef USE_CUSTOM_TEMP_PATH
 		path = fs::absolute(TEMP_PATH);
@@ -34,10 +36,12 @@ namespace sc {
 
 		const char* cPath = filepath.c_str();
 		struct stat info;
-		if (stat(cPath, &info) != 0 || !(info.st_mode & S_IFDIR)) {
-			if (!fs::create_directory(filepath)) {
+		if (stat(cPath, &info) != 0 || !(info.st_mode & S_IFDIR))
+		{
+			if (!fs::create_directory(filepath))
+			{
 				throw std::runtime_error("Failed to create cache folder!");
-				exit(1);
+				exit(1); // FIXME: I think exit() is bad practice, I think..
 			}
 		}
 
@@ -45,7 +49,8 @@ namespace sc {
 	}
 
 	// Path to swf TEMP folder with filename
-	std::string SwfCache::getTempPath(std::string filepath) {
+	std::string SwfCache::getTempPath(const std::string& filepath)
+	{
 		fs::path tempPath = getTempPath();
 		fs::path filename = filepath;
 		filename = filename.filename();
@@ -54,7 +59,7 @@ namespace sc {
 	}
 
 	// Check if file exists in swf TEMP folder
-	bool SwfCache::exist(std::string filepath, char* hash, uint32_t fileSize)
+	bool SwfCache::exist(const std::string& filepath, char* hash, uint32_t fileSize)
 	{
 		fs::path tempDir = getTempPath();
 		fs::path file(filepath);
@@ -64,7 +69,8 @@ namespace sc {
 		std::string infoFilepath = getInfoFilepath(scFilepath);
 
 		// If one of files does not exist, then file is not in cache
-		if (!Utils::fileExist(scFilepath) || !Utils::fileExist(infoFilepath)) {
+		if (!Utils::fileExist(scFilepath) || !Utils::fileExist(infoFilepath))
+		{
 			return false;
 		}
 
@@ -72,8 +78,10 @@ namespace sc {
 		uint32_t infoFileSize = 0;
 		getData(filepath, infoFileHash, infoFileSize);
 
-		if (fileSize == infoFileSize) {
-			for (uint32_t i = 0; infoFileHash[i] != '\0'; i++) {
+		if (fileSize == infoFileSize)
+		{
+			for (uint32_t i = 0; infoFileHash[i] != '\0'; i++)
+			{
 				if (hash[i] != infoFileHash[i])
 					return false;
 			}
@@ -85,14 +93,16 @@ namespace sc {
 	}
 
 	// Gets data from info file in swf TEMP folder
-	void SwfCache::getData(std::string filepath, char* hash, uint32_t& fileSize) {
+	void SwfCache::getData(const std::string& filepath, char* hash, uint32_t& fileSize)
+	{
 		const std::string infoFilePath = getInfoFilepath(filepath);
 		FILE* infoFile;
 		fopen_s(&infoFile, infoFilePath.c_str(), "rb");
 
 		char Char;
 		int count = 0;
-		while (fread(&Char, sizeof(Char), 1, infoFile) != 0) {
+		while (fread(&Char, sizeof(Char), 1, infoFile) != 0)
+		{
 			hash[count] = Char;
 			if (Char == '\0')
 				break;
@@ -104,7 +114,8 @@ namespace sc {
 		fclose(infoFile);
 	}
 
-	void SwfCache::addData(std::string filepath, CompressedSwfProps header, uint32_t fileSize) {
+	void SwfCache::addData(const std::string& filepath, CompressedSwfProps header, uint32_t fileSize)
+	{
 		std::string infoFilePath = getInfoFilepath(filepath);
 
 		FILE* file;
