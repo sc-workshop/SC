@@ -1,3 +1,4 @@
+#include "SupercellSWF.h"
 #include "SWFTexture.h"
 
 namespace sc
@@ -16,7 +17,7 @@ namespace sc
 		1
 	};
 
-	void SWFTexture::load(SupercellSWF* swf, uint8_t tag, bool useExternalTexture)
+	void SWFTexture::load(sc::SupercellSWF* swf, uint8_t tag, bool useExternalTexture)
 	{
 		uint8_t pixelTypeIndex = swf->readUnsignedByte();
 

@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Utils.h"
-#include "Bytestream.h"
+#include "Bytestream.hpp"
 
 namespace sc {
 	class ZSTD {
 	public:
-		static CompressionErrs decompress(IBinaryStream& inStream, IBinaryStream& outStream);
-		static CompressionErrs compress(IBinaryStream& inStream, IBinaryStream& outStream);
+		static CompressionError decompress(IBinaryStream& inStream, IBinaryStream& outStream);
+		static CompressionError compress(IBinaryStream& inStream, IBinaryStream& outStream);
 	};
 }

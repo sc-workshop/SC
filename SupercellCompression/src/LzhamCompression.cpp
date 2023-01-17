@@ -2,7 +2,7 @@
 
 #include "Utils.h"
 #include "LzhamCompression.h"
-#include "Bytestream.h"
+#include "Bytestream.hpp"
 
 #define DICT_SIZE 18
 

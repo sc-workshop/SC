@@ -9,7 +9,7 @@
 #include "LzmaCompression.h"
 #include "ZstdCompression.h"
 #include "LzhamCompression.h"
-#include "ByteStream.h"
+#include "ByteStream.hpp"
 
 constexpr uint32_t ID_SIZE = 16;
 

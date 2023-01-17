@@ -3,7 +3,7 @@
 #include <LzmaDec.h>
 
 #include "Utils.h"
-#include "Bytestream.h"
+#include "Bytestream.hpp"
 
 namespace sc
 {

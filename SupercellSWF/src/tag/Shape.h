@@ -1,12 +1,12 @@
 #pragma once
-
-#include <Bytestream.h>
+#include <stdint.h>
 #include <vector>
-
-#include <common/Tag.h>
+#include "Tag.h"
 
 namespace sc
 {
+	class SupercellSWF;
+
 	struct ShapeDrawBitmapCommandVertex
 	{
 		float x;
@@ -19,7 +19,7 @@ namespace sc
 	class ShapeDrawBitmapCommand
 	{
 	public:
-		void loadTag(IBinaryStream* stream, uint8_t tag, int* pointsOffset, std::vector<ShapeDrawBitmapCommandVertex>& vertices);
+		void load(SupercellSWF* swf, uint8_t tag, int* pointsOffset, std::vector<ShapeDrawBitmapCommandVertex>& vertices);
 		uint16_t getTag();
 
 		bool rectangle() { return m_rectangle; };
@@ -34,15 +34,14 @@ namespace sc
 		uint8_t m_pointsCount;
 	};
 
-	class Shape: public ScTag
+	class Shape : public ScTag
 	{
 	public:
-		void loadTag(IBinaryStream* stream, uint8_t tag);
-		uint16_t getTag();
+		void load(SupercellSWF* swf, uint8_t tag);
+		uint8_t getTag();
 
-		std::vector<ShapeDrawBitmapCommand> commands;
-		std::vector<ShapeDrawBitmapCommandVertex> vertices;
+	private:
+		std::vector<ShapeDrawBitmapCommand> m_commands;
+		std::vector<ShapeDrawBitmapCommandVertex> m_vertices;
 	};
-
-	
 }

@@ -1,13 +1,13 @@
-#pragma once
+#ifndef SC_SWF
+#define SC_SWF
 
 #include <cstdio>
 #include <string>
 #include <vector>
 
-#include <ByteStream.h>
+#include <ByteStream.hpp>
 
 #include "Export.h"
-
 #include "tag/Shape.h"
 #include "tag/MovieClip.h"
 #include "tag/SWFTexture.h"
@@ -17,6 +17,8 @@
 
 namespace sc
 {
+	class Shape;
+
 	class SupercellSWF
 	{
 	public:
@@ -56,7 +58,7 @@ namespace sc
 
 		bool useLowResTexture() { return m_useLowResTexture; }
 		void setUseLowResTexture(bool use) { m_useLowResTexture = use; }
-		
+
 		bool useMultiResTexture() { return m_useMultiResTexture; }
 		void setUseMultiResTexture(bool use) { m_useMultiResTexture = use; }
 
@@ -92,3 +94,4 @@ namespace sc
 		std::string m_multiResFileSuffix = "_highres";
 	};
 }
+#endif // !SC_SWF

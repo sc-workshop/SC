@@ -4,7 +4,7 @@
 
 #include "LzmaCompression.h"
 #include "Utils.h"
-#include "Bytestream.h"
+#include "ByteStream.hpp"
 
 static const size_t LZMA_DECOMPRESS_BUF_SIZE = 1 << 16;
 static const size_t LZMA_COMPRESS_BUF_SIZE = 1 << 24;

@@ -3,7 +3,7 @@
 #include <string>
 
 #include "Utils.h"
-#include "ByteStream.h"
+#include "ByteStream.hpp"
 
 namespace sc
 {

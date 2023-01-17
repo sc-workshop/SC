@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Utils.h"
-#include "Bytestream.h"
+#include "Bytestream.hpp"
 
 namespace sc
 {

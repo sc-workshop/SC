@@ -71,22 +71,22 @@ void printUsage() {
 	printf("Example: c file.sc file_compressed.sc -m=ZSTD\n");
 }
 
-void processCompressorErrs(sc::CompressorErrs res) {
+void processCompressorErrs(sc::CompressorError res) {
 	switch (res)
 	{
-	case sc::CompressorErrs::OK:
+	case sc::CompressorError::OK:
 		std::cout << "[INFO] File successfully processed into:  ";
 		break;
-	case sc::CompressorErrs::FILE_READ_ERROR:
+	case sc::CompressorError::FILE_READ_ERROR:
 		std::cout << "[ERROR] Failed to read file." << std::endl;
 		break;
-	case sc::CompressorErrs::FILE_WRITE_ERROR:
+	case sc::CompressorError::FILE_WRITE_ERROR:
 		std::cout << "[ERROR] Failed to write file." << std::endl;
 		break;
-	case sc::CompressorErrs::WRONG_FILE_ERROR:
+	case sc::CompressorError::WRONG_FILE_ERROR:
 		std::cout << "[ERROR] Wrong file!" << std::endl;
 		break;
-	case sc::CompressorErrs::DECOMPRESS_ERROR:
+	case sc::CompressorError::DECOMPRESS_ERROR:
 		std::cout << "[ERROR] Decompression error!" << std::endl;
 		break;
 	default:
@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
 	auto startTime = high_resolution_clock::now();
 
 	if (mode == "d") {
-		sc::CompressorErrs res;
+		sc::CompressorError res;
 
 		if (enableCache) {
 			res = sc::Decompressor::decompress(inFilepath, outFilepath);
@@ -212,26 +212,26 @@ int main(int argc, char* argv[])
 		}
 
 		processCompressorErrs(res);
-		if (res == sc::CompressorErrs::OK) {
+		if (res == sc::CompressorError::OK) {
 			std::cout << outFilepath << std::endl;
 		}
 	}
 	else if (mode == "c") {
-		sc::CompressionSignatures signature = sc::CompressionSignatures::LZMA_COMPRESSION;
+		sc::CompressionSignature signature = sc::CompressionSignature::LZMA;
 
 		std::string signatureArg = getCmdOption(argc, argv, "-m=");
 
 		if (signatureArg == "ZSTD") {
-			signature = sc::CompressionSignatures::ZSTD_COMRESSION;
+			signature = sc::CompressionSignature::ZSTD;
 		}
 		else if (signatureArg == "LZHAM") {
-			signature = sc::CompressionSignatures::LZHAM_COMPRESSION;
+			signature = sc::CompressionSignature::LZHAM;
 		}
 
-		sc::CompressorErrs res = sc::Compressor::compress(inFilepath, outFilepath, signature);
+		sc::CompressorError res = sc::Compressor::compress(inFilepath, outFilepath, signature);
 
 		processCompressorErrs(res);
-		if (res == sc::CompressorErrs::OK) {
+		if (res == sc::CompressorError::OK) {
 			std::cout << outFilepath << std::endl;
 		}
 	}

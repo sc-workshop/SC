@@ -1,10 +1,5 @@
-#include <string>
-
 #include "SupercellSWF.h"
 
-#include "common/Export.h"
-
-#include <Bytestream.h>
 #include <Decompressor.h>
 #include <Utils.h>
 
@@ -12,12 +7,10 @@ namespace sc
 {
 	SupercellSWF::SupercellSWF()
 	{
-
 	}
 
 	SupercellSWF::~SupercellSWF()
 	{
-
 	}
 
 	void SupercellSWF::load(const std::string& filePath)
@@ -49,15 +42,19 @@ namespace sc
 		if (!isTexture)
 		{
 			m_shapesCount = readUnsignedShort();
+			m_shapes.clear();
 			for (int i = 0; i < m_shapesCount; i++) m_shapes.push_back(Shape());
 
 			m_movieClipsCount = readUnsignedShort();
+			m_movieClips.clear();
 			for (int i = 0; i < m_movieClipsCount; i++) m_movieClips.push_back(MovieClip());
 
 			m_texturesCount = readUnsignedShort();
+			m_textures.clear();
 			for (int i = 0; i < m_texturesCount; i++) m_textures.push_back(SWFTexture());
 
 			m_textFieldsCount = readUnsignedShort();
+			m_textFields.clear();
 			for (int i = 0; i < m_textFieldsCount; i++) m_textFields.push_back(TextField());
 
 			uint16_t matricesCount = readUnsignedShort();
@@ -148,6 +145,7 @@ namespace sc
 
 			case 2:
 			case 18:
+				m_shapes[shapesLoaded].load(this, tag);
 				shapesLoaded++;
 				break;
 
@@ -163,8 +161,8 @@ namespace sc
 				break;
 
 			case 42:
-				int matricesCount = readUnsignedShort();
-				int colorTransformsCount = readUnsignedShort();
+				readUnsignedShort(); // matricesCount
+				readUnsignedShort(); // colorTransformsCount
 				break;
 
 			case 8:

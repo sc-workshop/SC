@@ -4,6 +4,5 @@ namespace sc
 {
 	struct MatrixBank
 	{
-
 	};
 }

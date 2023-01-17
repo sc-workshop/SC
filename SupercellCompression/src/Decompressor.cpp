@@ -9,7 +9,7 @@
 #include "LzmaCompression.h"
 #include "LzhamCompression.h"
 #include "ZstdCompression.h"
-#include "ByteStream.h"
+#include "ByteStream.hpp"
 
 namespace sc
 {
@@ -76,7 +76,7 @@ namespace sc
 	}
 
 	CompressorError Decompressor::commonDecompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressionSignature signature) {
-		CompressorError res;
+		CompressionError res;
 
 		switch (signature)
 		{
@@ -100,11 +100,11 @@ namespace sc
 			outStream.write(dataBuffer, size);
 			free(dataBuffer);
 
-			res = CompressorError::OK;
+			res = CompressionError::OK;
 			break;
 		}
 
-		return res == CompressorError::OK ? CompressorError::OK : CompressorError::DECOMPRESS_ERROR;
+		return res == CompressionError::OK ? CompressorError::OK : CompressorError::DECOMPRESS_ERROR;
 	}
 
 	CompressorError Decompressor::decompress(IBinaryStream& inStream, IBinaryStream& outStream, CompressedSwfProps header) {

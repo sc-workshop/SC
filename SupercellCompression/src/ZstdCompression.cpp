@@ -1,25 +1,25 @@
 #include "Utils.h"
 #include "ZstdCompression.h"
-#include "Bytestream.h"
+#include "ByteStream.hpp"
 
 #include <zstd.h>
 #include <thread>
 
 namespace sc {
-	CompressionErrs ZSTD::decompress(IBinaryStream& inStream, IBinaryStream& outStream) {
+	CompressionError ZSTD::decompress(IBinaryStream& inStream, IBinaryStream& outStream) {
 		const size_t buffInSize = ZSTD_DStreamInSize();
 		const size_t buffOutSize = ZSTD_DStreamOutSize();
 
 		void* buffIn = malloc(buffInSize);
 		void* buffOut = malloc(buffOutSize);
 
-        if (!buffIn || !buffOut) return CompressionErrs::ALLOC_ERROR;
+        if (!buffIn || !buffOut) return CompressionError::ALLOC_ERROR;
 
 		ZSTD_DStream* const dStream = ZSTD_createDStream();
 
 		if (!dStream)
 		{
-			return CompressionErrs::INIT_ERROR;
+			return CompressionError::INIT_ERROR;
 		}
 
 		const size_t initResult = ZSTD_initDStream(dStream);
@@ -27,7 +27,7 @@ namespace sc {
 		if (ZSTD_isError(initResult))
 		{
 			ZSTD_freeDStream(dStream);
-			return CompressionErrs::INIT_ERROR;
+			return CompressionError::INIT_ERROR;
 		}
 
 		size_t toRead = initResult;
@@ -43,7 +43,7 @@ namespace sc {
 				if (ZSTD_isError(toRead))
 				{
 					ZSTD_freeDStream(dStream);
-					return CompressionErrs::DATA_ERROR;
+					return CompressionError::DATA_ERROR;
 				}
 				outStream.write(buffOut, output.pos);
 			}
@@ -53,9 +53,9 @@ namespace sc {
 		free(buffIn);
 		free(buffOut);
 
-		return CompressionErrs::OK;
+		return CompressionError::OK;
 	}
-	CompressionErrs ZSTD::compress(IBinaryStream& inStream, IBinaryStream& outStream)
+	CompressionError ZSTD::compress(IBinaryStream& inStream, IBinaryStream& outStream)
 	{
 		size_t const buffInSize = ZSTD_CStreamInSize();
 		size_t const buffOutSize = ZSTD_CStreamOutSize();
@@ -63,10 +63,10 @@ namespace sc {
 		void* buffIn = malloc(buffInSize);
 		void* buffOut = malloc(buffOutSize);
 
-		if (!buffIn || !buffOut) return CompressionErrs::ALLOC_ERROR;
+		if (!buffIn || !buffOut) return CompressionError::ALLOC_ERROR;
 
         ZSTD_CCtx* const cctx = ZSTD_createCCtx();
-        if (cctx == NULL) return CompressionErrs::INIT_ERROR;
+        if (cctx == NULL) return CompressionError::INIT_ERROR;
 
         ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, 16);
         ZSTD_CCtx_setParameter(cctx, ZSTD_c_checksumFlag, 0);
@@ -88,7 +88,7 @@ namespace sc {
 				outStream.write(buffOut, output.pos);
                 finished = lastChunk ? (remaining == 0) : (input.pos == input.size);
             } while (!finished);
-			if (input.pos != input.size) return CompressionErrs::DATA_ERROR;
+			if (input.pos != input.size) return CompressionError::DATA_ERROR;
 
             if (lastChunk) {
                 break;
@@ -99,6 +99,6 @@ namespace sc {
         free(buffIn);
         free(buffOut);
 
-        return CompressionErrs::OK;
+        return CompressionError::OK;
 	}
 }

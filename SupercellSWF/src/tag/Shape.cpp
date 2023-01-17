@@ -1,33 +1,99 @@
 #include "Shape.h"
-
-#include <Bytestream.h>
-#include <cstdint>
+#include "SupercellSWF.h"
 
 namespace sc
 {
-	void Shape::loadTag(IBinaryStream* stream, uint8_t tag)
+	uint16_t ShapeDrawBitmapCommand::getTag()
 	{
-		id = stream->readUInt16();
+		return m_normalized ? (m_rectangle ? 4 : 22) : 17;
+	}
 
-		uint16_t commandsCount = stream->readUInt16();
+	void ShapeDrawBitmapCommand::load(SupercellSWF* swf, uint8_t tag, int* pointsOffset, std::vector<ShapeDrawBitmapCommandVertex>& m_vertices)
+	{
+		uint8_t m_textureIndex = swf->readUnsignedByte();
+		bool m_normalized = tag == 22;
+		bool m_rectangle = tag == 4;
 
-		uint16_t m_pointsCount = 4 * commandsCount;
-		if (tag == 18)
-			m_pointsCount = stream->readUInt16();
+		uint8_t m_pointsCount = m_rectangle ? 4 : swf->readUnsignedByte();
 
-		commands.resize(commandsCount);
-		vertices.resize(m_pointsCount);
+		for (int i = 0; i < m_pointsCount; i++)
+		{
+			float x = swf->readTwip();
+			float y = swf->readTwip();
+
+			int idx = *pointsOffset + i;
+
+			m_vertices[*pointsOffset + i].x = x;
+			m_vertices[*pointsOffset + i].y = y;
+		}
+
+		for (int i = 0; i < m_pointsCount; i++)
+		{
+			float u = swf->readUnsignedShort();
+			float v = swf->readUnsignedShort();
+
+			if (m_normalized) {
+				u = u / 0xFFFF;
+				v = v / 0xFFFF;
+			}
+
+			m_vertices[*pointsOffset + i].u = u;
+			m_vertices[*pointsOffset + i].v = v;
+		}
 
 #ifdef SC_DEBUG
-		printf("[Shape] Tag %u loading. Id: %u. Commands count: %u. Points count: %u.\n", tag, id, commandsCount, m_pointsCount);
+		printf("Texture index: %u. Points count: %u.\n", m_textureIndex, m_pointsCount);
+#ifdef DEEP_SC_DEBUG
+		for (int i = 0; m_pointsCount > i; i++) {
+			printf("		{\n		\"vert\":[%f,%f],\n		\"texcoord\":[%f,%f]\n		}\n", m_vertices[*pointsOffset + i].x, m_vertices[*pointsOffset + i].y, m_vertices[*pointsOffset + i].u, m_vertices[*pointsOffset + i].v);
+		}
+#endif // DEEP_SC_DEBUG
+
 #endif // SC_DEBUG
 
-		int commandsLoaded = 0;
+		* pointsOffset += m_pointsCount;
+	}
+
+	uint8_t Shape::getTag()
+	{
+		int maxRectCommands = 0;
+
+		for (int i = 0; m_commands.size() > i; i++)
+			if (m_commands[i].rectangle())
+				maxRectCommands++;
+
+		return m_commands.size() == maxRectCommands ? 2 : 18;
+	}
+
+	void Shape::load(SupercellSWF* swf, uint8_t tag)
+	{
+		id = swf->readUnsignedShort();
+
+		uint16_t m_commandsCount = swf->readUnsignedShort();
+
+		uint16_t m_pointsCount = 4 * m_commandsCount;
+		if (tag == 18)
+			m_pointsCount = swf->readUnsignedShort();
+
+		for (int i = 0; i < m_commandsCount; i++)
+			m_commands.push_back(ShapeDrawBitmapCommand());
+
+		for (int i = 0; i < m_pointsCount; i++)
+			m_vertices.push_back(ShapeDrawBitmapCommandVertex());
+
+#ifdef SC_DEBUG
+		printf("[Shape] Tag %u loading. Id: %u. Commands count: %u. Points count: %u.\n", tag, id, m_commandsCount, m_pointsCount);
+#endif // SC_DEBUG
+
+		int m_commandsLoaded = 0;
 		int pointsOffset = 0;
 		while (true)
 		{
-			uint8_t commandTag = stream->readUInt8();
-			uint32_t commandTagLength = stream->readUInt32();
+			uint8_t commandTag = swf->readUnsignedByte();
+			uint32_t commandTagLength = swf->readInt();
+
+			if (commandTagLength < 0)
+				throw std::runtime_error("Negative draw command tag length in .sc file");
 
 			if (commandTag == 0)
 				break;
@@ -41,74 +107,13 @@ namespace sc
 			case 4:
 			case 17:
 			case 22:
-				commands[commandsLoaded].loadTag(stream, commandTag, &pointsOffset, vertices);
-				commandsLoaded++;
+				m_commands[m_commandsLoaded].load(swf, commandTag, &pointsOffset, m_vertices);
+				m_commandsLoaded++;
 				break;
 			default:
-				stream->skip(commandTagLength);
+				swf->skip(commandTagLength);
 				break;
 			}
 		}
-	}
-
-	uint16_t Shape::getTag()
-	{
-		int maxRectCommands = 0;
-
-		for (int i = 0; commands.size() > i; i++)
-			if (commands[i].rectangle())
-				maxRectCommands++;
-
-		return commands.size() == maxRectCommands ? 2 : 18;
-	}
-
-	void ShapeDrawBitmapCommand::loadTag(IBinaryStream* stream, uint8_t tag, int* pointsOffset, std::vector<ShapeDrawBitmapCommandVertex>& vertices)
-	{
-		m_textureIndex = stream->readUInt8();
-		m_normalized = tag == 22;
-		m_rectangle = tag == 4;
-
-		m_pointsCount = m_rectangle ? 4 : stream->readUInt8();
-
-		for (int i = 0; i < m_pointsCount; i++)
-		{
-			float x = stream->readTwip();
-			float y = stream->readTwip();
-
-			int idx = *pointsOffset + i;
-
-			vertices[*pointsOffset + i].x = x;
-			vertices[*pointsOffset + i].y = y;
-		}
-
-		for (int i = 0; i < m_pointsCount; i++)
-		{
-			float u = stream->readUInt16();
-			float v = stream->readUInt16();
-
-			if (m_normalized) {
-				u = u / 0xFFFF;
-				v = v / 0xFFFF;
-			}
-
-			vertices[*pointsOffset + i].u = u;
-			vertices[*pointsOffset + i].v = v;
-		}
-
-#ifdef SC_DEBUG
-		printf("Texture index: %u. Points count: %u.\n", m_textureIndex, m_pointsCount);
-#ifdef DEEP_SC_DEBUG
-		for (int i = 0; m_pointsCount > i; i++) {
-			printf("		{\n		\"vert\":[%f,%f],\n		\"texcoord\":[%f,%f]\n		}\n", vertices[*pointsOffset + i].x, vertices[*pointsOffset + i].y, vertices[*pointsOffset + i].u, vertices[*pointsOffset + i].v);
-		}
-#endif // DEEP_SC_DEBUG
-
-#endif // SC_DEBUG
-
-		* pointsOffset += m_pointsCount;
-	}
-	uint16_t ShapeDrawBitmapCommand::getTag()
-	{
-		return m_normalized ? (m_rectangle ? 4 : 22) : 17;
 	}
 }
