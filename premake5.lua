@@ -8,10 +8,11 @@ workspace "SupercellSWF"
         "Release"
     }
 	
-    startproject "SupercellSWF"
+    startproject "SupercellEditor"
 
 
 include "SupercellCompression"
-include "SupercellCompressionCli"
-include "SupercellSWF"
-include "SupercellSWF_Test"
+-- include "SupercellCompressionCli"
+include "SupercellFlash"
+-- include "SupercellSWF_Test"
+include "SupercellEditor"
