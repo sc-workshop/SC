@@ -1,4 +1,5 @@
 
+include "dependencies.lua"
 
 workspace "SupercellSWF"
     architecture "x86_64"
@@ -10,9 +11,20 @@ workspace "SupercellSWF"
 	
     startproject "SupercellEditor"
 
+OutputDir = "%{wks.location}/build/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}"
+InterDir = "%{wks.location}/build/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}"
 
-include "SupercellCompression"
--- include "SupercellCompressionCli"
-include "SupercellFlash"
--- include "SupercellSWF_Test"
-include "SupercellEditor"
+group "Dependencies"
+    include "external/LZMA"
+    include "external/LZHAM"
+    include "external/Zstandard"
+    include "external/GLFW"
+    include "external/GLAD"
+    include "external/ImGui"
+group ""
+
+group "Tool"
+    include "SupercellCompression"
+    include "SupercellFlash"
+    include "SupercellEditor"
+group ""

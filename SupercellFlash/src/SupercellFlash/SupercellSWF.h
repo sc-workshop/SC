@@ -15,6 +15,10 @@
 #include "SupercellFlash/tag/MatrixBank.h"
 #include "SupercellFlash/tag/MovieClipModifier.h"
 
+#include "SupercellFlash/common/TagMap.h"
+
+#define MATRIX_BANKS_MAX_COUNT 255
+
 namespace sc
 {
 	class SupercellSWF

@@ -4,6 +4,8 @@
 
 namespace sc
 {
+	class SupercellSWF;
+
 	struct ColorTransform
 	{
 		uint8_t redAdd = 0;
@@ -14,5 +16,7 @@ namespace sc
 		float redMul = 1.0f;
 		float greenMul = 1.0f;
 		float blueMul = 1.0f;
+
+		void load(SupercellSWF* swf);
 	};
 }

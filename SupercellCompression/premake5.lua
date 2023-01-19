@@ -5,8 +5,8 @@ project "SupercellCompression"
     language "C++"
     cppdialect "C++17"
 
-    targetdir "%{wks.location}/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
-    objdir "%{wks.location}/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
+    targetdir "%{OutputDir}/%{prj.name}"
+    objdir "%{InterDir}/%{prj.name}"
 
     files {
         "src/**.h",
@@ -17,9 +17,9 @@ project "SupercellCompression"
     includedirs {
         "src",
         
-        "external/LZMA/include",
-        "external/LZHAM/include",
-        "external/Zstandard/include"
+        "%{IncludeDir.LZMA}",
+        "%{IncludeDir.LZHAM}",
+        "%{IncludeDir.Zstandard}"
 	}
 	
 	links {
@@ -47,8 +47,3 @@ project "SupercellCompression"
         }
 
         optimize "on"
-
-
-include "external/LZMA"
-include "external/LZHAM"
-include "external/Zstandard"

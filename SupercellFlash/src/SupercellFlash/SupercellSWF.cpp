@@ -1,4 +1,4 @@
-#include "SupercellSWF.h"
+#include "SupercellFlash/SupercellSWF.h"
 
 namespace sc
 {
@@ -99,71 +99,71 @@ namespace sc
 			if (tagLength < 0)
 				throw std::runtime_error("Negative tag length in .sc file");
 
-			if (tag == 0)
+			if (tag == TAG_END)
 				break;
 
 			switch (tag)
 			{
-			case 23:
+			case TAG_USE_LOW_RES_TEXTURE:
 				m_useLowResTexture = true;
 				break;
 
-			case 26:
+			case TAG_USE_EXTERNAL_TEXTURE:
 				useExternalTexture = true;
 				break;
 
-			case 30:
+			case TAG_USE_MULTI_RES_TEXTURE:
 				m_useMultiResTexture = true;
 				break;
 
-			case 32:
+			case TAG_TEXTURE_FILE_SUFFIXES:
 				m_multiResFileSuffix = readAscii();
 				m_lowResFileSuffix = readAscii();
 				break;
 
-			case 1:
-			case 16:
-			case 19:
-			case 24:
-			case 27:
-			case 28:
-			case 29:
-			case 34:
+			case TAG_TEXTURE:
+			case TAG_TEXTURE_2:
+			case TAG_TEXTURE_3:
+			case TAG_TEXTURE_4:
+			case TAG_TEXTURE_5:
+			case TAG_TEXTURE_6:
+			case TAG_TEXTURE_7:
+			case TAG_TEXTURE_8:
 				m_textures[texturesLoaded].load(this, tag, useExternalTexture);
 				texturesLoaded++;
 				break;
 
-			case 37:
+			case TAG_MOVIE_CLIP_MODIFIERS_COUNT:
 				m_movieClipModifiersCount = readUnsignedShort();
 				m_movieClipModifiers = new MovieClipModifier[m_movieClipModifiersCount];
 				break;
 
-			case 38:
-			case 39:
-			case 40:
+			case TAG_MOVIE_CLIP_MODIFIER:
+			case TAG_MOVIE_CLIP_MODIFIER_2:
+			case TAG_MOVIE_CLIP_MODIFIER_3:
 				m_movieClipModifiers[movieClipModifiersLoaded].load(this, tag);
 				movieClipModifiersLoaded++;
 				break;
 
-			case 2:
-			case 18:
+			case TAG_SHAPE:
+			case TAG_SHAPE_2:
 				m_shapes[shapesLoaded].load(this, tag);
 				shapesLoaded++;
 				break;
 
-			case 7:
-			case 15:
-			case 20:
-			case 21:
-			case 25:
-			case 33:
-			case 43:
-			case 44:
-				skip(tagLength); // TODO: TextField's loading
+			case TAG_TEXT_FIELD:
+			case TAG_TEXT_FIELD_2:
+			case TAG_TEXT_FIELD_3:
+			case TAG_TEXT_FIELD_4:
+			case TAG_TEXT_FIELD_5:
+			case TAG_TEXT_FIELD_6:
+			case TAG_TEXT_FIELD_7:
+			case TAG_TEXT_FIELD_8:
+				m_textFields[textFieldsLoaded].load(this, tag);
 				textFieldsLoaded++;
 				break;
 
-			case 42:
+			case TAG_MATRIX_BANK:
 				initMatrixBank(readUnsignedShort(), readUnsignedShort(), matrixBanksLoaded);
 
 				matricesLoaded = 0;
@@ -172,30 +172,22 @@ namespace sc
 				matrixBanksLoaded++;
 				break;
 
-			case 8:
-			case 36:
+			case TAG_MATRIX_2x3:
+			case TAG_MATRIX_2x3_2:
 				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].load(this, tag);
 				matricesLoaded++;
 				break;
 
-			case 9:
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].redAdd = readUnsignedByte();
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].greenAdd = readUnsignedByte();
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].blueAdd = readUnsignedByte();
-
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].alphaMul = (float)readUnsignedByte() / 255.0f;
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].redMul = (float)readUnsignedByte() / 255.0f;
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].greenMul = (float)readUnsignedByte() / 255.0f;
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].blueMul = (float)readUnsignedByte() / 255.0f;
-
+			case TAG_COLOR_TRANSFORM:
+				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].load(this);
 				colorTransformsLoaded++;
 				break;
 
-			case 3:
-			case 10:
-			case 12:
-			case 14:
-			case 35:
+			case TAG_MOVIE_CLIP:
+			case TAG_MOVIE_CLIP_2:
+			case TAG_MOVIE_CLIP_3:
+			case TAG_MOVIE_CLIP_4:
+			case TAG_MOVIE_CLIP_5:
 				m_movieClips[movieClipsLoaded].load(this, tag);
 				movieClipsLoaded++;
 				break;

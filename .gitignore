@@ -10,5 +10,4 @@
 *.vcxproj.user
 
 // Output files directories
-obj/
-bin/
+build/
