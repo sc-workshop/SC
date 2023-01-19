@@ -1,11 +1,11 @@
 #pragma once
 
-#include "SupercellFlash/SupercellSWF.h"
-
 #include "SupercellFlash/common/DisplayObject.h"
 
 namespace sc
 {
+	class SupercellSWF;
+
 	class TextField : public DisplayObject
 	{
 	public:

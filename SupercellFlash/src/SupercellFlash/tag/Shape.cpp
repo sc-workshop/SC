@@ -1,3 +1,4 @@
+#include "SupercellFlash/SupercellSWF.h"
 #include "SupercellFlash/tag/Shape.h"
 
 namespace sc

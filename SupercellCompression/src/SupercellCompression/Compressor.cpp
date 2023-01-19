@@ -3,15 +3,14 @@
 #include <cstdlib>
 #include <ctime>
 
-#include "SupercellCompression/Utils.h"
-#include "SupercellCompression/Signature.h"
-#include "SupercellCompression/Endian.h"
+#include "SupercellCompression/common/Utils.h"
+#include "SupercellCompression/common/Endian.h"
 
-#include "SupercellCompression/LzmaCompression.h"
-#include "SupercellCompression/ZstdCompression.h"
-#include "SupercellCompression/LzhamCompression.h"
+#include "SupercellCompression/backend/LzmaCompression.h"
+#include "SupercellCompression/backend/ZstdCompression.h"
+#include "SupercellCompression/backend/LzhamCompression.h"
 
-#include "SupercellCompression/ByteStream.hpp"
+#include "SupercellCompression/common/ByteStream.hpp"
 
 constexpr uint32_t ID_SIZE = 16;
 

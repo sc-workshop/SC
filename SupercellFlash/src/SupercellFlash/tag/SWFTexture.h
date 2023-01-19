@@ -1,9 +1,9 @@
 #pragma once
 
-#include "SupercellFlash/SupercellSWF.h"
-
 namespace sc
 {
+	class SupercellSWF;
+
 	class SWFTexture
 	{
 	public:

@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "Signature.h"
 #include "SupercellCompression/common/Utils.h"
 #include "SupercellCompression/common/ByteStream.hpp"
 

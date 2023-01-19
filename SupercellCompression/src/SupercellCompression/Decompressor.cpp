@@ -2,16 +2,15 @@
 
 #include <iostream>
 
-#include "SupercellCompression/Signature.h"
-#include "SupercellCompression/Cache.h"
-#include "SupercellCompression/Utils.h"
-#include "SupercellCompression/Endian.h"
+#include "SupercellCompression/cache/Cache.h"
+#include "SupercellCompression/common/Utils.h"
+#include "SupercellCompression/common/Endian.h"
 
-#include "SupercellCompression/LzmaCompression.h"
-#include "SupercellCompression/LzhamCompression.h"
-#include "SupercellCompression/ZstdCompression.h"
+#include "SupercellCompression/backend/LzmaCompression.h"
+#include "SupercellCompression/backend/LzhamCompression.h"
+#include "SupercellCompression/backend/ZstdCompression.h"
 
-#include "SupercellCompression/ByteStream.hpp"
+#include "SupercellCompression/common/ByteStream.hpp"
 
 namespace sc
 {

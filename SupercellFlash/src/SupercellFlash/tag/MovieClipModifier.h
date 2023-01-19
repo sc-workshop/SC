@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SupercellFlash/SupercellSWF.h"
-
 #include "SupercellFlash/common/DisplayObject.h"
 
 namespace sc
@@ -16,14 +15,9 @@ namespace sc
 			Unmasked,
 		};
 
-		void load(SupercellSWF* swf, uint8_t tag)
-		{
-			m_id = swf->readUnsignedShort();
-			
-			m_type = (Type)tag;
-		}
+		void load(SupercellSWF* swf, uint8_t tag);
 
-		Type getType() { return m_type; }
+		Type getType();
 
 	private:
 		Type m_type = Type::Mask;

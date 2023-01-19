@@ -1,3 +1,4 @@
+#include "SupercellFlash/SupercellSWF.h"
 #include "SupercellFlash/tag/TextField.h"
 
 namespace sc

@@ -164,10 +164,7 @@ namespace sc
 				break;
 
 			case 42:
-				uint16_t matricesCount = readUnsignedShort();
-				uint16_t colorTransformsCount = readUnsignedShort();
-
-				initMatrixBank(matricesCount, colorTransformsCount, matrixBanksLoaded);
+				initMatrixBank(readUnsignedShort(), readUnsignedShort(), matrixBanksLoaded);
 
 				matricesLoaded = 0;
 				colorTransformsLoaded = 0;
@@ -177,16 +174,7 @@ namespace sc
 
 			case 8:
 			case 36:
-				float divider = tag == 8 ? 1024.0f : 65535.0f;
-
-				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].a = (float)readInt() / divider;
-				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].b = (float)readInt() / divider;
-				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].c = (float)readInt() / divider;
-				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].d = (float)readInt() / divider;
-
-				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].tx = readTwip();
-				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].ty = readTwip();
-
+				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].load(this, tag);
 				matricesLoaded++;
 				break;
 

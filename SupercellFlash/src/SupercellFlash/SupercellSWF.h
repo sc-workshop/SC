@@ -24,10 +24,10 @@ namespace sc
 		~SupercellSWF();
 
 	public:
-		// we can make the SupercellSWF class inherit the ByteStream class, but I think this solution will be better (wrapping)
+		// we can make the SupercellSWF class inherit the ByteStream class, but I think this solution will be better (wrapping) (yea, wrap around wrap.)
 		uint8_t* read(uint32_t length)
 		{
-			uint8_t* result;
+			uint8_t* result = new unsigned char[length]();
 			m_buffer->read(result, length);
 			return result;
 		}

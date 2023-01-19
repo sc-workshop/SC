@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <string>
 
-#include "SupercellCompression/Signature.h"
+#include "Signature.h"
 
 #include "SupercellCompression/common/Utils.h"
 #include "SupercellCompression/common/ByteStream.hpp"
