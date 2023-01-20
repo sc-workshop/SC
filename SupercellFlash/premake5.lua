@@ -5,8 +5,8 @@ project "SupercellFlash"
     language "C++"
     cppdialect "C++17"
 
-    targetdir "%{OutputDir}/%{prj.name}"
-    objdir "%{InterDir}/%{prj.name}"
+    targetdir "%{OutputDir}/build/%{prj.name}"
+    objdir "%{InterDir}/build/%{prj.name}"
 
     files {
 		"src/**.cpp",

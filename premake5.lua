@@ -28,3 +28,7 @@ group "Tool"
     include "SupercellFlash"
     include "SupercellEditor"
 group ""
+
+group "Tool Testing"
+	include "SupercellFlashCli"
+	include "SupercellCompressionCli"	

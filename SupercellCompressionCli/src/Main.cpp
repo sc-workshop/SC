@@ -3,10 +3,7 @@
 #include <string>
 #include <chrono>
 
-#include "Decompressor.h"
-#include "Compressor.h"
-#include "Utils.h"
-#include "Signature.h"
+#include <SupercellCompression.h>
 
 #if defined _WIN32
 #define PLATFORM "Windows"
@@ -182,10 +179,10 @@ int main(int argc, char* argv[])
 			uint32_t inBufferSize = sc::Utils::fileSize(inFile);
 			std::vector<uint8_t> inBuffer(inBufferSize);
 			fread(inBuffer.data(), 1, inBufferSize, inFile);
-			sc::ScBufferStream inStream(&inBuffer);
+			sc::BufferStream inStream(&inBuffer);
 
 			std::vector<uint8_t> outBuffer;
-			sc::ScBufferStream outStream(&outBuffer);
+			sc::BufferStream outStream(&outBuffer);
 
 			res = sc::Decompressor::decompress(inStream, outStream);
 
@@ -201,8 +198,8 @@ int main(int argc, char* argv[])
 			fopen_s(&inFile, inFilepath.c_str(), "rb");
 			fopen_s(&outFile, outFilepath.c_str(), "wb");
 
-			sc::ScFileStream inStream = sc::ScFileStream(inFile);
-			sc::ScFileStream outStream = sc::ScFileStream(outFile);
+			sc::FileStream inStream = sc::FileStream(inFile);
+			sc::FileStream outStream = sc::FileStream(outFile);
 
 			sc::CompressedSwfProps headerInfo = sc::Decompressor::getHeader(inStream);
 

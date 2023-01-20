@@ -1,12 +1,12 @@
 
-project "SupercellSWF_Test"
+project "SupercellFlashCli"
     kind "ConsoleApp"
 
     language "C++"
     cppdialect "C++17"
 
-    targetdir "%{wks.location}/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
-    objdir "%{wks.location}/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
+    targetdir "%{wks.location}/build/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
+    objdir "%{wks.location}/build/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}/%{prj.name}"
 
     files {
         "src/**.cpp"
@@ -14,12 +14,12 @@ project "SupercellSWF_Test"
 
     includedirs {
         "src",
-		"%{wks.location}/SupercellSWF/src",
+		"%{wks.location}/SupercellFlash/src",
 		"%{wks.location}/SupercellCompression/src"
     }
 	
 	links {
-        "SupercellSWF",
+        "SupercellFlash",
 		"SupercellCompression"
     }
     
