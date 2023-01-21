@@ -6,7 +6,7 @@ project "GLFW"
 
 	language "C"
 
-    targetdir "%{OutputDir}/%{prj.name}"
+    targetdir "%{OutputDir}/Deps/%{prj.name}"
     objdir "%{InterDir}/%{prj.name}"
 
 	files {

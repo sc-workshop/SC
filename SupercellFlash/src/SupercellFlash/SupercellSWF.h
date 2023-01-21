@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 #include <SupercellCompression.h>
 
@@ -72,10 +73,10 @@ namespace sc
 		bool loadInternal(const std::string& filePath, bool isTexture);
 		bool loadTags();
 
-		void initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount, uint8_t matrixBanksLoaded);
+		void initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount);
 
 	private:
-		BinaryStream* m_buffer;
+		BinaryStream* m_buffer = nullptr;
 
 		int m_shapesCount = 0;
 		int m_movieClipsCount = 0;
@@ -84,14 +85,14 @@ namespace sc
 		int m_movieClipModifiersCount = 0;
 		int m_exportsCount = 0;
 
-		Shape* m_shapes;
-		MovieClip* m_movieClips;
-		SWFTexture* m_textures;
-		TextField* m_textFields;
-		MatrixBank* m_matrixBanks;
-		MovieClipModifier* m_movieClipModifiers;
+		std::vector<SWFTexture> m_textures;
+		std::vector<Shape> m_shapes;
+		std::vector<MovieClip> m_movieClips;
+		std::vector<TextField> m_textFields;
+		std::vector<MatrixBank> m_matrixBanks;
+		std::vector<MovieClipModifier> m_movieClipModifiers;
 
-		Export* m_exports;
+		std::vector<Export> m_exports;
 
 		bool m_useMultiResTexture = false;
 		bool m_useLowResTexture = false;

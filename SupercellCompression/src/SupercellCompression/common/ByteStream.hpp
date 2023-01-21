@@ -217,10 +217,13 @@ namespace sc
 	// Implementation for file binary stream
 	class FileStream : public BinaryStream {
 	public:
-		explicit FileStream(FILE* file) : file(file) { }
+		explicit FileStream(FILE* file) : file(file) { 
+			fileSize = Utils::fileSize(file);
+		}
 
 	private:
 		FILE* file;
+		uint32_t fileSize = 0;
 		uint32_t readEofOffset = 0;
 
 	public:
@@ -238,12 +241,14 @@ namespace sc
 
 		size_t write(void* buff, size_t buffSize) override
 		{
-			return fwrite(
+			size_t result = fwrite(
 				buff,
 				1,
 				buffSize,
 				file
 			);
+			fileSize += static_cast<uint32_t>(result);
+			return result;
 		};
 
 		uint32_t tell() override
@@ -258,7 +263,7 @@ namespace sc
 
 		uint32_t size() override
 		{
-			return Utils::fileSize(file) - readEofOffset;
+			return fileSize - readEofOffset;
 		};
 
 		bool eof() override
@@ -267,7 +272,8 @@ namespace sc
 		};
 
 		void setEof(uint32_t pos) override {
-			readEofOffset = pos;
+			if (fileSize >= pos)
+				readEofOffset = pos;
 		};
 
 		void close() override {
@@ -281,7 +287,7 @@ namespace sc
 		explicit BufferStream(std::vector<uint8_t>* buffer) : buffer(buffer) { }
 
 	private:
-		std::vector<uint8_t>* buffer; // FIXME: Why is this pointer??
+		std::vector<uint8_t>* buffer; // FIXME: Why is this pointer?? // because it can be easily used in the future. there is no need to create additional functions.
 
 		size_t position = 0;
 		size_t readEofOffset = 0;

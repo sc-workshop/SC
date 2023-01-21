@@ -5,7 +5,7 @@ project "LZHAM"
     language "C++"
 	cppdialect "C++14"
 
-    targetdir "%{OutputDir}/%{prj.name}"
+    targetdir "%{OutputDir}/Deps/%{prj.name}"
     objdir "%{InterDir}/%{prj.name}"
 
     files {

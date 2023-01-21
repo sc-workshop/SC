@@ -5,7 +5,7 @@ project "ImGui"
 	language "C++"
     cppdialect "C++17"
 
-    targetdir "%{OutputDir}/%{prj.name}"
+    targetdir "%{OutputDir}/Deps/%{prj.name}"
     objdir "%{InterDir}/%{prj.name}"
 
 	files {

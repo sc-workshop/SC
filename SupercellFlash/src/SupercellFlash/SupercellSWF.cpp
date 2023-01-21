@@ -35,34 +35,36 @@ namespace sc
 			throw std::runtime_error("Failed to open .sc file");
 		}
 
-		m_buffer = new FileStream(file);
+		std::vector<uint8_t> fileBuffer(Utils::fileSize(file));
+		fread(fileBuffer.data(), 1, fileBuffer.size(), file);
+		fclose(file);
+
+		m_buffer = new BufferStream(&fileBuffer);
 
 		// Reading .sc file
 		if (!isTexture)
 		{
 			m_shapesCount = readUnsignedShort();
-			m_shapes = new Shape[m_shapesCount];
+			m_shapes = std::vector<Shape>(m_shapesCount);
 
 			m_movieClipsCount = readUnsignedShort();
-			m_movieClips = new MovieClip[m_movieClipsCount];
+			m_movieClips = std::vector<MovieClip>(m_movieClipsCount);
 
 			m_texturesCount = readUnsignedShort();
-			m_textures = new SWFTexture[m_texturesCount];
+			m_textures = std::vector<SWFTexture>(m_texturesCount);
 
 			m_textFieldsCount = readUnsignedShort();
-			m_textFields = new TextField[m_textFieldsCount];
-
-			// TODO: rework it, maybe return to std::vector's
-			m_matrixBanks = new MatrixBank[255];
+			m_textFields = std::vector<TextField>(m_textFieldsCount);
 
 			uint16_t matricesCount = readUnsignedShort();
 			uint16_t colorTransformsCount = readUnsignedShort();
-			initMatrixBank(matricesCount, colorTransformsCount, 0);
+			m_matrixBanks = std::vector<MatrixBank>(0);
+			initMatrixBank(matricesCount, colorTransformsCount);
 
 			skip(5); // unused
 
 			m_exportsCount = readUnsignedShort();
-			m_exports = new Export[m_exportsCount];
+			m_exports = std::vector<Export>(m_exportsCount);
 
 			for (uint16_t i = 0; i < m_exportsCount; i++)
 			{
@@ -135,7 +137,7 @@ namespace sc
 
 			case TAG_MOVIE_CLIP_MODIFIERS_COUNT:
 				m_movieClipModifiersCount = readUnsignedShort();
-				m_movieClipModifiers = new MovieClipModifier[m_movieClipModifiersCount];
+				m_movieClipModifiers = std::vector<MovieClipModifier>(m_movieClipModifiersCount);//new MovieClipModifier[m_movieClipModifiersCount];
 				break;
 
 			case TAG_MOVIE_CLIP_MODIFIER:
@@ -164,12 +166,14 @@ namespace sc
 				break;
 
 			case TAG_MATRIX_BANK:
-				initMatrixBank(readUnsignedShort(), readUnsignedShort(), matrixBanksLoaded);
-
 				matricesLoaded = 0;
 				colorTransformsLoaded = 0;
-
 				matrixBanksLoaded++;
+				{
+				uint16_t matrixCount = readUnsignedShort();
+				uint16_t colorTransformCount = readUnsignedShort();
+				initMatrixBank(matrixCount, colorTransformCount);
+				}
 				break;
 
 			case TAG_MATRIX_2x3:
@@ -201,9 +205,11 @@ namespace sc
 		return useExternalTexture;
 	}
 
-	void SupercellSWF::initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount, uint8_t matrixBanksLoaded)
+	void SupercellSWF::initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount)
 	{
-		m_matrixBanks[matrixBanksLoaded].matrices = new Matrix2x3[matricesCount];
-		m_matrixBanks[matrixBanksLoaded].colorTransforms = new ColorTransform[colorTransformsCount];;
+		MatrixBank bank;
+		bank.matrices = std::vector<Matrix2x3>(matricesCount);
+		bank.colorTransforms = std::vector<ColorTransform>(colorTransformsCount);
+		m_matrixBanks.push_back(bank);
 	}
 }

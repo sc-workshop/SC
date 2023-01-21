@@ -48,12 +48,12 @@ namespace sc
 	private:
 		uint8_t m_frameRate = 24;
 
-		MovieClipFrameElement* m_frameElements;
-		DisplayObjectInstance* m_instances;
+		std::vector<MovieClipFrameElement> m_frameElements;
+		std::vector<DisplayObjectInstance> m_instances;
 
-		MovieClipFrame* m_frames;
+		std::vector<MovieClipFrame> m_frames;
 
-		ScalingGrid m_scalingGrid;
+		ScalingGrid* m_scalingGrid = nullptr;
 		uint8_t m_matrixBankIndex = 0;
 	};
 }

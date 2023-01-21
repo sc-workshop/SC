@@ -43,20 +43,6 @@ bool optionInCmd(int argc, char* argv[], const std::string& option) {
 	return false;
 }
 
-std::string string_to_hex(const std::string& input)
-{
-	static const char hex_digits[] = "0123456789ABCDEF";
-
-	std::string output;
-	output.reserve(input.length() * 2);
-	for (unsigned char c : input)
-	{
-		output.push_back(hex_digits[c >> 4]);
-		output.push_back(hex_digits[c & 15]);
-	}
-	return output;
-}
-
 void printUsage() {
 	printf("Usage: [mode] InputFilePath OutputFilePath options\n");
 	printf("Modes:\n");
@@ -96,9 +82,17 @@ void processFileInfo(sc::CompressedSwfProps info) {
 	printf("SCSWF compressed asset info:\n");
 
 	printf("Is .sc file : %s\n", info.ok ? "Yes" : "No");
-	printf("id : %s\n", string_to_hex(std::string(info.id, info.idSize)).c_str());
-	printf("Has metadata: %s\n", info.metadataSize != 0 ? "Yes" : "No");
-	printf("Has hash: %s\n", info.hashSize != 0 ? "Yes" : "No");
+
+	static const char hexDigits[] = "0123456789ABCDEF";
+	std::cout << "Id: ";
+	for (uint8_t c : info.id)
+	{
+		std::cout << hexDigits[c >> 4] << hexDigits[c & 15] << " ";
+	}
+	std::cout << std::endl;
+
+	printf("Has metadata: %s\n", info.metadata.empty() ? "Yes" : "No");
+	printf("Has hash: %s\n", info.hash.empty() ? "Yes" : "No");
 
 	std::string compressionMethod = "NONE";
 	switch (info.signature)
@@ -156,7 +150,7 @@ int main(int argc, char* argv[])
 	using std::chrono::milliseconds;
 	using std::chrono::seconds;
 
-	auto startTime = high_resolution_clock::now();
+	std::chrono::time_point startTime = high_resolution_clock::now();
 
 	if (mode == "d") {
 		sc::CompressorError res;
@@ -237,7 +231,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	auto endTime = high_resolution_clock::now();
+	std::chrono::time_point endTime = high_resolution_clock::now();
 	std::cout << "[INFO] Operation took: ";
 
 	milliseconds msTime = duration_cast<milliseconds>(endTime - startTime);

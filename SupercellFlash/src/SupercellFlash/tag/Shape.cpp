@@ -8,7 +8,7 @@ namespace sc
 		m_textureIndex = swf->readUnsignedByte();
 
 		uint8_t pointsCount = tag == 4 ? 4 : swf->readUnsignedByte();
-		m_vertices = new ShapeDrawBitmapCommandVertex[pointsCount];
+		m_vertices = std::vector<ShapeDrawBitmapCommandVertex>(pointsCount);
 
 		for (uint8_t i = 0; i < pointsCount; i++)
 		{
@@ -28,7 +28,7 @@ namespace sc
 		m_id = swf->readUnsignedShort();
 
 		uint16_t m_commandsCount = swf->readUnsignedShort();
-		m_commands = new ShapeDrawBitmapCommand[m_commandsCount];
+		m_commands = std::vector<ShapeDrawBitmapCommand>(m_commandsCount);
 
 		if (tag == 18)
 			swf->readUnsignedShort(); // total vertices count

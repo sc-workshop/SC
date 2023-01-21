@@ -5,7 +5,7 @@ project "GLAD"
     language "C"
     staticruntime "off"
     
-    targetdir "%{OutputDir}/%{prj.name}"
+    targetdir "%{OutputDir}/Deps/%{prj.name}"
     objdir "%{InterDir}/%{prj.name}"
 
     files

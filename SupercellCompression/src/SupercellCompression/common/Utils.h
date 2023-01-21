@@ -3,7 +3,7 @@
 #include <cstdlib>
 
 #include <string>
-#include <sstream>
+#include <vector>
 
 #include "SupercellCompression/common/Endian.h"
 
@@ -30,22 +30,19 @@ namespace sc
 		// I think ID is a more appropriate name for this.
 		// It may look like a hash, but it's definitely not it, at least because any data from the file does not fit it. 
 		// And also confirmation of this guess can be the fact that the length of this alleged hash can be any, I think, for example, if there are a lot of files and it is difficult to generate a unique ID.
-		char* id{};
-		uint32_t idSize{0};
-
-		// Metadata from version 4
-		char* metadata{};
-		uint32_t metadataSize{0};
+		std::vector<uint8_t> id;
 
 		// Compress signature
-		uint32_t signature{0};
+		uint32_t signature = 0;
+
+		// Metadata from version 4
+		std::vector<uint8_t> metadata;
 
 		// Hash from SIG
-		char* hash{};
-		uint32_t hashSize{ 64 };
+		std::vector<uint8_t> hash;
 
 		// Positive if data is real sc file
-		bool ok{false};
+		bool ok = false;
 	};
 
 	// Error enums

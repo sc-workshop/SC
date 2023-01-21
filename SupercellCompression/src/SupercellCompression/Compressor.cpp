@@ -30,13 +30,12 @@ namespace sc
 		FileStream outputStream = FileStream(outFile);
 
 		CompressedSwfProps header;
-		header.idSize = ID_SIZE;
-		header.id = new char[header.idSize]();
+		header.id = std::vector<uint8_t>(ID_SIZE);
 
 		srand(static_cast<uint32_t>(time(NULL)));
-		for (uint32_t i = 0; header.idSize > i; i++)
+		for (uint32_t i = 0; ID_SIZE > i; i++)
 		{
-			header.id[i] = rand() % 253 + (-126);
+			header.id[i] = 1 + (rand() % 253);
 		}
 
 		header.signature = (uint32_t)signature;
@@ -55,7 +54,7 @@ namespace sc
 		uint32_t scMagic = 0x53430000;
 		outStream.writeUInt32BE(scMagic);
 
-		if (header.metadataSize > 0)
+		if (!header.metadata.empty())
 		{
 			outStream.writeUInt16BE(4);
 			outStream.writeUInt32BE(header.signature);
@@ -77,16 +76,16 @@ namespace sc
 			}
 		}
 
-		outStream.writeUInt32BE(header.idSize);
-		outStream.write(header.id, header.idSize);
+		outStream.writeUInt32BE(static_cast<uint32_t>(header.id.size()));
+		outStream.write(header.id.data(), header.id.size());
 
 		CompressorError res = commonCompress(inStream, outStream, header.signature);
 
-		if (header.metadataSize > 0)
+		if (!header.metadata.empty())
 		{
 			outStream.write("START", 5);
-			outStream.write(&header.metadata, header.metadataSize);
-			outStream.writeUInt32(header.metadataSize);
+			outStream.write(&header.metadata, header.metadata.size());
+			outStream.writeUInt32(static_cast<uint32_t>(header.metadata.size()));
 		}
 
 		return res;

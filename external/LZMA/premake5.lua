@@ -4,7 +4,7 @@ project "LZMA"
 
     language "C"
 
-    targetdir "%{OutputDir}/%{prj.name}"
+    targetdir "%{OutputDir}/Deps/%{prj.name}"
     objdir "%{InterDir}/%{prj.name}"
 
     files {

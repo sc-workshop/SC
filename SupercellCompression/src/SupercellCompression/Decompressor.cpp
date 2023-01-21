@@ -35,6 +35,7 @@ namespace sc
 		CompressedSwfProps header = getHeader(inputSteam);
 		if (!header.ok)
 		{
+			fclose(inFile);
 			return CompressorError::WRONG_FILE_ERROR;
 		}
 
@@ -109,7 +110,7 @@ namespace sc
 	}
 
 	CompressorError Decompressor::decompress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps header) {
-		inStream.setEof(static_cast<__int64>(header.metadataSize) + header.metadataSize != 0 ? 9 : 0);
+		inStream.setEof(header.metadata.empty() ? 0 : header.metadata.size() + 9);
 
 		CompressorError res = commonDecompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
 
@@ -137,10 +138,8 @@ namespace sc
 		uint16_t version = inputSteam.readUInt16BE();
 
 		CompressionSignature signature = CompressionSignature::NONE;
-		char* metadata{};
-		uint32_t metadataSize = 0;
-		char* hash{};
-		uint32_t hashSize = 0;
+		std::vector<uint8_t> metadata;
+		std::vector<uint8_t> hash;
 
 		if (version == 3)
 		{
@@ -151,30 +150,30 @@ namespace sc
 			signature = static_cast<CompressionSignature>(inputSteam.readUInt32BE());
 
 			// Metadata processing
-			size_t origPos = inputSteam.tell();
+			size_t compressedDataStartPosition = inputSteam.tell();
 			inputSteam.set(static_cast<uint32_t>(inputSteam.size()) - 4);
-			metadataSize = inputSteam.readUInt32BE();
+			uint32_t metadataSize = inputSteam.readUInt32BE();
 
-			metadata = new char[metadataSize]();
+			metadata = std::vector<uint8_t>(metadataSize);
 			inputSteam.set(static_cast<uint32_t>(inputSteam.size() - (metadataSize + 4)));
-			inputSteam.read(metadata, metadataSize);
+			inputSteam.read(metadata.data(), metadataSize);
 
-			inputSteam.set(static_cast<uint32_t>(origPos));
+			inputSteam.set(static_cast<uint32_t>(compressedDataStartPosition));
 		}
 
 		uint32_t idSize = inputSteam.readUInt32BE();
-		char* id = new char[idSize]();
-		inputSteam.read(id, idSize);
+		std::vector<uint8_t>id(idSize);
+		inputSteam.read(id.data(), idSize);
 
 		if (version == 1)
 		{
 			uint32_t compressMagic = inputSteam.readUInt32();
 
-			// Sig:
+			// Sig
 			if (compressMagic == 0x3A676953)
 			{
-				hashSize = 64;
-				inputSteam.read(hash, hashSize);
+				hash = std::vector<uint8_t>(64);
+				inputSteam.read(hash.data(), 64);
 				compressMagic = inputSteam.readUInt32();
 			}
 
@@ -183,6 +182,7 @@ namespace sc
 			{
 				signature = CompressionSignature::LZHAM;
 			}
+
 			// LZMA
 			else
 			{
@@ -194,16 +194,9 @@ namespace sc
 
 		CompressedSwfProps header = {
 			id,
-			idSize,
-
-			metadata,
-			metadataSize,
-
 			static_cast<uint32_t>(signature),
-
+			metadata,
 			hash,
-			hashSize,
-
 			magic == 0x53430000
 		};
 

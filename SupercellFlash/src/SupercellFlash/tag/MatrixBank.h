@@ -7,7 +7,7 @@ namespace sc
 {
 	struct MatrixBank
 	{
-		Matrix2x3* matrices;
-		ColorTransform* colorTransforms;
+		std::vector<Matrix2x3> matrices;
+		std::vector<ColorTransform> colorTransforms;
 	};
 }

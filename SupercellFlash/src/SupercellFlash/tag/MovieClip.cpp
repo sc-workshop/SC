@@ -15,13 +15,13 @@ namespace sc
 		m_frameRate = swf->readUnsignedByte();
 
 		uint16_t framesCount = swf->readUnsignedShort();
-		m_frames = new MovieClipFrame[framesCount];
+		m_frames = std::vector<MovieClipFrame>(framesCount);
 
 		if (tag == 3 || tag == 14)
 			throw std::runtime_error("TAG_MOVIE_CLIP and TAG_MOVIE_CLIP_4 is unsupported");
 
 		int32_t frameElementsCount = swf->readInt();
-		m_frameElements = new MovieClipFrameElement[frameElementsCount];
+		m_frameElements = std::vector<MovieClipFrameElement>(frameElementsCount);
 
 		for (int32_t i = 0; i < frameElementsCount; i++)
 		{
@@ -31,7 +31,7 @@ namespace sc
 		}
 
 		uint16_t instancesCount = swf->readUnsignedShort();
-		m_instances = new DisplayObjectInstance[instancesCount];
+		m_instances = std::vector<DisplayObjectInstance>(instancesCount);
 
 		for (int16_t i = 0; i < instancesCount; i++)
 		{
@@ -71,10 +71,11 @@ namespace sc
 				break;
 
 			case 31:
-				m_scalingGrid.x = swf->readTwip();
-				m_scalingGrid.y = swf->readTwip();
-				m_scalingGrid.width = swf->readTwip();
-				m_scalingGrid.height = swf->readTwip();
+				m_scalingGrid = new ScalingGrid();
+				m_scalingGrid->x = swf->readTwip();
+				m_scalingGrid->y = swf->readTwip();
+				m_scalingGrid->width = swf->readTwip();
+				m_scalingGrid->height = swf->readTwip();
 				break;
 
 			case 41:

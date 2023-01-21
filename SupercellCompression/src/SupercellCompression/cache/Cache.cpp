@@ -60,7 +60,7 @@ namespace sc {
 	}
 
 	// Check if file exists in swf TEMP folder
-	bool SwfCache::exist(const std::string& filepath, char* hash, uint32_t fileSize)
+	bool SwfCache::exist(const std::string& filepath, std::vector<uint8_t> hash, uint32_t fileSize)
 	{
 		fs::path tempDir = getTempPath();
 		fs::path file(filepath);
@@ -75,39 +75,34 @@ namespace sc {
 			return false;
 		}
 
-		char* infoFileHash = new char[0]();
 		uint32_t infoFileSize = 0;
+		std::vector<uint8_t> infoFileHash;
 		getData(filepath, infoFileHash, infoFileSize);
+		
+		if (infoFileSize != fileSize)
+			return false;
 
-		if (fileSize == infoFileSize)
-		{
-			for (uint32_t i = 0; infoFileHash[i] != '\0'; i++)
-			{
-				if (hash[i] != infoFileHash[i])
-					return false;
-			}
+		if (infoFileHash != hash)
+			return false;
 
-			return true;
-		}
-
-		return false;
+		return true;
 	}
 
 	// Gets data from info file in swf TEMP folder
-	void SwfCache::getData(const std::string& filepath, char* hash, uint32_t& fileSize)
+	void SwfCache::getData(const std::string& filepath, std::vector<uint8_t>& hash, uint32_t& fileSize)
 	{
 		const std::string infoFilePath = getInfoFilepath(filepath);
 		FILE* infoFile;
 		fopen_s(&infoFile, infoFilePath.c_str(), "rb");
+		if (!infoFile)
+			return;
 
-		char Char;
-		int count = 0;
+		uint8_t Char;
 		while (fread(&Char, sizeof(Char), 1, infoFile) != 0)
 		{
-			hash[count] = Char;
 			if (Char == '\0')
 				break;
-			count++;
+			hash.push_back(Char);
 		}
 
 		fread(&fileSize, sizeof(fileSize), 1, infoFile);
@@ -124,9 +119,8 @@ namespace sc {
 		if (!file)
 			return;
 
-		fwrite(header.id, header.idSize, 1, file);
-		const char nt[1]{};
-		fwrite(nt, sizeof(nt), 1, file);
+		fwrite(header.id.data(), header.id.size(), 1, file);
+		fwrite("\0", 1, 1, file);
 		fwrite(&fileSize, sizeof(fileSize), 1, file);
 
 		fclose(file);
