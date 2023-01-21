@@ -23,8 +23,15 @@ namespace sc
 			return CompressorError::WRONG_FILE_ERROR;
 		}
 
-		FILE* inFile = fopen(inputFilepath.c_str(), "rb");
-		FILE* outFile = fopen(outFilepath.c_str(), "wb");
+		FILE* inFile; 
+		fopen_s(&inFile, inputFilepath.c_str(), "rb");
+		if (!inFile)
+			return CompressorError::FILE_READ_ERROR;
+
+		FILE* outFile;
+		fopen_s(&outFile, outFilepath.c_str(), "rb");
+		if (!inFile)
+			return CompressorError::FILE_READ_ERROR;
 
 		FileStream inputStream = FileStream(inFile);
 		FileStream outputStream = FileStream(outFile);
@@ -79,7 +86,7 @@ namespace sc
 		outStream.writeUInt32BE(static_cast<uint32_t>(header.id.size()));
 		outStream.write(header.id.data(), header.id.size());
 
-		CompressorError res = commonCompress(inStream, outStream, header.signature);
+		CompressorError res = commonCompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
 
 		if (!header.metadata.empty())
 		{
@@ -91,10 +98,10 @@ namespace sc
 		return res;
 	}
 
-	CompressorError Compressor::commonCompress(BinaryStream& inStream, BinaryStream& outStream, uint32_t signatureIndex)
+	CompressorError Compressor::commonCompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature)
 	{
-		CompressionError res = CompressionError::OK;
-		switch ((CompressionSignature)signatureIndex)
+		CompressionError res;
+		switch (signature)
 		{
 		case CompressionSignature::LZMA:
 			res = LZMA::compress(inStream, outStream);
@@ -114,6 +121,7 @@ namespace sc
 			inStream.read(dataBuffer, size);
 			outStream.write(dataBuffer, size);
 			free(dataBuffer);
+			res = CompressionError::OK;
 			break;
 		}
 

@@ -81,8 +81,6 @@ void processCompressorErrs(sc::CompressorError res) {
 void processFileInfo(sc::CompressedSwfProps info) {
 	printf("SCSWF compressed asset info:\n");
 
-	printf("Is .sc file : %s\n", info.ok ? "Yes" : "No");
-
 	static const char hexDigits[] = "0123456789ABCDEF";
 	std::cout << "Id: ";
 	for (uint8_t c : info.id)
