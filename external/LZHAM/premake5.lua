@@ -5,8 +5,8 @@ project "LZHAM"
     language "C++"
 	cppdialect "C++14"
 
-    targetdir "%{OutputDir}/Deps/%{prj.name}"
-    objdir "%{InterDir}/%{prj.name}"
+    targetdir "%{OutputDepsDir}/%{prj.name}"
+    objdir "%{InterDepsDir}/%{prj.name}"
 
     files {
         "src/**.h",

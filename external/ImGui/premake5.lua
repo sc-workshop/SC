@@ -5,8 +5,8 @@ project "ImGui"
 	language "C++"
     cppdialect "C++17"
 
-    targetdir "%{OutputDir}/Deps/%{prj.name}"
-    objdir "%{InterDir}/%{prj.name}"
+    targetdir "%{OutputDepsDir}/%{prj.name}"
+    objdir "%{InterDepsDir}/%{prj.name}"
 
 	files {
 		"imconfig.h",

@@ -5,8 +5,8 @@ project "SupercellEditor"
     language "C++"
     cppdialect "C++17"
 
-    targetdir "%{OutputDir}/Tools/%{prj.name}"
-    objdir "%{InterDir}/%{prj.name}"
+    targetdir "%{OutputToolsDir}/%{prj.name}"
+    objdir "%{InterToolsDir}/%{prj.name}"
 
     files {
         "src/**.h",

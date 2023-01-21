@@ -14,6 +14,15 @@ workspace "SupercellSWF"
 OutputDir = "%{wks.location}/build/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}"
 InterDir = "%{wks.location}/build/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}"
 
+OutputDepsDir = "%{OutputDir}/dependencies"
+InterDepsDir = "%{InterDir}/dependencies"
+
+OutputLibsDir = "%{OutputDir}/libraries"
+InterLibsDir = "%{InterDir}/libraries"
+
+OutputToolsDir = "%{OutputDir}/tools"
+InterToolsDir = "%{InterDir}/tools"
+
 group "Dependencies"
     include "external/LZMA"
     include "external/LZHAM"
