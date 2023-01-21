@@ -12,19 +12,24 @@ namespace sc
 	{
 	public:
 		/*
-		* Compresses a file at given path and with given compression signature
+		* Compress .sc file.
 		*/
 		static CompressorError compress(const std::string& inputFilepath, std::string outFilepath, CompressionSignature signature);
 
 		/*
-		* Compresses a filedata from input stream to out stream with given compression signature
+		* Compress .sc file data from stream.
 		*/
-		static CompressorError commonCompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature);
+		static CompressorError compress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature);
 
 		/*
-		* Compresses a filedata from input stream to out stream with given header setting
+		* Compress .sc file with header properties.
 		*/
 		static CompressorError compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header);
+
+		/*
+		* Compress common file data.
+		*/
+		static CompressorError commonCompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature);
 
 	};
 }

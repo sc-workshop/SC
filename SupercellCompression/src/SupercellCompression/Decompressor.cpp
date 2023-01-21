@@ -14,7 +14,6 @@
 
 namespace sc
 {
-	// Decompress SC file
 	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath)
 	{
 		if (!Utils::endsWith(filepath, ".sc")) {

@@ -36,6 +36,16 @@ namespace sc
 		FileStream inputStream = FileStream(inFile);
 		FileStream outputStream = FileStream(outFile);
 
+		CompressorError res = compress(inputStream, outputStream, signature);
+
+		inputStream.close();
+		outputStream.close();
+
+		return res;
+	}
+
+	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature)
+	{
 		CompressedSwfProps header;
 		header.id = std::vector<uint8_t>(ID_SIZE);
 
@@ -47,12 +57,7 @@ namespace sc
 
 		header.signature = (uint32_t)signature;
 
-		CompressorError res = compress(inputStream, outputStream, header);
-
-		inputStream.close();
-		outputStream.close();
-
-		return res;
+		return compress(inStream, outStream, header);
 	}
 
 	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header)
