@@ -29,9 +29,9 @@ namespace sc
 			return CompressorError::FILE_READ_ERROR;
 
 		FILE* outFile;
-		fopen_s(&outFile, outFilepath.c_str(), "rb");
+		fopen_s(&outFile, outFilepath.c_str(), "wb");
 		if (!inFile)
-			return CompressorError::FILE_READ_ERROR;
+			return CompressorError::FILE_WRITE_ERROR;
 
 		FileStream inputStream = FileStream(inFile);
 		FileStream outputStream = FileStream(outFile);
