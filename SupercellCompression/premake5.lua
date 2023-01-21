@@ -5,8 +5,8 @@ project "SupercellCompression"
     language "C++"
     cppdialect "C++17"
 
-    targetdir "%{OutputDir}/Libs/%{prj.name}"
-    objdir "%{InterDir}/%{prj.name}"
+    targetdir "%{OutputLibsDir}/%{prj.name}"
+    objdir "%{InterLibsDir}/%{prj.name}"
 
     files {
         "src/**.h",

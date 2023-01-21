@@ -6,8 +6,8 @@ project "GLFW"
 
 	language "C"
 
-    targetdir "%{OutputDir}/Deps/%{prj.name}"
-    objdir "%{InterDir}/%{prj.name}"
+    targetdir "%{OutputDepsDir}/%{prj.name}"
+    objdir "%{InterDepsDir}/%{prj.name}"
 
 	files {
 		"include/GLFW/glfw3.h",
