@@ -96,8 +96,8 @@ namespace sc
 		if (!header.metadata.empty())
 		{
 			outStream.write("START", 5);
-			outStream.write(&header.metadata, header.metadata.size());
-			outStream.writeUInt32(static_cast<uint32_t>(header.metadata.size()));
+			outStream.write(header.metadata.data(), header.metadata.size());
+			outStream.writeUInt32BE(static_cast<uint32_t>(header.metadata.size()));
 		}
 
 		return res;
