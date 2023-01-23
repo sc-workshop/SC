@@ -66,8 +66,21 @@ namespace sc
 	public:
 		void load(const std::string& filePath);
 
+		/* Getters for class members */
 		bool useMultiResTexture() { return m_useMultiResTexture; }
 		bool useLowResTexture() { return m_useLowResTexture; }
+
+		std::string multiResFileSuffix() { return m_multiResFileSuffix; }
+		std::string lowResFileSuffix() { return m_lowResFileSuffix; }
+
+		std::vector<Export>* exports() { return &m_exports; }
+
+		/* Setters for class members */
+		void setUseMultiResTexture(bool status) { m_useMultiResTexture = status; }
+		void SetUseLowResTexture(bool status) { m_useLowResTexture = status; }
+
+		void setMultiResFileSuffix(std::string postfix) { m_multiResFileSuffix = postfix; }
+		void setLowResFileSuffix(std::string postfix) { m_lowResFileSuffix = postfix; }
 
 	private:
 		bool loadInternal(const std::string& filePath, bool isTexture);
@@ -97,7 +110,7 @@ namespace sc
 		bool m_useMultiResTexture = false;
 		bool m_useLowResTexture = false;
 
-		std::string m_multiResFileSuffix = "_highres";
-		std::string m_lowResFileSuffix = "_lowres";
+		std::string m_multiResFileSuffix = ""; // _highres
+		std::string m_lowResFileSuffix = ""; // _lowres
 	};
 }
