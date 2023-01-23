@@ -16,7 +16,7 @@ namespace sc
 		static bool fileExist(const std::string& path);
 		static std::string fileBaseName(const std::string& filepath);
 
-		static uint32_t Utils::fileSize(FILE* file);
+		static uint32_t fileSize(FILE* file);
 
 		static bool endsWith(const std::string& value, const std::string& ending);
 	};
@@ -32,17 +32,14 @@ namespace sc
 		// And also confirmation of this guess can be the fact that the length of this alleged hash can be any, I think, for example, if there are a lot of files and it is difficult to generate a unique ID.
 		std::vector<uint8_t> id;
 
-		// Compress signature
-		uint32_t signature = 0;
-
 		// Metadata from version 4
 		std::vector<uint8_t> metadata;
 
 		// Hash from SIG
 		std::vector<uint8_t> hash;
 
-		// Positive if data is real sc file
-		bool ok = false;
+		// Compress signature
+		uint32_t signature = 0;
 	};
 
 	// Error enums

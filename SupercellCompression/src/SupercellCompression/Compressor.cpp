@@ -24,11 +24,26 @@ namespace sc
 		}
 
 		FILE* inFile = fopen(inputFilepath.c_str(), "rb");
+		if (inFile == NULL)
+			return CompressorError::FILE_READ_ERROR;
+
 		FILE* outFile = fopen(outFilepath.c_str(), "wb");
+		if (inFile == NULL)
+			return CompressorError::FILE_WRITE_ERROR;
 
 		FileStream inputStream = FileStream(inFile);
 		FileStream outputStream = FileStream(outFile);
 
+		CompressorError res = compress(inputStream, outputStream, signature);
+
+		inputStream.close();
+		outputStream.close();
+
+		return res;
+	}
+
+	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature)
+	{
 		CompressedSwfProps header;
 		header.id = std::vector<uint8_t>(ID_SIZE);
 
@@ -40,12 +55,7 @@ namespace sc
 
 		header.signature = (uint32_t)signature;
 
-		CompressorError res = compress(inputStream, outputStream, header);
-
-		inputStream.close();
-		outputStream.close();
-
-		return res;
+		return compress(inStream, outStream, header);
 	}
 
 	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header)
@@ -79,22 +89,22 @@ namespace sc
 		outStream.writeUInt32BE(static_cast<uint32_t>(header.id.size()));
 		outStream.write(header.id.data(), header.id.size());
 
-		CompressorError res = commonCompress(inStream, outStream, header.signature);
+		CompressorError res = commonCompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
 
 		if (!header.metadata.empty())
 		{
-			outStream.write("START", 5);
-			outStream.write(&header.metadata, header.metadata.size());
-			outStream.writeUInt32(static_cast<uint32_t>(header.metadata.size()));
+			outStream.write(static_cast<void*>("START"), 5);
+			outStream.write(header.metadata.data(), header.metadata.size());
+			outStream.writeUInt32BE(static_cast<uint32_t>(header.metadata.size()));
 		}
 
 		return res;
 	}
 
-	CompressorError Compressor::commonCompress(BinaryStream& inStream, BinaryStream& outStream, uint32_t signatureIndex)
+	CompressorError Compressor::commonCompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature)
 	{
-		CompressionError res = CompressionError::OK;
-		switch ((CompressionSignature)signatureIndex)
+		CompressionError res;
+		switch (signature)
 		{
 		case CompressionSignature::LZMA:
 			res = LZMA::compress(inStream, outStream);
@@ -114,6 +124,7 @@ namespace sc
 			inStream.read(dataBuffer, size);
 			outStream.write(dataBuffer, size);
 			free(dataBuffer);
+			res = CompressionError::OK;
 			break;
 		}
 

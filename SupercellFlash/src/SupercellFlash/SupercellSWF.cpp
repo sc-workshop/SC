@@ -28,9 +28,8 @@ namespace sc
 			throw std::runtime_error("Failed to decompress .sc file");
 		}
 
-		FILE* file;
-		fopen_s(&file, cachePath.c_str(), "rb");
-		if (!file)
+		FILE* file = fopen(cachePath.c_str(), "rb");
+		if (file == NULL)
 		{
 			throw std::runtime_error("Failed to open .sc file");
 		}

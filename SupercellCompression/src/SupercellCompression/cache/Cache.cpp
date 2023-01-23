@@ -92,9 +92,8 @@ namespace sc {
 	void SwfCache::getData(const std::string& filepath, std::vector<uint8_t>& hash, uint32_t& fileSize)
 	{
 		const std::string infoFilePath = getInfoFilepath(filepath);
-		FILE* infoFile;
-		fopen_s(&infoFile, infoFilePath.c_str(), "rb");
-		if (!infoFile)
+		FILE* infoFile = fopen(infoFilePath.c_str(), "rb");
+		if (infoFile == NULL)
 			return;
 
 		uint8_t Char;
@@ -114,9 +113,8 @@ namespace sc {
 	{
 		std::string infoFilePath = getInfoFilepath(filepath);
 
-		FILE* file;
-		fopen_s(&file, infoFilePath.c_str(), "wb");
-		if (!file)
+		FILE* file = fopen(infoFilePath.c_str(), "wb");
+		if (file == NULL)
 			return;
 
 		fwrite(header.id.data(), header.id.size(), 1, file);
