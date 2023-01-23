@@ -23,14 +23,12 @@ namespace sc
 			return CompressorError::WRONG_FILE_ERROR;
 		}
 
-		FILE* inFile; 
-		fopen_s(&inFile, inputFilepath.c_str(), "rb");
-		if (!inFile)
+		FILE* inFile = fopen(inputFilepath.c_str(), "rb");
+		if (inFile == NULL)
 			return CompressorError::FILE_READ_ERROR;
 
-		FILE* outFile;
-		fopen_s(&outFile, outFilepath.c_str(), "wb");
-		if (!inFile)
+		FILE* outFile = fopen(outFilepath.c_str(), "wb");
+		if (inFile == NULL)
 			return CompressorError::FILE_WRITE_ERROR;
 
 		FileStream inputStream = FileStream(inFile);
@@ -95,7 +93,7 @@ namespace sc
 
 		if (!header.metadata.empty())
 		{
-			outStream.write("START", 5);
+			outStream.write(static_cast<void*>("START"), 5);
 			outStream.write(header.metadata.data(), header.metadata.size());
 			outStream.writeUInt32BE(static_cast<uint32_t>(header.metadata.size()));
 		}

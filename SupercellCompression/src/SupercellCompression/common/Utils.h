@@ -16,7 +16,7 @@ namespace sc
 		static bool fileExist(const std::string& path);
 		static std::string fileBaseName(const std::string& filepath);
 
-		static uint32_t Utils::fileSize(FILE* file);
+		static uint32_t fileSize(FILE* file);
 
 		static bool endsWith(const std::string& value, const std::string& ending);
 	};

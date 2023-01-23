@@ -21,6 +21,8 @@ project "SupercellCompressionCli"
 	links {
         "SupercellCompression"
     }
+	
+	defines { "_CRT_SECURE_NO_WARNINGS" }
     
     filter "configurations:Debug"
         defines "SC_DEBUG"

@@ -157,13 +157,10 @@ int main(int argc, char* argv[])
 			res = sc::Decompressor::decompress(inFilepath, outFilepath);
 		}
 		else if (memoryStream) {
-			FILE* inFile;
-			FILE* outFile;
+			FILE* inFile = fopen(inFilepath.c_str(), "rb");
+			FILE* outFile = fopen(outFilepath.c_str(), "wb");
 
-			fopen_s(&inFile, inFilepath.c_str(), "rb");
-			fopen_s(&outFile, outFilepath.c_str(), "wb");
-
-			if (!inFile || !outFile) {
+			if (inFile == NULL || outFile == NULL) {
 				std::cout << "[ERROR] Failed to open files!" << std::endl;
 				return 0;
 			}
@@ -184,11 +181,13 @@ int main(int argc, char* argv[])
 			outStream.close();
 		}
 		else {
-			FILE* inFile;
-			FILE* outFile;
+			FILE* inFile = fopen(inFilepath.c_str(), "rb");
+			FILE* outFile = fopen(outFilepath.c_str(), "wb");
 
-			fopen_s(&inFile, inFilepath.c_str(), "rb");
-			fopen_s(&outFile, outFilepath.c_str(), "wb");
+			if (inFile == NULL || outFile == NULL) {
+				std::cout << "[ERROR] Failed to open files!" << std::endl;
+				return 0;
+			}
 
 			sc::FileStream inStream = sc::FileStream(inFile);
 			sc::FileStream outStream = sc::FileStream(outFile);

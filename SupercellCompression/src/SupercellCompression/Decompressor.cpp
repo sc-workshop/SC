@@ -23,9 +23,8 @@ namespace sc
 		if (!Utils::fileExist(filepath))
 			return CompressorError::FILE_READ_ERROR;
 
-		FILE* inFile;
-		fopen_s(&inFile, filepath.c_str(), "rb");
-		if (!inFile)
+		FILE* inFile = fopen(filepath.c_str(), "rb");
+		if (inFile == NULL)
 			return CompressorError::FILE_READ_ERROR;
 
 		FileStream inputSteam = FileStream(inFile);
@@ -40,9 +39,8 @@ namespace sc
 			return CompressorError::OK;
 		}
 
-		FILE* outFile;
-		fopen_s(&outFile, outFilepath.c_str(), "wb");
-		if (!outFile)
+		FILE* outFile = fopen(outFilepath.c_str(), "wb");
+		if (outFile == NULL)
 			return CompressorError::FILE_WRITE_ERROR;
 
 		FileStream outputStream = FileStream(outFile);
