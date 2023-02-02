@@ -29,8 +29,8 @@ namespace sc
 		const uint inBufferSize = LZHAM_COMP_INPUT_BUFFER_SIZE;
 		const uint outBufferSize = LZHAM_COMP_OUTPUT_BUFFER_SIZE;
 
-		uint8* inBuffer = static_cast<uint8*>(_aligned_malloc(inBufferSize, 16));
-		uint8* outBuffer = static_cast<uint8*>(_aligned_malloc(outBufferSize, 16));
+		uint8* inBuffer = static_cast<uint8*>(malloc(inBufferSize));
+		uint8* outBuffer = static_cast<uint8*>(malloc(outBufferSize));
 		if ((!inBuffer) || (!outBuffer))
 		{
 			return CompressionError::ALLOC_ERROR;
@@ -40,8 +40,6 @@ namespace sc
 
 		uint32_t inBufferPos = 0;
 		uint32_t inBufferOffset = 0;
-
-		uint64_t totalOutBytes = 0;
 
 		lzham_compress_params params;
 		memset(&params, 0, sizeof(params));
@@ -53,8 +51,8 @@ namespace sc
 
 		if (!lzhamState)
 		{
-			_aligned_free(inBuffer);
-			_aligned_free(outBuffer);
+			free(inBuffer);
+			free(outBuffer);
 			return CompressionError::INIT_ERROR;
 		}
 
@@ -71,8 +69,8 @@ namespace sc
 				inBufferPos = static_cast<uint>(my_min(inBufferSize, srcLeft));
 				if (inStream.read(inBuffer, inBufferPos) != inBufferPos)
 				{
-					_aligned_free(inBuffer);
-					_aligned_free(outBuffer);
+					free(inBuffer);
+					free(outBuffer);
 					lzham_compress_deinit(lzhamState);
 					return CompressionError::DATA_ERROR;
 				}
@@ -98,22 +96,20 @@ namespace sc
 			{
 				if (outStream.write(outBuffer, outBytesCount) != outBytesCount)
 				{
-					_aligned_free(inBuffer);
-					_aligned_free(outBuffer);
+					free(inBuffer);
+					free(outBuffer);
 					lzham_compress_deinit(lzhamState);
 					return CompressionError::DATA_ERROR;
 				}
-
-				totalOutBytes += outBytesCount;
 			}
 
 			if (status >= LZHAM_COMP_STATUS_FIRST_SUCCESS_OR_FAILURE_CODE)
 				break;
 		}
 
-		_aligned_free(inBuffer);
+		free(inBuffer);
 		inBuffer = NULL;
-		_aligned_free(outBuffer);
+		free(outBuffer);
 		outBuffer = NULL;
 
 		return CompressionError::OK;
@@ -134,16 +130,14 @@ namespace sc
 			return CompressionError::DATA_ERROR;
 		}
 
-		int total_header_bytes = static_cast<int>(inStream.tell());
-
 		const uint32_t inputBufferSize = LZHAM_DECOMP_INPUT_BUFFER_SIZE;
-		uint8* inputBuffer = static_cast<uint8*>(_aligned_malloc(inputBufferSize, 16));
+		uint8* inputBuffer = static_cast<uint8*>(malloc(inputBufferSize));
 
 		uint32_t outputBufferSize = LZHAM_DECOMP_OUTPUT_BUFFER_SIZE;
-		uint8* outputBuffer = static_cast<uint8*>(_aligned_malloc(outputBufferSize, 16));
+		uint8* outputBuffer = static_cast<uint8*>(malloc(outputBufferSize));
 		if (!outputBuffer)
 		{
-			_aligned_free(inputBuffer);
+			free(inputBuffer);
 			return CompressionError::ALLOC_ERROR;
 		}
 
@@ -162,8 +156,8 @@ namespace sc
 		lzham_decompress_state_ptr decompressState = lzham_decompress_init(&params);
 		if (!decompressState)
 		{
-			_aligned_free(inputBuffer);
-			_aligned_free(outputBuffer);
+			free(inputBuffer);
+			free(outputBuffer);
 			return CompressionError::INIT_ERROR;
 		}
 
@@ -175,8 +169,8 @@ namespace sc
 				decompressBufferSize = static_cast<uint>(inputBufferSize < inputLeft ? inputBufferSize : inputLeft);
 				if (inStream.read(inputBuffer, decompressBufferSize) != decompressBufferSize)
 				{
-					_aligned_free(inputBuffer);
-					_aligned_free(outputBuffer);
+					free(inputBuffer);
+					free(outputBuffer);
 					lzham_decompress_deinit(decompressState);
 					return CompressionError::DATA_ERROR;
 				}
@@ -202,16 +196,16 @@ namespace sc
 			{
 				if (outStream.write(outputBuffer, static_cast<uint>(outBytesCount)) != outBytesCount)
 				{
-					_aligned_free(inputBuffer);
-					_aligned_free(outputBuffer);
+					free(inputBuffer);
+					free(outputBuffer);
 					lzham_decompress_deinit(decompressState);
 					return CompressionError::DATA_ERROR;
 				}
 
 				if (outBytesCount > outputLeft)
 				{
-					_aligned_free(inputBuffer);
-					_aligned_free(outputBuffer);
+					free(inputBuffer);
+					free(outputBuffer);
 					lzham_decompress_deinit(decompressState);
 					return CompressionError::DATA_ERROR;
 				}
@@ -222,10 +216,10 @@ namespace sc
 				break;
 		}
 
-		_aligned_free(inputBuffer);
+		free(inputBuffer);
 		inputBuffer = NULL;
 
-		_aligned_free(outputBuffer);
+		free(outputBuffer);
 		outputBuffer = NULL;
 
 		lzham_decompress_deinit(decompressState);

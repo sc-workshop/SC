@@ -1,6 +1,8 @@
 #pragma once
 
+#include <Alloc.h>
 #include <LzmaDec.h>
+#include <LzmaEnc.h>
 
 #include "SupercellCompression/common/Utils.h"
 #include "SupercellCompression/common/ByteStream.hpp"

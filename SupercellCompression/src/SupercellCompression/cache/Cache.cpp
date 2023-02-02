@@ -35,15 +35,8 @@ namespace sc {
 
 		std::string filepath = path.string();
 
-		const char* cPath = filepath.c_str();
-		struct stat info;
-		if (stat(cPath, &info) != 0 || !(info.st_mode & S_IFDIR))
-		{
-			if (!fs::create_directory(filepath))
-			{
-				throw std::runtime_error("Failed to create cache folder!");
-				exit(1); // FIXME: I think exit() is bad practice, I think..
-			}
+		if (!fs::is_directory(path)) {
+			fs::create_directory(filepath);
 		}
 
 		return filepath;
@@ -78,7 +71,7 @@ namespace sc {
 		uint32_t infoFileSize = 0;
 		std::vector<uint8_t> infoFileHash;
 		getData(filepath, infoFileHash, infoFileSize);
-		
+
 		if (infoFileSize != fileSize)
 			return false;
 

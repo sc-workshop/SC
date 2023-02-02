@@ -1,9 +1,5 @@
 #include "SupercellCompression/backend/LzmaCompression.h"
 
-#include <Alloc.h>
-#include <LzmaEnc.h>
-#include <LzmaDec.h>
-
 #include "SupercellCompression/common/Utils.h"
 #include "SupercellCompression/common/ByteStream.hpp"
 
@@ -156,7 +152,7 @@ namespace sc
 			CSeqOutStreamWrap outWrap = {};
 			outWrap.vt.Write = LzmaStreamWrite;
 			outWrap.outStream = &outStream;
-			int status = LzmaEnc_Encode(enc, &outWrap.vt, &inWrap.vt, nullptr, &g_Alloc, &g_Alloc);
+			LzmaEnc_Encode(enc, &outWrap.vt, &inWrap.vt, nullptr, &g_Alloc, &g_Alloc);
 		}
 
 		LzmaEnc_Destroy(enc, &g_Alloc, &g_Alloc);

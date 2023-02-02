@@ -16,12 +16,12 @@ namespace sc
 		/**
 		 * Decompress file and then store it in cache, without need to decompress in the future.
 		 */
-		static CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath);
+		static CompressorError decompress(std::string filepath, std::string& outFilepath);
 
 		/**
 		 * Decompress file from stream.
 		 */
-		static CompressorError Decompressor::decompress(BinaryStream& inStream, BinaryStream& outStream);
+		static CompressorError decompress(BinaryStream& inStream, BinaryStream& outStream);
 
 		/**
 		 * Decompress file with header properties.

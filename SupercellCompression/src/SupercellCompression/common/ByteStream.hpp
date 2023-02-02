@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <cstring>
 
 #include "SupercellCompression/common/Utils.h"
 
@@ -306,7 +307,7 @@ namespace sc
 				toRead = dataSize;
 			}
 
-			memcpy(data, buffer->data() + position, toRead);
+			std::memcpy(data, buffer->data() + position, toRead);
 
 			position += toRead;
 			return toRead;
@@ -316,7 +317,7 @@ namespace sc
 		{
 			auto oldSize = buffer->size();
 			buffer->resize(oldSize + dataSize);
-			memcpy(&(*buffer)[oldSize], data, dataSize);
+			std::memcpy(&(*buffer)[oldSize], data, dataSize);
 
 			position += dataSize;
 

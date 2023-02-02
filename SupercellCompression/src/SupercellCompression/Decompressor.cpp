@@ -7,7 +7,7 @@
 #include "SupercellCompression/common/Endian.h"
 
 #include "SupercellCompression/backend/LzmaCompression.h"
-#include "SupercellCompression/backend/LzhamCompression.h"
+#include "SupercellCompression/backend/LzhamCompression.h" 
 #include "SupercellCompression/backend/ZstdCompression.h"
 
 #include "SupercellCompression/common/ByteStream.hpp"
@@ -100,7 +100,7 @@ namespace sc
 	}
 
 	CompressorError Decompressor::decompress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps header) {
-		inStream.setEof(header.metadata.empty() ? 0 : header.metadata.size() + 9);
+		inStream.setEof(static_cast<uint32_t>(header.metadata.empty() ? 0 : header.metadata.size() + 9));
 
 		CompressorError res = commonDecompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
 

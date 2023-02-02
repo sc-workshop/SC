@@ -93,7 +93,8 @@ namespace sc
 
 		if (!header.metadata.empty())
 		{
-			outStream.write(static_cast<void*>("START"), 5);
+			char* start = "START";
+			outStream.write(&start, 5);
 			outStream.write(header.metadata.data(), header.metadata.size());
 			outStream.writeUInt32BE(static_cast<uint32_t>(header.metadata.size()));
 		}
