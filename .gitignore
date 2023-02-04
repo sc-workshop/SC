@@ -1,13 +1,17 @@
 // Git Ignore file
 
+// Generator files
+premake/bin
+
 // Visual Studio directories
 .vs/
 
 // Visual Studio files
 *.sln
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
+*.vcxproj*
 
 // Output files directories
 build/
+
+// GMake files
+*Makefile

@@ -89,8 +89,8 @@ void processFileInfo(sc::CompressedSwfProps info) {
 	}
 	std::cout << std::endl;
 
-	printf("Has metadata: %s\n", info.metadata.empty() ? "Yes" : "No");
-	printf("Has hash: %s\n", info.hash.empty() ? "Yes" : "No");
+	printf("Has metadata: %s\n", !info.metadata.empty() ? "Yes" : "No");
+	printf("Has sign: %s\n", !info.sign.empty() ? "Yes" : "No");
 
 	std::string compressionMethod = "NONE";
 	switch (info.signature)
@@ -152,9 +152,10 @@ int main(int argc, char* argv[])
 
 	if (mode == "d") {
 		sc::CompressorError res;
-
+		
+		sc::CompressedSwfProps header;
 		if (enableCache) {
-			res = sc::Decompressor::decompress(inFilepath, outFilepath);
+			res = sc::Decompressor::decompress(inFilepath, outFilepath, &header);
 		}
 		else if (memoryStream) {
 			FILE* inFile = fopen(inFilepath.c_str(), "rb");
@@ -173,7 +174,9 @@ int main(int argc, char* argv[])
 			std::vector<uint8_t> outBuffer;
 			sc::BufferStream outStream(&outBuffer);
 
-			res = sc::Decompressor::decompress(inStream, outStream);
+			header = sc::Decompressor::getHeader(inStream);
+
+			res = sc::Decompressor::decompress(inStream, outStream, header);
 
 			fwrite(outBuffer.data(), 1, outBuffer.size(), outFile);
 
@@ -192,13 +195,12 @@ int main(int argc, char* argv[])
 			sc::FileStream inStream = sc::FileStream(inFile);
 			sc::FileStream outStream = sc::FileStream(outFile);
 
-			sc::CompressedSwfProps headerInfo = sc::Decompressor::getHeader(inStream);
+			header = sc::Decompressor::getHeader(inStream);
 
-			processFileInfo(headerInfo);
-
-			res = sc::Decompressor::decompress(inStream, outStream, headerInfo);
+			res = sc::Decompressor::decompress(inStream, outStream, header);
 		}
 
+		processFileInfo(header);
 		processCompressorErrs(res);
 		if (res == sc::CompressorError::OK) {
 			std::cout << outFilepath << std::endl;

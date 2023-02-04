@@ -201,8 +201,6 @@
 
    #define LZHAM_NOTE_UNUSED(x) (void)x
 #else
-   #warning Building as vanilla ANSI-C/C++, multi-threaded compression is disabled! Please configure lzhamdecomp/lzham_core.h.
-
    // --- Vanilla ANSI-C/C++
    // No threading support, unaligned loads are NOT okay, no atomic ops.
    #if defined(_WIN64) || defined(__MINGW64__) || defined(_LP64) || defined(__LP64__)

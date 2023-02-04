@@ -60,34 +60,39 @@ namespace sc
 
 	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header)
 	{
-		// SC header
 		uint32_t scMagic = 0x53430000;
-		outStream.writeUInt32BE(scMagic);
+		uint32_t signMagic = 0x3A676953;
 
-		if (!header.metadata.empty())
-		{
-			outStream.writeUInt16BE(4);
-			outStream.writeUInt32BE(header.signature);
+		if (header.sign.size() >= 64) {
+			outStream.writeUInt32BE(signMagic);
+			outStream.write(header.sign.data(), 64);
 		}
-		else
-		{
-			if (header.signature == (uint32_t)CompressionSignature::LZMA ||
-				header.signature == (uint32_t)CompressionSignature::LZHAM)
+		else if (!header.id.empty()) {
+			if (!header.metadata.empty())
 			{
-				outStream.writeUInt16BE(1);
-			}
-			else if (header.signature == (uint32_t)CompressionSignature::ZSTD)
-			{
-				outStream.writeUInt16BE(3);
+				outStream.writeUInt16BE(4);
+				outStream.writeUInt32BE(header.signature);
 			}
 			else
 			{
-				outStream.writeUInt16BE(2);
+				if (header.signature == (uint32_t)CompressionSignature::LZMA ||
+					header.signature == (uint32_t)CompressionSignature::LZHAM)
+				{
+					outStream.writeUInt16BE(1);
+				}
+				else if (header.signature == (uint32_t)CompressionSignature::ZSTD)
+				{
+					outStream.writeUInt16BE(3);
+				}
+				else
+				{
+					outStream.writeUInt16BE(2);
+				}
 			}
-		}
 
-		outStream.writeUInt32BE(static_cast<uint32_t>(header.id.size()));
-		outStream.write(header.id.data(), header.id.size());
+			outStream.writeUInt32BE(static_cast<uint32_t>(header.id.size()));
+			outStream.write(header.id.data(), header.id.size());
+		}
 
 		CompressorError res = commonCompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
 

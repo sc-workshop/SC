@@ -28,6 +28,48 @@ namespace sc
 		SupercellSWF();
 		~SupercellSWF();
 
+	// Vectors with objects
+	public:
+		std::vector<SWFTexture> textures;
+		std::vector<Shape> shapes;
+		std::vector<MovieClip> movieClips;
+		std::vector<TextField> textFields;
+		std::vector<MatrixBank> matrixBanks;
+		std::vector<MovieClipModifier> movieClipModifiers;
+		std::vector<Export> exports;
+
+	// Common class members
+	public:
+		CompressionSignature compression = CompressionSignature::NONE;
+
+	// Class functions
+	public:
+		void load(const std::string& filePath);
+
+		// some funny trics
+		void loadAsset(const std::string& filePath);
+
+	// Getters for class members
+	public:
+		bool useExternalTexture() { return m_useExternalTexture; }
+
+		bool useMultiResTexture() { return m_useMultiResTexture; }
+		bool useLowResTexture() { return m_useLowResTexture; }
+
+		std::string multiResFileSuffix() { return m_multiResFileSuffix; }
+		std::string lowResFileSuffix() { return m_lowResFileSuffix; }
+
+	// Setters for class members
+	public:
+		void setUseExternalTexture(bool status) { m_useExternalTexture = status; }
+
+		void setUseMultiResTexture(bool status) { m_useMultiResTexture = status; }
+		void SetUseLowResTexture(bool status) { m_useLowResTexture = status; }
+
+		void setMultiResFileSuffix(std::string postfix) { m_multiResFileSuffix = postfix; }
+		void setLowResFileSuffix(std::string postfix) { m_lowResFileSuffix = postfix; }
+	
+	// Helper functions
 	public:
 		// we can make the SupercellSWF class inherit the ByteStream class, but I think this solution will be better (wrapping) (yea, wrap around wrap.)
 		uint8_t* read(uint32_t length)
@@ -63,27 +105,8 @@ namespace sc
 
 		float readTwip() { return (float)readInt() * 0.05f; }
 
-	public:
-		void load(const std::string& filePath);
-
-		/* Getters for class members */
-		bool useMultiResTexture() { return m_useMultiResTexture; }
-		bool useLowResTexture() { return m_useLowResTexture; }
-
-		std::string multiResFileSuffix() { return m_multiResFileSuffix; }
-		std::string lowResFileSuffix() { return m_lowResFileSuffix; }
-
-		std::vector<Export>* exports() { return &m_exports; }
-
-		/* Setters for class members */
-		void setUseMultiResTexture(bool status) { m_useMultiResTexture = status; }
-		void SetUseLowResTexture(bool status) { m_useLowResTexture = status; }
-
-		void setMultiResFileSuffix(std::string postfix) { m_multiResFileSuffix = postfix; }
-		void setLowResFileSuffix(std::string postfix) { m_lowResFileSuffix = postfix; }
-
 	private:
-		bool loadInternal(const std::string& filePath, bool isTexture);
+		bool loadInternal(bool isTexture);
 		bool loadTags();
 
 		void initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount);
@@ -91,21 +114,7 @@ namespace sc
 	private:
 		BinaryStream* m_buffer = nullptr;
 
-		int m_shapesCount = 0;
-		int m_movieClipsCount = 0;
-		int m_texturesCount = 0;
-		int m_textFieldsCount = 0;
-		int m_movieClipModifiersCount = 0;
-		int m_exportsCount = 0;
-
-		std::vector<SWFTexture> m_textures;
-		std::vector<Shape> m_shapes;
-		std::vector<MovieClip> m_movieClips;
-		std::vector<TextField> m_textFields;
-		std::vector<MatrixBank> m_matrixBanks;
-		std::vector<MovieClipModifier> m_movieClipModifiers;
-
-		std::vector<Export> m_exports;
+		bool m_useExternalTexture = false;
 
 		bool m_useMultiResTexture = false;
 		bool m_useLowResTexture = false;

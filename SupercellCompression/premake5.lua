@@ -26,7 +26,7 @@ project "SupercellCompression"
         "LZMA",
 		"LZHAM",
 		"Zstandard"
-    }
+    } 
 	
 	defines { "_CRT_SECURE_NO_WARNINGS" }
 

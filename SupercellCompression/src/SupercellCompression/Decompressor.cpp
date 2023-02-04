@@ -14,7 +14,7 @@
 
 namespace sc
 {
-	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath)
+	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath, CompressedSwfProps *header)
 	{
 		if (!Utils::endsWith(filepath, ".sc")) {
 			return CompressorError::WRONG_FILE_ERROR;
@@ -30,10 +30,10 @@ namespace sc
 		FileStream inputSteam = FileStream(inFile);
 		uint32_t fileSize = Utils::fileSize(inFile);
 
-		CompressedSwfProps header = getHeader(inputSteam);
+		*header = getHeader(inputSteam);
 
 		outFilepath = SwfCache::getTempPath(filepath);
-		bool fileInCache = SwfCache::exist(filepath, header.id, fileSize);
+		bool fileInCache = SwfCache::exist(filepath, header->id, fileSize);
 		if (fileInCache)
 		{
 			return CompressorError::OK;
@@ -45,7 +45,7 @@ namespace sc
 
 		FileStream outputStream = FileStream(outFile);
 
-		CompressorError res = decompress(inputSteam, outputStream, header);
+		CompressorError res = decompress(inputSteam, outputStream, *header);
 
 		inputSteam.close();
 		outputStream.close();
@@ -53,7 +53,7 @@ namespace sc
 		if (res == CompressorError::OK && !fileInCache)
 		{
 #ifndef DISABLE_CACHE
-			SwfCache::addData(filepath, header, fileSize);
+			SwfCache::addData(filepath, *header, fileSize);
 #endif
 		}
 
@@ -76,12 +76,12 @@ namespace sc
 			res = LZMA::decompress(inStream, outStream);
 			break;
 
-		case CompressionSignature::ZSTD:
-			res = ZSTD::decompress(inStream, outStream);
-			break;
-
 		case CompressionSignature::LZHAM:
 			res = LZHAM::decompress(inStream, outStream);
+			break;
+
+		case CompressionSignature::ZSTD:
+			res = ZSTD::decompress(inStream, outStream);
 			break;
 
 		default:
@@ -115,7 +115,14 @@ namespace sc
 		inStream.read(&magic, sizeof(magic));
 		inStream.set(0);
 
-		CompressionSignature signature = getSignature(magic);
+		CompressionSignature signature;
+
+		if (magic == 0x3A676953) {
+			inStream.skip(64);
+			inStream.read(&magic, sizeof(magic));
+		}
+
+		signature = getSignature(magic);
 
 		return commonDecompress(inStream, outStream, signature);
 	}
@@ -125,6 +132,17 @@ namespace sc
 
 		// .sc file header
 		uint32_t magic = inputSteam.readUInt32BE();
+
+		switch (magic)
+		{
+		case 0x53430000: // SC
+			break;
+		case 0x3A676953: // SIGN (compressed csv)
+			inputSteam.read(header.sign.data(), 64);
+			return header;
+		default:
+			return header;
+		}
 
 		if (magic != 0x53430000)
 			return header;
@@ -163,8 +181,8 @@ namespace sc
 			// Sig
 			if (compressMagic == 0x3A676953)
 			{
-				header.hash = std::vector<uint8_t>(64);
-				inputSteam.read(header.hash.data(), 64);
+				header.sign = std::vector<uint8_t>(64);
+				inputSteam.read(header.sign.data(), 64);
 				compressMagic = inputSteam.readUInt32();
 			}
 

@@ -2,6 +2,7 @@
 // LZHAM is in the Public Domain. Please see the Public Domain declaration at the end of include/lzham.h
 #include "lzham_core.h"
 #include "lzham_prefix_coding.h"
+#include <cstdint>
 
 #ifdef LZHAM_BUILD_DEBUG
    //#define TEST_DECODER_TABLES

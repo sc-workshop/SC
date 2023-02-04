@@ -53,7 +53,7 @@ namespace sc {
 	}
 
 	// Check if file exists in swf TEMP folder
-	bool SwfCache::exist(const std::string& filepath, std::vector<uint8_t> hash, uint32_t fileSize)
+	bool SwfCache::exist(const std::string& filepath, std::vector<uint8_t> sign, uint32_t fileSize)
 	{
 		fs::path tempDir = getTempPath();
 		fs::path file(filepath);
@@ -75,14 +75,14 @@ namespace sc {
 		if (infoFileSize != fileSize)
 			return false;
 
-		if (infoFileHash != hash)
+		if (infoFileHash != sign)
 			return false;
 
 		return true;
 	}
 
 	// Gets data from info file in swf TEMP folder
-	void SwfCache::getData(const std::string& filepath, std::vector<uint8_t>& hash, uint32_t& fileSize)
+	void SwfCache::getData(const std::string& filepath, std::vector<uint8_t>& sign, uint32_t& fileSize)
 	{
 		const std::string infoFilePath = getInfoFilepath(filepath);
 		FILE* infoFile = fopen(infoFilePath.c_str(), "rb");
@@ -94,7 +94,7 @@ namespace sc {
 		{
 			if (Char == '\0')
 				break;
-			hash.push_back(Char);
+			sign.push_back(Char);
 		}
 
 		fread(&fileSize, sizeof(fileSize), 1, infoFile);

@@ -18,21 +18,18 @@ project "SupercellEditor"
         "src",
         
         "%{wks.location}/SupercellFlash/src",
-
-        "%{IncludeDir.GLFW}",
-        "%{IncludeDir.GLAD}",
+		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.GLAD}",
         "%{IncludeDir.ImGui}"
     }
 
     links {
         "SupercellFlash",
-
-        "GLFW",
-        "GLAD",
         "ImGui",
-
-        "opengl32.lib"
+		"GLFW",
+		"GLAD" 
     }
+			
 
     filter "configurations:Debug"
         defines { "SC_DEBUG" }

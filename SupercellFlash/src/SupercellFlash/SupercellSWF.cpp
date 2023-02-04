@@ -12,67 +12,73 @@ namespace sc
 
 	void SupercellSWF::load(const std::string& filePath)
 	{
-		bool useExternalTexture = loadInternal(filePath, false);
+		loadAsset(filePath);
 
 		// TODO: loading *_tex.sc files
 	}
 
-	bool SupercellSWF::loadInternal(const std::string& filePath, bool isTexture)
-	{
+	void SupercellSWF::loadAsset(const std::string& filePath) {
 		// Opening and decompressing .sc file
 		std::string cachePath;
 
-		CompressorError decompressResult = Decompressor::decompress(filePath, cachePath);
+		CompressedSwfProps props;
+		CompressorError decompressResult = Decompressor::decompress(filePath, cachePath, &props);
 		if (decompressResult != CompressorError::OK)
 		{
 			throw std::runtime_error("Failed to decompress .sc file");
 		}
+		compression = static_cast<CompressionSignature>(props.signature);
 
-		FILE* file = fopen(cachePath.c_str(), "rb");
-		if (file == NULL)
+		FILE* decompressedFile = fopen(cachePath.c_str(), "rb");
+		if (decompressedFile == NULL)
 		{
-			throw std::runtime_error("Failed to open .sc file");
+			throw std::runtime_error("Failed to open decompressed .sc file");
 		}
 
-		std::vector<uint8_t> fileBuffer(Utils::fileSize(file));
-		fread(fileBuffer.data(), 1, fileBuffer.size(), file);
-		fclose(file);
+		std::vector<uint8_t> fileBuffer(Utils::fileSize(decompressedFile));
+		fread(fileBuffer.data(), 1, fileBuffer.size(), decompressedFile);
+		fclose(decompressedFile);
 
 		m_buffer = new BufferStream(&fileBuffer);
 
+		m_useExternalTexture = loadInternal(false);
+	}
+
+	bool SupercellSWF::loadInternal(bool isTexture)
+	{
 		// Reading .sc file
 		if (!isTexture)
 		{
-			m_shapesCount = readUnsignedShort();
-			m_shapes = std::vector<Shape>(m_shapesCount);
+			uint16_t shapesCount = readUnsignedShort();
+			shapes = std::vector<Shape>(shapesCount);
 
-			m_movieClipsCount = readUnsignedShort();
-			m_movieClips = std::vector<MovieClip>(m_movieClipsCount);
+			uint16_t movieClipsCount = readUnsignedShort();
+			movieClips = std::vector<MovieClip>(movieClipsCount);
 
-			m_texturesCount = readUnsignedShort();
-			m_textures = std::vector<SWFTexture>(m_texturesCount);
+			uint16_t texturesCount = readUnsignedShort();
+			textures = std::vector<SWFTexture>(texturesCount);
 
-			m_textFieldsCount = readUnsignedShort();
-			m_textFields = std::vector<TextField>(m_textFieldsCount);
+			uint16_t textFieldsCount = readUnsignedShort();
+			textFields = std::vector<TextField>(textFieldsCount);
 
 			uint16_t matricesCount = readUnsignedShort();
 			uint16_t colorTransformsCount = readUnsignedShort();
-			m_matrixBanks = std::vector<MatrixBank>(0);
+			matrixBanks = std::vector<MatrixBank>(0);
 			initMatrixBank(matricesCount, colorTransformsCount);
 
 			skip(5); // unused
 
-			m_exportsCount = readUnsignedShort();
-			m_exports = std::vector<Export>(m_exportsCount);
+			uint16_t exportsCount = readUnsignedShort();
+			exports = std::vector<Export>(exportsCount);
 
-			for (uint16_t i = 0; i < m_exportsCount; i++)
+			for (uint16_t i = 0; i < exportsCount; i++)
 			{
-				m_exports[i].id = readUnsignedShort();
+				exports[i].id = readUnsignedShort();
 			}
 
-			for (uint16_t i = 0; i < m_exportsCount; i++)
+			for (uint16_t i = 0; i < exportsCount; i++)
 			{
-				m_exports[i].name = readAscii();
+				exports[i].name = readAscii();
 			}
 		}
 
@@ -130,25 +136,26 @@ namespace sc
 			case TAG_TEXTURE_6:
 			case TAG_TEXTURE_7:
 			case TAG_TEXTURE_8:
-				m_textures[texturesLoaded].load(this, tag, useExternalTexture);
+				textures[texturesLoaded].load(this, tag, useExternalTexture);
 				texturesLoaded++;
 				break;
 
-			case TAG_MOVIE_CLIP_MODIFIERS_COUNT:
-				m_movieClipModifiersCount = readUnsignedShort();
-				m_movieClipModifiers = std::vector<MovieClipModifier>(m_movieClipModifiersCount);//new MovieClipModifier[m_movieClipModifiersCount];
+			case TAG_MOVIE_CLIP_MODIFIERS_COUNT: {
+				uint16_t movieClipModifiersCount = readUnsignedShort();
+				movieClipModifiers = std::vector<MovieClipModifier>(movieClipModifiersCount);
 				break;
+			}
 
 			case TAG_MOVIE_CLIP_MODIFIER:
 			case TAG_MOVIE_CLIP_MODIFIER_2:
 			case TAG_MOVIE_CLIP_MODIFIER_3:
-				m_movieClipModifiers[movieClipModifiersLoaded].load(this, tag);
+				movieClipModifiers[movieClipModifiersLoaded].load(this, tag);
 				movieClipModifiersLoaded++;
 				break;
 
 			case TAG_SHAPE:
 			case TAG_SHAPE_2:
-				m_shapes[shapesLoaded].load(this, tag);
+				shapes[shapesLoaded].load(this, tag);
 				shapesLoaded++;
 				break;
 
@@ -160,7 +167,7 @@ namespace sc
 			case TAG_TEXT_FIELD_6:
 			case TAG_TEXT_FIELD_7:
 			case TAG_TEXT_FIELD_8:
-				m_textFields[textFieldsLoaded].load(this, tag);
+				textFields[textFieldsLoaded].load(this, tag);
 				textFieldsLoaded++;
 				break;
 
@@ -177,12 +184,12 @@ namespace sc
 
 			case TAG_MATRIX_2x3:
 			case TAG_MATRIX_2x3_2:
-				m_matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].load(this, tag);
+				matrixBanks[matrixBanksLoaded].matrices[matricesLoaded].load(this, tag);
 				matricesLoaded++;
 				break;
 
 			case TAG_COLOR_TRANSFORM:
-				m_matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].load(this);
+				matrixBanks[matrixBanksLoaded].colorTransforms[colorTransformsLoaded].load(this);
 				colorTransformsLoaded++;
 				break;
 
@@ -191,7 +198,7 @@ namespace sc
 			case TAG_MOVIE_CLIP_3:
 			case TAG_MOVIE_CLIP_4:
 			case TAG_MOVIE_CLIP_5:
-				m_movieClips[movieClipsLoaded].load(this, tag);
+				movieClips[movieClipsLoaded].load(this, tag);
 				movieClipsLoaded++;
 				break;
 
@@ -209,6 +216,6 @@ namespace sc
 		MatrixBank bank;
 		bank.matrices = std::vector<Matrix2x3>(matricesCount);
 		bank.colorTransforms = std::vector<ColorTransform>(colorTransformsCount);
-		m_matrixBanks.push_back(bank);
+		matrixBanks.push_back(bank);
 	}
 }

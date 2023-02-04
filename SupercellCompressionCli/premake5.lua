@@ -18,6 +18,8 @@ project "SupercellCompressionCli"
 		"%{wks.location}/SupercellCompression/src"
     }
 	
+	libdirs { "lib/*" }
+	
 	links {
         "SupercellCompression"
     }

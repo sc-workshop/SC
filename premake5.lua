@@ -9,7 +9,9 @@ workspace "SupercellSWF"
         "Release"
     }
 	
-    startproject "SupercellEditor"
+	startproject "SupercellFlashCli"
+	startproject "SupercellCompressionCli"
+	--startproject "SupercellEditor"
 
 OutputDir = "%{wks.location}/build/bin/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}"
 InterDir = "%{wks.location}/build/obj/%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}"
@@ -27,15 +29,17 @@ group "Dependencies"
     include "external/LZMA"
     include "external/LZHAM"
     include "external/Zstandard"
-    include "external/GLFW"
-    include "external/GLAD"
-    include "external/ImGui"
+	
+	--include "external/ImGui"
+	--include "external/GLFW"
+	--include "external/GLAD"
 
 group "Libraries"
     include "SupercellCompression"
 	include "SupercellFlash"
     
 group "Tools"
-	include "SupercellEditor"
 	include "SupercellFlashCli"
-	include "SupercellCompressionCli"	
+	include "SupercellCompressionCli"
+
+	--include "SupercellEditor"

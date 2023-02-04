@@ -2,6 +2,7 @@
 // LZHAM is in the Public Domain. Please see the Public Domain declaration at the end of include/lzham.h
 #include "lzham_core.h"
 #include "lzham_huffman_codes.h"
+#include <cstdint>
 
 namespace lzham
 {

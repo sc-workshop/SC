@@ -16,7 +16,7 @@ namespace sc
 		/**
 		 * Decompress file and then store it in cache, without need to decompress in the future.
 		 */
-		static CompressorError decompress(std::string filepath, std::string& outFilepath);
+		static CompressorError decompress(std::string filepath, std::string& outFilepath, CompressedSwfProps* header);
 
 		/**
 		 * Decompress file from stream.
@@ -34,7 +34,7 @@ namespace sc
 		static CompressorError commonDecompress(BinaryStream& inStream, BinaryStream& outStream);
 
 		/**
-		 * Reads information about sc file. Contains information such as metadata, hash, compression method.
+		 * Reads information about sc file. Contains information such as metadata, sign, compression method.
 		 */
 		static CompressedSwfProps getHeader(BinaryStream& inputSteam);
 
