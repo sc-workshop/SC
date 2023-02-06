@@ -1,5 +1,7 @@
 #include "SupercellFlash/SupercellSWF.h"
 
+#include <filesystem>
+
 namespace sc
 {
 	SupercellSWF::SupercellSWF()
@@ -12,9 +14,36 @@ namespace sc
 
 	void SupercellSWF::load(const std::string& filePath)
 	{
-		loadAsset(filePath);
+		loadAsset(filePath); // loading and decompressing .sc file
 
-		// TODO: loading *_tex.sc files
+		bool useExternalTexture = loadInternal(false); // reading .sc file
+
+		if (useExternalTexture)
+		{
+			std::filesystem::path multiResFilePath = std::filesystem::path(filePath).replace_extension(m_multiResFileSuffix + "_tex.sc");
+			std::filesystem::path lowResFilePath = std::filesystem::path(filePath).replace_extension(m_lowResFileSuffix + "_tex.sc");
+			std::filesystem::path externalFilePath = std::filesystem::path(filePath).replace_extension("_tex.sc");
+
+			if (m_useMultiResTexture && std::filesystem::exists(multiResFilePath))
+			{
+				loadAsset(multiResFilePath.string());
+				loadInternal(true);
+			}
+			else if (m_useLowResTexture && std::filesystem::exists(lowResFilePath))
+			{
+				loadAsset(lowResFilePath.string());
+				loadInternal(true);
+			}
+			else if (std::filesystem::exists(externalFilePath))
+			{
+				loadAsset(externalFilePath.string());
+				loadInternal(true);
+			}
+			else
+			{
+				throw std::runtime_error("Cannot find external *_tex.sc file");
+			}
+		}
 	}
 
 	void SupercellSWF::loadAsset(const std::string& filePath) {
@@ -25,14 +54,14 @@ namespace sc
 		CompressorError decompressResult = Decompressor::decompress(filePath, cachePath, &props);
 		if (decompressResult != CompressorError::OK)
 		{
-			throw std::runtime_error("Failed to decompress .sc file");
+			throw std::runtime_error("Failed to decompress *.sc file");
 		}
 		compression = static_cast<CompressionSignature>(props.signature);
 
 		FILE* decompressedFile = fopen(cachePath.c_str(), "rb");
 		if (decompressedFile == NULL)
 		{
-			throw std::runtime_error("Failed to open decompressed .sc file");
+			throw std::runtime_error("Failed to open decompressed *.sc file");
 		}
 
 		std::vector<uint8_t> fileBuffer(Utils::fileSize(decompressedFile));
@@ -40,8 +69,6 @@ namespace sc
 		fclose(decompressedFile);
 
 		m_buffer = new BufferStream(&fileBuffer);
-
-		m_useExternalTexture = loadInternal(false);
 	}
 
 	bool SupercellSWF::loadInternal(bool isTexture)
