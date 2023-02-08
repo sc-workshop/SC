@@ -144,19 +144,15 @@ namespace sc
 			return header;
 		}
 
-		if (magic != 0x53430000)
-			return header;
-
 		// Version of .sc file
-		uint16_t version = inputSteam.readUInt16BE();
+		uint32_t version = static_cast<uint32_t>(inputSteam.readUInt16BE());
 
-		if (version == 3)
+VERSION_CHECK:
+		switch (version)
 		{
-			header.signature = static_cast<uint32_t>(CompressionSignature::ZSTD);
-		}
-		else if (version == 4)
+		case 4:
 		{
-			header.signature = inputSteam.readUInt32BE();
+			version = inputSteam.readUInt32BE();
 
 			// Metadata processing
 			size_t compressedDataStartPosition = inputSteam.tell();
@@ -168,6 +164,15 @@ namespace sc
 			inputSteam.read(header.metadata.data(), metadataSize);
 
 			inputSteam.set(static_cast<uint32_t>(compressedDataStartPosition));
+			goto VERSION_CHECK;
+		}
+		case 3:
+			header.signature = static_cast<uint32_t>(CompressionSignature::ZSTD);
+			break;
+		case 1:
+			break;
+		default:
+			return header;
 		}
 
 		uint32_t idSize = inputSteam.readUInt32BE();
