@@ -14,30 +14,30 @@ namespace sc
 
 	void SupercellSWF::load(const std::string& filePath)
 	{
-		loadAsset(filePath); // loading and decompressing .sc file
-
-		bool useExternalTexture = loadInternal(false); // reading .sc file
+		std::vector<uint8_t> buffer;
+		openFile(filePath, &buffer, &compression); // reading and decompressing .sc file
+		m_buffer = new BufferStream(&buffer);
+		bool useExternalTexture = loadInternal(false); // loading .sc file
+		m_buffer->close();
 
 		if (useExternalTexture)
 		{
-			std::filesystem::path multiResFilePath = std::filesystem::path(filePath).replace_extension(m_multiResFileSuffix + "_tex.sc");
-			std::filesystem::path lowResFilePath = std::filesystem::path(filePath).replace_extension(m_lowResFileSuffix + "_tex.sc");
-			std::filesystem::path externalFilePath = std::filesystem::path(filePath).replace_extension("_tex.sc");
+			std::filesystem::path path(filePath);
+			std::filesystem::path multiResFilePath = std::filesystem::path(path.root_path()).concat(path.stem().string()).concat(m_multiResFileSuffix + "_tex.sc");
+			std::filesystem::path lowResFilePath = std::filesystem::path(path.root_path()).concat(path.stem().string()).concat(m_lowResFileSuffix + "_tex.sc");
+			std::filesystem::path externalFilePath = std::filesystem::path(path.root_path()).concat(path.stem().string()).concat("_tex.sc");
 
 			if (m_useMultiResTexture && std::filesystem::exists(multiResFilePath))
 			{
-				loadAsset(multiResFilePath.string());
-				loadInternal(true);
+				loadTexture(multiResFilePath.string());
 			}
 			else if (m_useLowResTexture && std::filesystem::exists(lowResFilePath))
 			{
-				loadAsset(lowResFilePath.string());
-				loadInternal(true);
+				loadTexture(lowResFilePath.string());
 			}
 			else if (std::filesystem::exists(externalFilePath))
 			{
-				loadAsset(externalFilePath.string());
-				loadInternal(true);
+				loadTexture(externalFilePath.string());
 			}
 			else
 			{
@@ -46,7 +46,7 @@ namespace sc
 		}
 	}
 
-	void SupercellSWF::loadAsset(const std::string& filePath) {
+	void SupercellSWF::openFile(const std::string& filePath, std::vector<uint8_t>* buffer, CompressionSignature* signature) {
 		// Opening and decompressing .sc file
 		std::string cachePath;
 
@@ -56,19 +56,25 @@ namespace sc
 		{
 			throw std::runtime_error("Failed to decompress *.sc file");
 		}
-		compression = static_cast<CompressionSignature>(props.signature);
+		if (signature != nullptr)
+			*signature = static_cast<CompressionSignature>(props.signature);
 
 		FILE* decompressedFile = fopen(cachePath.c_str(), "rb");
 		if (decompressedFile == NULL)
 		{
 			throw std::runtime_error("Failed to open decompressed *.sc file");
 		}
-
-		std::vector<uint8_t> fileBuffer(Utils::fileSize(decompressedFile));
-		fread(fileBuffer.data(), 1, fileBuffer.size(), decompressedFile);
+		*buffer = std::vector<uint8_t>(Utils::fileSize(decompressedFile));
+		fread(buffer->data(), 1, buffer->size(), decompressedFile);
 		fclose(decompressedFile);
+	}
 
-		m_buffer = new BufferStream(&fileBuffer);
+	void SupercellSWF::loadTexture(const std::string& filePath) {
+		std::vector<uint8_t> buffer;
+		openFile(filePath, &buffer, nullptr);
+		m_buffer = new BufferStream(&buffer);
+		loadInternal(true);
+		m_buffer->close();
 	}
 
 	bool SupercellSWF::loadInternal(bool isTexture)
@@ -131,7 +137,7 @@ namespace sc
 			int32_t tagLength = readInt();
 
 			if (tagLength < 0)
-				throw std::runtime_error("Negative tag length in .sc file");
+				throw std::runtime_error("Negative tag length. Tag " + tag);
 
 			if (tag == TAG_END)
 				break;
@@ -163,6 +169,9 @@ namespace sc
 			case TAG_TEXTURE_6:
 			case TAG_TEXTURE_7:
 			case TAG_TEXTURE_8:
+				if (textures.size() < texturesLoaded) {
+					throw std::runtime_error("Trying to load too many textures");
+				}
 				textures[texturesLoaded].load(this, tag, useExternalTexture);
 				texturesLoaded++;
 				break;
@@ -182,6 +191,9 @@ namespace sc
 
 			case TAG_SHAPE:
 			case TAG_SHAPE_2:
+				if (shapes.size() < shapesLoaded) {
+					throw std::runtime_error("Trying to load too many Shapes");
+				}
 				shapes[shapesLoaded].load(this, tag);
 				shapesLoaded++;
 				break;
@@ -194,6 +206,10 @@ namespace sc
 			case TAG_TEXT_FIELD_6:
 			case TAG_TEXT_FIELD_7:
 			case TAG_TEXT_FIELD_8:
+				if (textFields.size() < textFieldsLoaded) {
+					throw std::runtime_error("Trying to load too many TextFields");
+				}
+
 				textFields[textFieldsLoaded].load(this, tag);
 				textFieldsLoaded++;
 				break;
@@ -225,6 +241,9 @@ namespace sc
 			case TAG_MOVIE_CLIP_3:
 			case TAG_MOVIE_CLIP_4:
 			case TAG_MOVIE_CLIP_5:
+				if (movieClips.size() < movieClipsLoaded) {
+					throw std::runtime_error("Trying to load too many MovieClips");
+				}
 				movieClips[movieClipsLoaded].load(this, tag);
 				movieClipsLoaded++;
 				break;

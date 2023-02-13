@@ -14,9 +14,9 @@ int main(int argc, char* argv[])
 		using std::chrono::seconds;
 
 		std::chrono::time_point startTime = high_resolution_clock::now();
-
+		std::string filename(argv[1]);
 		sc::SupercellSWF swf;
-		swf.load(std::string(argv[1]));
+		swf.load(filename);
 
 		auto endTime = high_resolution_clock::now();
 		std::cout << "Operation took: ";

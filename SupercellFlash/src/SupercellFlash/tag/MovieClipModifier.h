@@ -8,7 +8,7 @@ namespace sc
 	class MovieClipModifier : public DisplayObject
 	{
 	public:
-		enum Type : uint8_t
+		enum class Type : uint8_t
 		{
 			Mask = 38,
 			Masked,
@@ -17,7 +17,7 @@ namespace sc
 
 		void load(SupercellSWF* swf, uint8_t tag);
 
-		Type getType();
+		Type type();
 
 	private:
 		Type m_type = Type::Mask;

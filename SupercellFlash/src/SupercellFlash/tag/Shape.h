@@ -24,9 +24,12 @@ namespace sc
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
 
+	public:
+		std::vector<ShapeDrawBitmapCommandVertex> m_vertices;
+
 	private:
 		uint8_t m_textureIndex = 0;
-		std::vector<ShapeDrawBitmapCommandVertex> m_vertices;
+		
 	};
 
 	class Shape : public DisplayObject
@@ -38,7 +41,6 @@ namespace sc
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
 
-	private:
 		std::vector<ShapeDrawBitmapCommand> m_commands;
 	};
 }

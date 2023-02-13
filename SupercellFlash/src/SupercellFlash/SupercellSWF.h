@@ -18,7 +18,8 @@
 
 #include "SupercellFlash/common/TagMap.h"
 
-#define MATRIX_BANKS_MAX_COUNT 255
+#define MULTIRES_DEFAULT_SUFFIX "_highres"
+#define LOWRES_DEFAULT_SUFFIX "_lowres"
 
 namespace sc
 {
@@ -47,7 +48,7 @@ namespace sc
 		void load(const std::string& filePath);
 
 		// some funny trics
-		void loadAsset(const std::string& filePath);
+		void loadTexture(const std::string& filePath);
 
 	// Getters for class members
 	public:
@@ -61,13 +62,13 @@ namespace sc
 
 	// Setters for class members
 	public:
-		void setUseExternalTexture(bool status) { m_useExternalTexture = status; }
+		void useExternalTexture(bool status) { m_useExternalTexture = status; }
 
-		void setUseMultiResTexture(bool status) { m_useMultiResTexture = status; }
-		void SetUseLowResTexture(bool status) { m_useLowResTexture = status; }
+		void useMultiResTexture(bool status) { m_useMultiResTexture = status; }
+		void useLowResTexture(bool status) { m_useLowResTexture = status; }
 
-		void setMultiResFileSuffix(std::string postfix) { m_multiResFileSuffix = postfix; }
-		void setLowResFileSuffix(std::string postfix) { m_lowResFileSuffix = postfix; }
+		void multiResFileSuffix(std::string postfix) { m_multiResFileSuffix = postfix; }
+		void lowResFileSuffix(std::string postfix) { m_lowResFileSuffix = postfix; }
 	
 	// Helper functions
 	public:
@@ -106,8 +107,9 @@ namespace sc
 		float readTwip() { return (float)readInt() * 0.05f; }
 
 	private:
-		bool loadInternal(bool isTexture);
 		bool loadTags();
+		void openFile(const std::string& filePath, std::vector<uint8_t>* buffer, CompressionSignature* signature);
+		bool loadInternal(bool isTexture);
 
 		void initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount);
 
@@ -119,7 +121,7 @@ namespace sc
 		bool m_useMultiResTexture = false;
 		bool m_useLowResTexture = false;
 
-		std::string m_multiResFileSuffix = ""; // _highres
-		std::string m_lowResFileSuffix = ""; // _lowres
+		std::string m_multiResFileSuffix = MULTIRES_DEFAULT_SUFFIX;
+		std::string m_lowResFileSuffix = LOWRES_DEFAULT_SUFFIX;
 	};
 }

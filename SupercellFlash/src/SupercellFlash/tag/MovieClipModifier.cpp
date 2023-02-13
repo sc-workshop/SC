@@ -9,5 +9,5 @@ namespace sc {
 		m_type = (Type)tag;
 	}
 	
-	MovieClipModifier::Type MovieClipModifier::getType() { return m_type; }
+	MovieClipModifier::Type MovieClipModifier::type() { return m_type; }
 }

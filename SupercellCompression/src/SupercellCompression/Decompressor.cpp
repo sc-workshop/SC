@@ -30,8 +30,13 @@ namespace sc
 		FileStream inputSteam = FileStream(inFile);
 		uint32_t fileSize = Utils::fileSize(inFile);
 
-		*header = getHeader(inputSteam);
-
+		if (header != nullptr) {
+			*header = getHeader(inputSteam);
+		}
+		else {
+			getHeader(inputSteam);
+		}
+		
 		outFilepath = SwfCache::getTempPath(filepath);
 		bool fileInCache = SwfCache::exist(filepath, header->id, fileSize);
 		if (fileInCache)
