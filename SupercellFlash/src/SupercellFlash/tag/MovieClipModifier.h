@@ -17,7 +17,9 @@ namespace sc
 
 		void load(SupercellSWF* swf, uint8_t tag);
 
-		Type type();
+	public:
+		Type type() { return m_type; }; // Getter
+		void type(Type type) { m_type = type; } // Setter
 
 	private:
 		Type m_type = Type::Mask;

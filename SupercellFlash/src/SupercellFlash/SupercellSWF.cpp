@@ -19,6 +19,7 @@ namespace sc
 		m_buffer = new BufferStream(&buffer);
 		bool useExternalTexture = loadInternal(false); // loading .sc file
 		m_buffer->close();
+		m_buffer = nullptr;
 
 		if (useExternalTexture)
 		{
@@ -46,6 +47,28 @@ namespace sc
 		}
 	}
 
+	void SupercellSWF::loadTexture(const std::string& filePath) {
+		std::vector<uint8_t> buffer;
+		openFile(filePath, &buffer, nullptr);
+		m_buffer = new BufferStream(&buffer);
+		loadInternal(true);
+		m_buffer->close();
+		m_buffer = nullptr;
+	}
+
+	void SupercellSWF::saveTexture(const std::string& filepath, bool isLowres) {
+		std::vector<uint8_t> textureBuffer;
+		m_buffer = new BufferStream(&textureBuffer);
+
+		for (SWFTexture texture : textures) {
+			texture.save(this, true, isLowres);
+		}
+
+		writeFile(filepath, &textureBuffer);
+		m_buffer->close();
+		m_buffer = nullptr;
+	}
+
 	void SupercellSWF::openFile(const std::string& filePath, std::vector<uint8_t>* buffer, CompressionSignature* signature) {
 		// Opening and decompressing .sc file
 		std::string cachePath;
@@ -69,12 +92,18 @@ namespace sc
 		fclose(decompressedFile);
 	}
 
-	void SupercellSWF::loadTexture(const std::string& filePath) {
-		std::vector<uint8_t> buffer;
-		openFile(filePath, &buffer, nullptr);
-		m_buffer = new BufferStream(&buffer);
-		loadInternal(true);
-		m_buffer->close();
+	void SupercellSWF::writeFile(const std::string& filePath, std::vector<uint8_t>* buffer) {
+		FILE* outputFile = fopen(filePath.c_str(), "wb");
+		if (outputFile == NULL) {
+			throw std::runtime_error("Failed to open output *.sc file");
+		}
+		FileStream outputStream(outputFile);
+
+#ifdef SC_DEBUG
+		outputStream.write(buffer->data(), buffer->size());
+#else
+		Compressor::compress(*m_buffer, outputStream, compression);
+#endif
 	}
 
 	bool SupercellSWF::loadInternal(bool isTexture)
@@ -219,9 +248,9 @@ namespace sc
 				colorTransformsLoaded = 0;
 				matrixBanksLoaded++;
 				{
-				uint16_t matrixCount = readUnsignedShort();
-				uint16_t colorTransformCount = readUnsignedShort();
-				initMatrixBank(matrixCount, colorTransformCount);
+					uint16_t matrixCount = readUnsignedShort();
+					uint16_t colorTransformCount = readUnsignedShort();
+					initMatrixBank(matrixCount, colorTransformCount);
 				}
 				break;
 

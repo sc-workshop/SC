@@ -21,15 +21,24 @@ namespace sc
 		ShapeDrawBitmapCommand() { }
 		virtual ~ShapeDrawBitmapCommand() { }
 
+		/* Functions */
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
 
+		/* Vectors */
 	public:
-		std::vector<ShapeDrawBitmapCommandVertex> m_vertices;
+		std::vector<ShapeDrawBitmapCommandVertex> vertices;
+
+		/* Getters */
+	public:
+		uint8_t textureIndex() { return m_textureIndex; }
+
+		/* Setters */
+	public:
+		void textureIndex(uint8_t index) { m_textureIndex = index; }
 
 	private:
 		uint8_t m_textureIndex = 0;
-		
 	};
 
 	class Shape : public DisplayObject
@@ -39,8 +48,9 @@ namespace sc
 		virtual ~Shape() { }
 
 	public:
-		void load(SupercellSWF* swf, uint8_t tag);
+		std::vector<ShapeDrawBitmapCommand> commands;
 
-		std::vector<ShapeDrawBitmapCommand> m_commands;
+	public:
+		void load(SupercellSWF* swf, uint8_t tag);
 	};
 }

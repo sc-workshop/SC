@@ -60,17 +60,18 @@ namespace sc
 
 	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header)
 	{
-		uint32_t scMagic = 0x53430000;
+		uint16_t scMagic = 0x5343;
 		uint32_t signMagic = 0x3A676953;
 
-		if (header.sign.size() >= 64) {
+		if (header.sign.size() == 64) {
 			outStream.writeUInt32BE(signMagic);
 			outStream.write(header.sign.data(), 64);
 		}
 		else if (!header.id.empty()) {
+			outStream.writeUInt16BE(scMagic);
 			if (!header.metadata.empty())
 			{
-				outStream.writeUInt16BE(4);
+				outStream.writeUInt32BE(4);
 				outStream.writeUInt32BE(header.signature);
 			}
 			else
@@ -78,15 +79,15 @@ namespace sc
 				if (header.signature == (uint32_t)CompressionSignature::LZMA ||
 					header.signature == (uint32_t)CompressionSignature::LZHAM)
 				{
-					outStream.writeUInt16BE(1);
+					outStream.writeUInt32BE(1);
 				}
 				else if (header.signature == (uint32_t)CompressionSignature::ZSTD)
 				{
-					outStream.writeUInt16BE(3);
+					outStream.writeUInt32BE(3);
 				}
 				else
 				{
-					outStream.writeUInt16BE(2);
+					outStream.writeUInt32BE(2);
 				}
 			}
 
@@ -125,11 +126,10 @@ namespace sc
 			break;
 
 		default:
-			size_t size = inStream.size() - inStream.tell();
-			void* dataBuffer = malloc(size);
-			inStream.read(dataBuffer, size);
-			outStream.write(dataBuffer, size);
-			free(dataBuffer);
+			std::vector<uint8_t> dataBuffer(inStream.size());
+			inStream.set(0);
+			inStream.read(dataBuffer.data(), dataBuffer.size());
+			outStream.write(dataBuffer.data(), dataBuffer.size());
 			res = CompressionError::OK;
 			break;
 		}

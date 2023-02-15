@@ -8,6 +8,4 @@ namespace sc {
 
 		m_type = (Type)tag;
 	}
-	
-	MovieClipModifier::Type MovieClipModifier::type() { return m_type; }
 }

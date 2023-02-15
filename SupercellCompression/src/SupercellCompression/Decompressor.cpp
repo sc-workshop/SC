@@ -7,14 +7,14 @@
 #include "SupercellCompression/common/Endian.h"
 
 #include "SupercellCompression/backend/LzmaCompression.h"
-#include "SupercellCompression/backend/LzhamCompression.h" 
+#include "SupercellCompression/backend/LzhamCompression.h"
 #include "SupercellCompression/backend/ZstdCompression.h"
 
 #include "SupercellCompression/common/ByteStream.hpp"
 
 namespace sc
 {
-	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath, CompressedSwfProps *header)
+	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath, CompressedSwfProps* header)
 	{
 		if (!Utils::endsWith(filepath, ".sc")) {
 			return CompressorError::WRONG_FILE_ERROR;
@@ -36,7 +36,7 @@ namespace sc
 		else {
 			getHeader(inputSteam);
 		}
-		
+
 		outFilepath = SwfCache::getTempPath(filepath);
 		bool fileInCache = SwfCache::exist(filepath, header->id, fileSize);
 		if (fileInCache)
@@ -90,12 +90,10 @@ namespace sc
 			break;
 
 		default:
-			size_t size = inStream.size() - inStream.tell();
-
-			void* dataBuffer = malloc(size);
-			inStream.read(dataBuffer, size);
-			outStream.write(dataBuffer, size);
-			free(dataBuffer);
+			std::vector<uint8_t> dataBuffer(inStream.size());
+			inStream.set(0);
+			inStream.read(dataBuffer.data(), dataBuffer.size());
+			outStream.write(dataBuffer.data(), dataBuffer.size());
 
 			res = CompressionError::OK;
 			break;
@@ -152,7 +150,7 @@ namespace sc
 		// Version of .sc file
 		uint32_t version = static_cast<uint32_t>(inputSteam.readUInt16BE());
 
-VERSION_CHECK:
+	VERSION_CHECK:
 		switch (version)
 		{
 		case 4:

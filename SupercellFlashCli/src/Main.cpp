@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <chrono>
+#include <SupercellCompression/Signature.h>
 
 int main(int argc, char* argv[])
 {

@@ -8,18 +8,18 @@ namespace sc
 		m_textureIndex = swf->readUnsignedByte();
 
 		uint8_t pointsCount = tag == 4 ? 4 : swf->readUnsignedByte();
-		m_vertices = std::vector<ShapeDrawBitmapCommandVertex>(pointsCount);
+		vertices = std::vector<ShapeDrawBitmapCommandVertex>(pointsCount);
 
 		for (uint8_t i = 0; i < pointsCount; i++)
 		{
-			m_vertices[i].x = swf->readTwip();
-			m_vertices[i].y = swf->readTwip();
+			vertices[i].x = swf->readTwip();
+			vertices[i].y = swf->readTwip();
 		}
 
 		for (uint8_t i = 0; i < pointsCount; i++)
 		{
-			m_vertices[i].u = (float)swf->readUnsignedShort() / 65535.0f;
-			m_vertices[i].v = (float)swf->readUnsignedShort() / 65535.0f;
+			vertices[i].u = (float)swf->readUnsignedShort() / 65535.0f;
+			vertices[i].v = (float)swf->readUnsignedShort() / 65535.0f;
 		}
 	}
 
@@ -28,7 +28,7 @@ namespace sc
 		m_id = swf->readUnsignedShort();
 
 		uint16_t m_commandsCount = swf->readUnsignedShort();
-		m_commands = std::vector<ShapeDrawBitmapCommand>(m_commandsCount);
+		commands = std::vector<ShapeDrawBitmapCommand>(m_commandsCount);
 
 		if (tag == 18)
 			swf->readUnsignedShort(); // total vertices count
@@ -50,7 +50,7 @@ namespace sc
 			case 4:
 			case 17:
 			case 22:
-				m_commands[commandsLoaded].load(swf, commandTag);
+				commands[commandsLoaded].load(swf, commandTag);
 				commandsLoaded++;
 				break;
 

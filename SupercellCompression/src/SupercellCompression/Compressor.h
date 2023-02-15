@@ -30,6 +30,5 @@ namespace sc
 		* Compress common file data.
 		*/
 		static CompressorError commonCompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature);
-
 	};
 }

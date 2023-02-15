@@ -42,16 +42,23 @@ namespace sc
 		MovieClip() { }
 		virtual ~MovieClip() { }
 
+		/*Vectors*/
+	public:
+		std::vector<MovieClipFrameElement> frameElements;
+		std::vector<DisplayObjectInstance> instances;
+		std::vector<MovieClipFrame> frames;
+
+		/* Getters */
+	public:
+		uint8_t frameRate() { return m_frameRate; }
+		ScalingGrid scalingGrid() { return *m_scalingGrid; }
+		uint8_t matrixBankIndex() { return m_matrixBankIndex; }
+
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
 
 	private:
 		uint8_t m_frameRate = 24;
-
-		std::vector<MovieClipFrameElement> m_frameElements;
-		std::vector<DisplayObjectInstance> m_instances;
-
-		std::vector<MovieClipFrame> m_frames;
 
 		ScalingGrid* m_scalingGrid = nullptr;
 		uint8_t m_matrixBankIndex = 0;

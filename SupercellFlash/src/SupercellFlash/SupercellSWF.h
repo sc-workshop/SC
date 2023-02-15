@@ -29,7 +29,7 @@ namespace sc
 		SupercellSWF();
 		~SupercellSWF();
 
-	// Vectors with objects
+		// Vectors with objects
 	public:
 		std::vector<SWFTexture> textures;
 		std::vector<Shape> shapes;
@@ -39,18 +39,19 @@ namespace sc
 		std::vector<MovieClipModifier> movieClipModifiers;
 		std::vector<Export> exports;
 
-	// Common class members
+		// Common class members
 	public:
 		CompressionSignature compression = CompressionSignature::NONE;
 
-	// Class functions
+		// Class functions
 	public:
 		void load(const std::string& filePath);
-
-		// some funny trics
 		void loadTexture(const std::string& filePath);
 
-	// Getters for class members
+		// void save(const std::string& filepath);
+		void saveTexture(const std::string& filepath, bool isLowres);
+
+		// Getters for class members
 	public:
 		bool useExternalTexture() { return m_useExternalTexture; }
 
@@ -60,7 +61,7 @@ namespace sc
 		std::string multiResFileSuffix() { return m_multiResFileSuffix; }
 		std::string lowResFileSuffix() { return m_lowResFileSuffix; }
 
-	// Setters for class members
+		// Setters for class members
 	public:
 		void useExternalTexture(bool status) { m_useExternalTexture = status; }
 
@@ -69,18 +70,18 @@ namespace sc
 
 		void multiResFileSuffix(std::string postfix) { m_multiResFileSuffix = postfix; }
 		void lowResFileSuffix(std::string postfix) { m_lowResFileSuffix = postfix; }
-	
-	// Helper functions
+
+		// Helper functions
 	public:
 		// we can make the SupercellSWF class inherit the ByteStream class, but I think this solution will be better (wrapping) (yea, wrap around wrap.)
-		uint8_t* read(uint32_t length)
-		{
-			uint8_t* result = new unsigned char[length]();
-			m_buffer->read(result, length);
-			return result;
-		}
+		/* Write functions  */
 
 		void skip(uint32_t length) { m_buffer->skip(length); }
+
+		void read(void* data, uint32_t size)
+		{
+			m_buffer->read(data, size);
+		}
 
 		int8_t readByte() { return m_buffer->readInt8(); }
 		uint8_t readUnsignedByte() { return m_buffer->readUInt8(); }
@@ -106,10 +107,67 @@ namespace sc
 
 		float readTwip() { return (float)readInt() * 0.05f; }
 
+		/* Write function */
+
+		void writeTag(uint8_t tag) {
+			writeUnsignedByte(tag);
+			writeInt(0);
+		}
+
+		void writeTag(uint8_t tag, std::vector<uint8_t> buffer) {
+			int32_t tagSize = static_cast<int32_t>(buffer.size());
+			if (tagSize > 0) {
+				writeUnsignedByte(tag);
+				writeInt(tagSize);
+				write(buffer.data(), static_cast<uint32_t>(tagSize));
+			}
+		}
+
+		void write(void* data, uint32_t size) {
+			m_buffer->write(data, size);
+		}
+
+		void writeByte(int8_t integer) {
+			m_buffer->writeInt8(integer);
+		}
+		void writeUnsignedByte(uint8_t integer) {
+			m_buffer->writeUInt8(integer);
+		}
+
+		void writeShort(int16_t integer) {
+			m_buffer->writeInt16(integer);
+		}
+		void writeUnsignedShort(uint16_t integer) {
+			m_buffer->writeUInt16(integer);
+		}
+
+		void writeInt(int32_t integer) {
+			m_buffer->writeInt32(integer);
+		}
+
+		void writeBool(bool status) {
+			m_buffer->writeUInt8(status ? 1 : 0);
+		}
+
+		void writeAscii(std::string ascii) {
+			uint8_t size = static_cast<uint8_t>(ascii.size());
+
+			writeUnsignedByte(size);
+			if (size > 0) {
+				m_buffer->write(ascii.data(), size);
+			}
+		}
+
+		void writeTwip(float twip) {
+			writeInt((int)(twip / 0.05f));
+		}
+
 	private:
 		bool loadTags();
-		void openFile(const std::string& filePath, std::vector<uint8_t>* buffer, CompressionSignature* signature);
 		bool loadInternal(bool isTexture);
+
+		void openFile(const std::string& filePath, std::vector<uint8_t>* buffer, CompressionSignature* signature);
+		void writeFile(const std::string& filePath, std::vector<uint8_t>* buffer);
 
 		void initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount);
 

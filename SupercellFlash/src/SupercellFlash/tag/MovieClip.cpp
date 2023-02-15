@@ -15,40 +15,40 @@ namespace sc
 		m_frameRate = swf->readUnsignedByte();
 
 		uint16_t framesCount = swf->readUnsignedShort();
-		m_frames = std::vector<MovieClipFrame>(framesCount);
+		frames = std::vector<MovieClipFrame>(framesCount);
 
 		if (tag == 3 || tag == 14)
 			throw std::runtime_error("TAG_MOVIE_CLIP and TAG_MOVIE_CLIP_4 is unsupported");
 
 		int32_t frameElementsCount = swf->readInt();
-		m_frameElements = std::vector<MovieClipFrameElement>(frameElementsCount);
+		frameElements = std::vector<MovieClipFrameElement>(frameElementsCount);
 
 		for (int32_t i = 0; i < frameElementsCount; i++)
 		{
-			m_frameElements[i].instanceIndex = swf->readUnsignedShort();
-			m_frameElements[i].matrixIndex = swf->readUnsignedShort();
-			m_frameElements[i].colorTransformIndex = swf->readUnsignedShort();
+			frameElements[i].instanceIndex = swf->readUnsignedShort();
+			frameElements[i].matrixIndex = swf->readUnsignedShort();
+			frameElements[i].colorTransformIndex = swf->readUnsignedShort();
 		}
 
 		uint16_t instancesCount = swf->readUnsignedShort();
-		m_instances = std::vector<DisplayObjectInstance>(instancesCount);
+		instances = std::vector<DisplayObjectInstance>(instancesCount);
 
 		for (int16_t i = 0; i < instancesCount; i++)
 		{
-			m_instances[i].id = swf->readUnsignedShort();
+			instances[i].id = swf->readUnsignedShort();
 		}
 
 		if (tag == 12 || tag == 35)
 		{
 			for (int16_t i = 0; i < instancesCount; i++)
 			{
-				m_instances[i].blend = swf->readUnsignedByte();
+				instances[i].blend = swf->readUnsignedByte();
 			}
 		}
 
 		for (int16_t i = 0; i < instancesCount; i++)
 		{
-			m_instances[i].name = swf->readAscii();
+			instances[i].name = swf->readAscii();
 		}
 
 		uint16_t framesLoaded = 0;
@@ -66,7 +66,7 @@ namespace sc
 			switch (frameTag)
 			{
 			case 11:
-				m_frames[framesLoaded].load(swf);
+				frames[framesLoaded].load(swf);
 				framesLoaded++;
 				break;
 

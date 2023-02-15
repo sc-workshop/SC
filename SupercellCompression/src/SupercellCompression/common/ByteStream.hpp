@@ -212,13 +212,12 @@ namespace sc
 		{
 			writeInt32(SwapEndian<int32_t>(number));
 		};
-
 	};
 
 	// Implementation for file binary stream
 	class FileStream : public BinaryStream {
 	public:
-		explicit FileStream(FILE* file) : file(file) { 
+		explicit FileStream(FILE* file) : file(file) {
 			fileSize = Utils::fileSize(file);
 		}
 

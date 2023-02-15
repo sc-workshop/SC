@@ -15,7 +15,7 @@ namespace sc
 	protected:
 		uint16_t m_id = 0;
 
-		Matrix2x3* m_matrix;
-		ColorTransform* m_colorTransform;
+		Matrix2x3* m_matrix = nullptr;
+		ColorTransform* m_colorTransform = nullptr;
 	};
 }
