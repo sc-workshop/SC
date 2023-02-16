@@ -14,6 +14,11 @@
 
 namespace sc
 {
+	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath) {
+		CompressedSwfProps header;
+		return decompress(filepath, outFilepath, &header);
+	}
+
 	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath, CompressedSwfProps* header)
 	{
 		if (!Utils::endsWith(filepath, ".sc")) {
@@ -28,16 +33,11 @@ namespace sc
 			return CompressorError::FILE_READ_ERROR;
 
 		FileStream inputSteam = FileStream(inFile);
-		uint32_t fileSize = Utils::fileSize(inFile);
-
-		if (header != nullptr) {
-			*header = getHeader(inputSteam);
-		}
-		else {
-			getHeader(inputSteam);
-		}
+		uint32_t fileSize = inputSteam.size();
 
 		outFilepath = SwfCache::getTempPath(filepath);
+
+		*header = getHeader(inputSteam);
 		bool fileInCache = SwfCache::exist(filepath, header->id, fileSize);
 		if (fileInCache)
 		{

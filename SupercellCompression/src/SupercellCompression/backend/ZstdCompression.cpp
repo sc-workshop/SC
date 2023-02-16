@@ -31,8 +31,7 @@ namespace sc {
 			return CompressionError::INIT_ERROR;
 		}
 
-		size_t toRead = initResult;
-
+		size_t toRead = buffInSize;
 		while (const size_t read = inStream.read(buffIn, toRead)) {
 			ZSTD_inBuffer input = { buffIn, read, 0 };
 

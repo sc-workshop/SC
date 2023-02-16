@@ -16,6 +16,11 @@ namespace sc
 		/**
 		 * Decompress file and then store it in cache, without need to decompress in the future.
 		 */
+		static CompressorError decompress(std::string filepath, std::string& outFilepath);
+
+		/**
+		 * Decompress file and then store it in cache, without need to decompress in the future. With header props.
+		 */
 		static CompressorError decompress(std::string filepath, std::string& outFilepath, CompressedSwfProps* header);
 
 		/**
