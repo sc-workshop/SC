@@ -15,13 +15,13 @@ namespace sc
 	void SupercellSWF::load(const std::string& filePath)
 	{
 		std::vector<uint8_t> buffer;
-		openFile(filePath, &buffer, &compression); // reading and decompressing .sc file
+		openFile(filePath, &buffer); // reading and decompressing .sc file
 		m_buffer = new BufferStream(&buffer);
-		bool useExternalTexture = loadInternal(false); // loading .sc file
+		m_useExternalTexture = loadInternal(false); // loading .sc file
 		m_buffer->close();
 		m_buffer = nullptr;
 
-		if (useExternalTexture)
+		if (m_useExternalTexture)
 		{
 			std::filesystem::path path(filePath);
 			std::filesystem::path multiResFilePath = std::filesystem::path(path.root_path()).concat(path.stem().string()).concat(m_multiResFileSuffix + "_tex.sc");
@@ -49,7 +49,7 @@ namespace sc
 
 	void SupercellSWF::loadTexture(const std::string& filePath) {
 		std::vector<uint8_t> buffer;
-		openFile(filePath, &buffer, nullptr);
+		openFile(filePath, &buffer);
 		m_buffer = new BufferStream(&buffer);
 		loadInternal(true);
 		m_buffer->close();
@@ -69,7 +69,7 @@ namespace sc
 		m_buffer = nullptr;
 	}
 
-	void SupercellSWF::openFile(const std::string& filePath, std::vector<uint8_t>* buffer, CompressionSignature* signature) {
+	void SupercellSWF::openFile(const std::string& filePath, std::vector<uint8_t>* buffer) {
 		// Opening and decompressing .sc file
 		std::string cachePath;
 
@@ -79,8 +79,7 @@ namespace sc
 		{
 			throw std::runtime_error("Failed to decompress *.sc file");
 		}
-		if (signature != nullptr)
-			*signature = static_cast<CompressionSignature>(props.signature);
+		compression = (CompressionSignature)props.signature;
 
 		FILE* decompressedFile = fopen(cachePath.c_str(), "rb");
 		if (decompressedFile == NULL)

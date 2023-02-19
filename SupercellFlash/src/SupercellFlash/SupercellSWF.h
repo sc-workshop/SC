@@ -166,7 +166,7 @@ namespace sc
 		bool loadTags();
 		bool loadInternal(bool isTexture);
 
-		void openFile(const std::string& filePath, std::vector<uint8_t>* buffer, CompressionSignature* signature);
+		void openFile(const std::string& filePath, std::vector<uint8_t>* buffer);
 		void writeFile(const std::string& filePath, std::vector<uint8_t>* buffer);
 
 		void initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount);
