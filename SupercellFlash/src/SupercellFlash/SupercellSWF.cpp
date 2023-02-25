@@ -16,8 +16,11 @@ namespace sc
 	{
 		std::vector<uint8_t> buffer;
 		openFile(filePath, &buffer); // reading and decompressing .sc file
+
 		m_buffer = new BufferStream(&buffer);
+
 		m_useExternalTexture = loadInternal(false); // loading .sc file
+
 		m_buffer->close();
 		m_buffer = nullptr;
 
@@ -50,10 +53,38 @@ namespace sc
 	void SupercellSWF::loadTexture(const std::string& filePath) {
 		std::vector<uint8_t> buffer;
 		openFile(filePath, &buffer);
+
 		m_buffer = new BufferStream(&buffer);
+
 		loadInternal(true);
+
 		m_buffer->close();
 		m_buffer = nullptr;
+	}
+
+	void SupercellSWF::save(const std::string& filepath)
+	{
+		std::vector<uint8_t> textureBuffer;
+		m_buffer = new BufferStream(&textureBuffer);
+
+		saveInternal();
+
+		bool isLowRes = m_useLowResTexture;
+		for (SWFTexture texture : textures) {
+			texture.save(this, true, isLowRes);
+		}
+
+		writeFile(filepath, &textureBuffer);
+
+		m_buffer->close();
+		m_buffer = nullptr;
+
+		if (useExternalTexture())
+		{
+			// TODO: low and high res textures
+			
+			// saveTexture(externalFilePath, false);
+		}
 	}
 
 	void SupercellSWF::saveTexture(const std::string& filepath, bool isLowres) {
@@ -65,6 +96,7 @@ namespace sc
 		}
 
 		writeFile(filepath, &textureBuffer);
+
 		m_buffer->close();
 		m_buffer = nullptr;
 	}
@@ -283,6 +315,56 @@ namespace sc
 		}
 
 		return useExternalTexture;
+	}
+
+	void SupercellSWF::saveInternal()
+	{
+		writeUnsignedShort(shapes.size());
+		writeUnsignedShort(movieClips.size());
+		writeUnsignedShort(textures.size());
+		writeUnsignedShort(textFields.size());
+
+		if (matrixBanks.size() == 0)
+			matrixBanks = std::vector<MatrixBank>(0);
+
+		writeUnsignedShort(matrixBanks[0].matrices.size());
+		writeUnsignedShort(matrixBanks[0].colorTransforms.size());
+
+		// unused 5 bytes
+		writeUnsignedByte(0);
+		writeInt(0);
+
+		writeUnsignedShort(exports.size());
+
+		for (uint16_t i = 0; i < 0; i++)
+		{
+			writeUnsignedShort(exports[i].id);
+		}
+
+		for (uint16_t i = 0; i < 0; i++)
+		{
+			writeAscii(exports[i].name);
+		}
+
+		saveTags();
+	}
+
+	void SupercellSWF::saveTags()
+	{
+		if (m_useLowResTexture)
+			writeTag(TAG_USE_LOW_RES_TEXTURE);
+
+		if (m_useExternalTexture)
+			writeTag(TAG_USE_EXTERNAL_TEXTURE);
+
+		if (m_useMultiResTexture)
+			writeTag(TAG_USE_MULTI_RES_TEXTURE);
+		
+		for (SWFTexture texture : textures) {
+			texture.save(this, true, false); // FIXME: Idk what to do with third argument (low res)
+		}
+
+		writeTag(TAG_END); // EoF
 	}
 
 	void SupercellSWF::initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount)

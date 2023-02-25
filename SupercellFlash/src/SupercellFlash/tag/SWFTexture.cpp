@@ -10,37 +10,39 @@
 namespace sc
 {
 	std::vector<SWFTexture::PixelFormat> SWFTexture::pixelFormatTable({
-		SWFTexture::PixelFormat::RGBA8,
-		SWFTexture::PixelFormat::RGBA8,
-		SWFTexture::PixelFormat::RGBA4,
-		SWFTexture::PixelFormat::RGB5_A1,
-		SWFTexture::PixelFormat::RGB565,
-		SWFTexture::PixelFormat::RGBA8,
-		SWFTexture::PixelFormat::LUMINANCE8_ALPHA8,
-		SWFTexture::PixelFormat::RGBA8,
-		SWFTexture::PixelFormat::RGBA8,
-		SWFTexture::PixelFormat::RGBA4,
-		SWFTexture::PixelFormat::LUMINANCE8
+			SWFTexture::PixelFormat::RGBA8,
+			SWFTexture::PixelFormat::RGBA8,
+			SWFTexture::PixelFormat::RGBA4,
+			SWFTexture::PixelFormat::RGB5_A1,
+			SWFTexture::PixelFormat::RGB565,
+			SWFTexture::PixelFormat::RGBA8,
+			SWFTexture::PixelFormat::LUMINANCE8_ALPHA8,
+			SWFTexture::PixelFormat::RGBA8,
+			SWFTexture::PixelFormat::RGBA8,
+			SWFTexture::PixelFormat::RGBA4,
+			SWFTexture::PixelFormat::LUMINANCE8
 		});
 
 	std::vector<uint8_t> SWFTexture::pixelByteSizeTable({
-		4,
-		4,
-		2,
-		2,
-		2,
-		4,
-		2,
-		4,
-		4,
-		2,
-		1
+			4,
+			4,
+			2,
+			2,
+			2,
+			4,
+			2,
+			4,
+			4,
+			2,
+			1
 		});
 
 	void SWFTexture::load(sc::SupercellSWF* swf, uint8_t tag, bool useExternalTexture)
 	{
 		/* Tag processing */
 
+		m_magFilter = Filter::LINEAR;
+		m_minFilter = Filter::NEAREST;
 		if (tag == 16 || tag == 19 || tag == 29) {
 			m_magFilter = Filter::LINEAR;
 			m_minFilter = Filter::LINEAR_MIPMAP_NEAREST;
@@ -49,24 +51,14 @@ namespace sc
 			m_magFilter = Filter::LINEAR;
 			m_minFilter = Filter::LINEAR;
 		}
-		else {
-			m_magFilter = Filter::LINEAR;
-			m_minFilter = Filter::NEAREST;
-		}
 
-		if (tag == 27 || tag == 28 || tag == 29) {
+		m_linear = true;
+		if (tag == 27 || tag == 28 || tag == 29)
 			m_linear = false;
-		}
-		else {
-			m_linear = true;
-		}
 
-		if (tag == 1 || tag == 16 || tag == 28 || tag == 29) {
+		m_downscaling = false;
+		if (tag == 1 || tag == 16 || tag == 28 || tag == 29) 
 			m_downscaling = true;
-		}
-		else {
-			m_downscaling = false;
-		}
 
 		/* Binary data processing */
 
@@ -80,7 +72,9 @@ namespace sc
 		{
 			uint8_t pixelByteSize = pixelByteSizeTable.at(pixelFormatIndex);
 			uint32_t dataSize = ((m_width * m_height) * pixelByteSize);
+
 			data = std::vector<uint8_t>(dataSize);
+
 			swf->read(data.data(), dataSize);
 		}
 	};
@@ -88,7 +82,7 @@ namespace sc
 	void SWFTexture::save(SupercellSWF* swf, bool isExternal, bool isLowres) {
 		/* Writer init */
 
-		std::vector<uint8_t>tagBuffer;
+		std::vector<uint8_t> tagBuffer;
 		BufferStream tagStream(&tagBuffer);
 
 		/* Tag processing */
@@ -128,7 +122,9 @@ namespace sc
 		if (!isLowres) {
 			tagStream.writeUInt16(m_width);
 			tagStream.writeUInt16(m_height);
-			tagStream.write(data.data(), data.size());
+
+			if ((swf->useExternalTexture() && isExternal) || (!swf->useExternalTexture() && !isExternal)) // FIXME: ya zaputalsya
+				tagStream.write(data.data(), data.size());
 		}
 		else {
 			/* Some calculations for lowres texture*/
@@ -143,7 +139,9 @@ namespace sc
 
 			tagStream.writeUInt16(lowres_width);
 			tagStream.writeUInt16(lowres_height);
-			tagStream.write(lowres_data, lowres_data_size);
+
+			if ((swf->useExternalTexture() && isExternal) || (!swf->useExternalTexture() && !isExternal)) // FIXME: ya zaputalsya
+				tagStream.write(lowres_data, lowres_data_size);
 		}
 
 		tagStream.close();
@@ -218,6 +216,7 @@ namespace sc
 			return;
 
 		bool toLinear = m_linear == false && status == true;
+
 		uint8_t pixelSize = pixelByteSize();
 		data = SWFTexture::processLinearData(*this, toLinear);
 		m_linear = status;

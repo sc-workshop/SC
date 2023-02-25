@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <algorithm>
 
 #include <SupercellCompression.h>
 
@@ -31,12 +32,15 @@ namespace sc
 
 		// Vectors with objects
 	public:
+		std::vector<std::string> fonts;
+		std::vector<MatrixBank> matrixBanks;
+
 		std::vector<SWFTexture> textures;
 		std::vector<Shape> shapes;
 		std::vector<MovieClip> movieClips;
 		std::vector<TextField> textFields;
-		std::vector<MatrixBank> matrixBanks;
 		std::vector<MovieClipModifier> movieClipModifiers;
+
 		std::vector<Export> exports;
 
 		// Common class members
@@ -48,7 +52,7 @@ namespace sc
 		void load(const std::string& filePath);
 		void loadTexture(const std::string& filePath);
 
-		// void save(const std::string& filepath);
+		void save(const std::string& filepath);
 		void saveTexture(const std::string& filepath, bool isLowres);
 
 		// Getters for class members
@@ -105,6 +109,22 @@ namespace sc
 			return std::string(str, length);
 		}
 
+		std::string readFontName()
+		{
+			std::string fontName = readAscii();
+
+			if (!fontName.empty())
+			{
+				if (std::find(fonts.begin(), fonts.end(), fontName) == fonts.end())
+				{
+					fonts.push_back(fontName);
+				}
+
+			}
+
+			return fontName;
+		}
+
 		float readTwip() { return (float)readInt() * 0.05f; }
 
 		/* Write function */
@@ -116,6 +136,7 @@ namespace sc
 
 		void writeTag(uint8_t tag, std::vector<uint8_t> buffer) {
 			int32_t tagSize = static_cast<int32_t>(buffer.size());
+
 			if (tagSize > 0) {
 				writeUnsignedByte(tag);
 				writeInt(tagSize);
@@ -163,8 +184,11 @@ namespace sc
 		}
 
 	private:
-		bool loadTags();
 		bool loadInternal(bool isTexture);
+		bool loadTags();
+
+		void saveInternal();
+		void saveTags();
 
 		void openFile(const std::string& filePath, std::vector<uint8_t>* buffer);
 		void writeFile(const std::string& filePath, std::vector<uint8_t>* buffer);

@@ -17,5 +17,6 @@ namespace sc
 		float ty = 0.0f;
 
 		void load(SupercellSWF* swf, uint8_t tag);
+		void save(SupercellSWF* swf);
 	};
 }

@@ -2,17 +2,11 @@
 
 #include "SupercellFlash/common/DisplayObject.h"
 
+#include "SupercellFlash/tag/MovieClipFrame.h"
+
 namespace sc
 {
 	class SupercellSWF;
-
-	struct MovieClipFrame
-	{
-		uint16_t elementsCount;
-		std::string label;
-
-		void load(SupercellSWF* swf);
-	};
 
 	struct MovieClipFrameElement
 	{
@@ -56,6 +50,7 @@ namespace sc
 
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
+		void save(SupercellSWF* swf);
 
 	private:
 		uint8_t m_frameRate = 24;

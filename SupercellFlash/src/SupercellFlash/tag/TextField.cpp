@@ -7,7 +7,7 @@ namespace sc
 	{
 		m_id = swf->readUnsignedShort();
 
-		m_fontName = swf->readAscii();
+		m_fontName = swf->readFontName();
 		m_fontColor = swf->readInt();
 
 		m_isBold = swf->readBool();
@@ -45,9 +45,56 @@ namespace sc
 		}
 
 		if (tag > 33)
-			swf->readShort(); // * 91.91, maybe angle of something
+			m_bendAngle = swf->readShort() * 91.019f;
 
 		if (tag > 43)
-			m_adjustFontBounds = swf->readBool();
+			m_autoAdjustFontBounds = swf->readBool();
+	}
+
+	void TextField::save(SupercellSWF* swf)
+	{
+		/* Writer init */
+
+		std::vector<uint8_t> tagBuffer;
+		BufferStream tagStream(&tagBuffer);
+
+		/* Tag processing */
+
+		uint8_t tag = 7;
+
+		// TODO: other tags, I am too lazy again
+
+		/* Writing */
+		tagStream.writeUInt16(m_id);
+
+		tagStream.writeUInt8(m_fontName.length());
+
+		// FIXME: I think we should rework some methods in ByteStream
+		const char* c_fontName = m_fontName.c_str();
+		tagStream.write(&c_fontName, m_fontName.length());
+
+		tagStream.writeInt32(m_fontColor);
+
+		// We dont't have writeBool at ByteStream wtf
+		tagStream.writeUInt8(m_isBold);
+		tagStream.writeUInt8(m_isItalic);
+		tagStream.writeUInt8(m_isMultiline);
+		tagStream.writeUInt8(0); // unused
+
+		tagStream.writeUInt8(m_fontAlign);
+		tagStream.writeUInt8(m_fontSize);
+
+		tagStream.writeInt16(m_left);
+		tagStream.writeInt16(m_top);
+		tagStream.writeInt16(m_right);
+		tagStream.writeInt16(m_bottom);
+
+		tagStream.writeUInt8(m_isOutlined);
+
+		// FIXME: kill me please
+		const char* c_text = m_text.c_str();
+		tagStream.write(&c_text, m_fontName.length());
+
+		// TODO: other tags
 	}
 }

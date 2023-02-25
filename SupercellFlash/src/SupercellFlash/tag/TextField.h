@@ -32,10 +32,37 @@ namespace sc
 		bool isOutlined() { return m_isOutlined; }
 
 		bool useDeviceFont() { return m_useDeviceFont; }
-		bool adjustFontBounds() { return m_adjustFontBounds; }
+		bool autoAdjustFontBounds() { return m_autoAdjustFontBounds; }
+
+		float bendAngle() { return m_bendAngle; }
+
+		/* Setters */
+	public:
+		void text(const std::string& newText) { m_text = newText; }
+
+		void fontName(const std::string& newfontName) { m_fontName = newfontName; }
+		void fontColor(int32_t color) { m_fontColor = color; }
+		void fontSize(uint8_t size) { m_fontSize = size; }
+		void fontAlign(uint8_t align) { m_fontAlign = align; }
+
+		void left(int16_t left) { m_left = left; }
+		void top(int16_t top) { m_top = top; }
+		void right(int16_t right) { m_right = right; }
+		void bottom(int16_t bottom) { m_bottom = bottom; }
+
+		void isBold(bool status) { m_isBold = status; }
+		void isItalic(bool status) { m_isItalic = status; }
+		void isMultiline(bool status) { m_isMultiline = status; }
+		void isOutlined(bool status) { m_isOutlined = status; }
+
+		void useDeviceFont(bool status) { m_useDeviceFont = status; }
+		void autoAdjustFontBounds(bool status) { m_autoAdjustFontBounds = status; }
+
+		void bendAngle(float bend) { m_bendAngle = bend; }
 
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
+		void save(SupercellSWF* swf);
 
 	private:
 		std::string m_text = "";
@@ -56,6 +83,8 @@ namespace sc
 		bool m_isOutlined = false;
 
 		bool m_useDeviceFont = false;
-		bool m_adjustFontBounds = false;
+		bool m_autoAdjustFontBounds = false;
+
+		float m_bendAngle = 0.0f;
 	};
 }

@@ -16,6 +16,7 @@ namespace sc
 		};
 
 		void load(SupercellSWF* swf, uint8_t tag);
+		void save(SupercellSWF* swf);
 
 	public:
 		Type type() { return m_type; }; // Getter

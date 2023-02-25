@@ -12,11 +12,13 @@ namespace sc
 		uint8_t greenAdd = 0;
 		uint8_t blueAdd = 0;
 
-		float alphaMul = 1.0f;
 		float redMul = 1.0f;
 		float greenMul = 1.0f;
 		float blueMul = 1.0f;
 
+		float alpha = 1.0f;
+
 		void load(SupercellSWF* swf);
+		void save(SupercellSWF* swf);
 	};
 }

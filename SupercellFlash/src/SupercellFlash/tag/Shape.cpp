@@ -1,28 +1,9 @@
-#include "SupercellFlash/SupercellSWF.h"
 #include "SupercellFlash/tag/Shape.h"
+
+#include "SupercellFlash/SupercellSWF.h"
 
 namespace sc
 {
-	void ShapeDrawBitmapCommand::load(SupercellSWF* swf, uint8_t tag)
-	{
-		m_textureIndex = swf->readUnsignedByte();
-
-		uint8_t pointsCount = tag == 4 ? 4 : swf->readUnsignedByte();
-		vertices = std::vector<ShapeDrawBitmapCommandVertex>(pointsCount);
-
-		for (uint8_t i = 0; i < pointsCount; i++)
-		{
-			vertices[i].x = swf->readTwip();
-			vertices[i].y = swf->readTwip();
-		}
-
-		for (uint8_t i = 0; i < pointsCount; i++)
-		{
-			vertices[i].u = (float)swf->readUnsignedShort() / 65535.0f;
-			vertices[i].v = (float)swf->readUnsignedShort() / 65535.0f;
-		}
-	}
-
 	void Shape::load(SupercellSWF* swf, uint8_t tag)
 	{
 		m_id = swf->readUnsignedShort();
@@ -59,5 +40,44 @@ namespace sc
 				break;
 			}
 		}
+	}
+
+	void Shape::save(SupercellSWF* swf)
+	{
+		std::vector<uint8_t> tagBuffer;
+		BufferStream tagStream(&tagBuffer);
+
+		tagStream.writeUInt16(m_id);
+		tagStream.writeUInt16(commands.size());
+
+		uint8_t tag = 2;
+
+		uint16_t totalVerticesCount = 0;
+		for (ShapeDrawBitmapCommand command : commands)
+		{
+			if (command.vertices.size() > 4)
+			{
+				tag = 18;
+			}
+
+			totalVerticesCount += command.vertices.size();
+		}
+
+		if (tag == 18)
+			tagStream.writeUInt16(totalVerticesCount);
+
+		for (ShapeDrawBitmapCommand command : commands)
+		{
+			command.save(tagStream, tag);
+		}
+
+		// End tag
+		tagStream.writeUInt8(0);
+		tagStream.writeInt32(0);
+
+		tagStream.close();
+
+		// TODO: tag 2 support
+		swf->writeTag(tag, tagBuffer);
 	}
 }

@@ -1,14 +1,9 @@
 #include "SupercellFlash/SupercellSWF.h"
+
 #include "SupercellFlash/tag/MovieClip.h"
 
 namespace sc
 {
-	void MovieClipFrame::load(SupercellSWF* swf)
-	{
-		elementsCount = swf->readUnsignedShort();
-		label = swf->readAscii();
-	}
-
 	void MovieClip::load(SupercellSWF* swf, uint8_t tag)
 	{
 		m_id = swf->readUnsignedShort();
@@ -87,5 +82,73 @@ namespace sc
 				break;
 			}
 		}
+	}
+
+	void MovieClip::save(SupercellSWF* swf)
+	{
+		std::vector<uint8_t> tagBuffer;
+		BufferStream tagStream(&tagBuffer);
+
+		tagStream.writeUInt16(m_id);
+		tagStream.writeUInt8(m_frameRate);
+		tagStream.writeUInt16(frames.size());
+
+		uint8_t tag = 12; // idk how to add tag 35 support bcs we don't know difference between them
+
+		tagStream.writeInt32(frameElements.size());
+		for (MovieClipFrameElement element : frameElements)
+		{
+			tagStream.writeUInt16(element.instanceIndex);
+			tagStream.writeUInt16(element.matrixIndex);
+			tagStream.writeUInt16(element.colorTransformIndex);
+		}
+
+		tagStream.writeInt16(instances.size());
+
+		for (DisplayObjectInstance instance : instances)
+		{
+			tagStream.writeUInt16(instance.id);
+		}
+
+		for (DisplayObjectInstance instance : instances)
+		{
+			tagStream.writeUInt8(instance.blend);
+		}
+
+		for (DisplayObjectInstance instance : instances)
+		{
+			tagStream.writeUInt8(instance.name.length());
+
+			// FIXME: I think we should rework some methods in ByteStream
+			const char* c_instanceName = instance.name.c_str();
+			tagStream.write(&c_instanceName, instance.name.length());
+		}
+
+		for (MovieClipFrame frame : frames)
+		{
+			frame.save(tagStream);
+		}
+
+		if (m_scalingGrid)
+		{
+			tagStream.writeUInt8(31);
+			tagStream.writeInt32(16);
+
+			tagStream.writeInt32((int32_t)(m_scalingGrid->x * 20.0f));
+			tagStream.writeInt32((int32_t)(m_scalingGrid->y * 20.0f));
+			tagStream.writeInt32((int32_t)(m_scalingGrid->width * 20.0f));
+			tagStream.writeInt32((int32_t)(m_scalingGrid->height * 20.0f));
+		}
+
+		if (m_matrixBankIndex != 0)
+		{
+			tagStream.writeUInt8(41);
+			tagStream.writeInt32(1);
+			tagStream.writeUInt8(m_matrixBankIndex);
+		}
+
+		tagStream.close();
+
+		swf->writeTag(tag, tagBuffer);
 	}
 }

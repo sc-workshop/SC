@@ -15,3 +15,11 @@ build/
 
 // GMake files
 *Makefile
+
+
+// Cancelled
+SupercellEditor/
+external/GLFW/
+external/GLAD/
+external/imGui/
+SupercellFlash/src/SupercellSWF/
