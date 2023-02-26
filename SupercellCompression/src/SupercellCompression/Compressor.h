@@ -14,21 +14,19 @@ namespace sc
 		/*
 		* Compress .sc file.
 		*/
-		static CompressorError compress(const std::string& inputFilepath, std::string outFilepath, CompressionSignature signature);
+		static CompressorError compress(const std::string& inputFilepath, const std::string& outFilepath, CompressionSignature signature);
 
 		/*
 		* Compress .sc file data from stream.
 		*/
-		static CompressorError compress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature);
-
-		/*
-		* Compress .sc file with header properties.
-		*/
-		static CompressorError compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header);
+		static CompressorError compress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature); // TODO: add metadata..?
 
 		/*
 		* Compress common file data.
 		*/
-		static CompressorError commonCompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature);
+		static CompressorError commonCompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature); // TODO add sign
+
+	private:
+		static CompressorError compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header);
 	};
 }

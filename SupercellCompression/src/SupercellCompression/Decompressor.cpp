@@ -14,13 +14,9 @@
 
 namespace sc
 {
-	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath) {
-		CompressedSwfProps header;
-		return decompress(filepath, outFilepath, &header);
-	}
-
-	CompressorError Decompressor::decompress(std::string filepath, std::string& outFilepath, CompressedSwfProps* header)
+	CompressorError Decompressor::decompress(const std::string& filepath, std::string& outFilepath, std::vector<uint8_t>* metadata)
 	{
+		/* Some check */
 		if (!Utils::endsWith(filepath, ".sc")) {
 			return CompressorError::WRONG_FILE_ERROR;
 		}
@@ -28,17 +24,26 @@ namespace sc
 		if (!Utils::fileExist(filepath))
 			return CompressorError::FILE_READ_ERROR;
 
-		FILE* inFile = fopen(filepath.c_str(), "rb");
-		if (inFile == NULL)
+		/* Input file opening */
+
+		FILE* inputFile = fopen(filepath.c_str(), "rb");
+		if (inputFile == NULL)
 			return CompressorError::FILE_READ_ERROR;
 
-		FileStream inputSteam = FileStream(inFile);
-		uint32_t fileSize = inputSteam.size();
+		FileStream inputStream = FileStream(inputFile);
+		uint32_t fileSize = inputStream.size();
+
+		/* Caching things */
 
 		outFilepath = SwfCache::getTempPath(filepath);
 
-		*header = getHeader(inputSteam);
-		bool fileInCache = SwfCache::exist(filepath, header->id, fileSize);
+		/* Header parsing */
+		CompressedSwfProps header = getHeader(inputStream);
+		if (metadata != nullptr) {
+			metadata = &header.metadata;
+		}
+
+		bool fileInCache = SwfCache::exist(filepath, header.id, fileSize);
 		if (fileInCache)
 		{
 			return CompressorError::OK;
@@ -50,26 +55,26 @@ namespace sc
 
 		FileStream outputStream = FileStream(outFile);
 
-		CompressorError res = decompress(inputSteam, outputStream, *header);
+		CompressorError res = decompress(inputStream, outputStream, &header);
 
-		inputSteam.close();
+		inputStream.close();
 		outputStream.close();
 
 		if (res == CompressorError::OK && !fileInCache)
 		{
 #ifndef DISABLE_CACHE
-			SwfCache::addData(filepath, *header, fileSize);
+			SwfCache::addData(filepath, header, fileSize);
 #endif
 		}
 
 		return res;
 	}
 
-	CompressorError Decompressor::decompress(BinaryStream& inStream, BinaryStream& outStream)
+	CompressorError Decompressor::decompress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps* header)
 	{
-		CompressedSwfProps header = getHeader(inStream);
+		*header = getHeader(inStream);
 
-		return decompress(inStream, outStream, header);
+		return decompress(inStream, outStream, *header);
 	}
 
 	CompressorError Decompressor::commonDecompress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature) {
@@ -102,30 +107,18 @@ namespace sc
 		return res == CompressionError::OK ? CompressorError::OK : CompressorError::DECOMPRESS_ERROR;
 	}
 
-	CompressorError Decompressor::decompress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps header) {
-		inStream.setEof(static_cast<uint32_t>(header.metadata.empty() ? 0 : header.metadata.size() + 9));
-
-		CompressorError res = commonDecompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
-
-		inStream.setEof(0);
-
-		return res;
-	}
-
 	CompressorError Decompressor::commonDecompress(BinaryStream& inStream, BinaryStream& outStream) {
 		inStream.set(0);
 		uint32_t magic;
 		inStream.read(&magic, sizeof(magic));
 		inStream.set(0);
 
-		CompressionSignature signature;
-
 		if (magic == 0x3A676953) {
 			inStream.skip(64);
 			inStream.read(&magic, sizeof(magic));
 		}
 
-		signature = getSignature(magic);
+		CompressionSignature signature = getSignature(magic);
 
 		return commonDecompress(inStream, outStream, signature);
 	}
@@ -133,22 +126,14 @@ namespace sc
 	CompressedSwfProps Decompressor::getHeader(BinaryStream& inputSteam) {
 		CompressedSwfProps header;
 
-		// .sc file header
-		uint32_t magic = inputSteam.readUInt32BE();
-
-		switch (magic)
-		{
-		case 0x53430000: // SC
-			break;
-		case 0x3A676953: // SIGN (compressed csv)
-			inputSteam.read(header.sign.data(), 64);
-			return header;
-		default:
+		uint16_t magic = inputSteam.readUInt16BE();
+		if (magic != 0x5343) { // Just a little trick to handle decompressed file
+			header.signature = CompressionSignature::NONE;
 			return header;
 		}
 
 		// Version of .sc file
-		uint32_t version = static_cast<uint32_t>(inputSteam.readUInt16BE());
+		uint32_t version = inputSteam.readUInt32BE();
 
 	VERSION_CHECK:
 		switch (version)
@@ -170,7 +155,7 @@ namespace sc
 			goto VERSION_CHECK;
 		}
 		case 3:
-			header.signature = static_cast<uint32_t>(CompressionSignature::ZSTD);
+			header.signature = CompressionSignature::ZSTD;
 			break;
 		case 1:
 			break;
@@ -197,18 +182,29 @@ namespace sc
 			// SCLZ
 			if (compressMagic == 0x5A4C4353)
 			{
-				header.signature = static_cast<uint32_t>(CompressionSignature::LZHAM);
+				header.signature = CompressionSignature::LZHAM;
 			}
 
 			// LZMA
 			else
 			{
-				header.signature = static_cast<uint32_t>(CompressionSignature::LZMA);
+				header.signature = CompressionSignature::LZMA;
 			}
 
 			inputSteam.set(inputSteam.tell() - 4);
 		}
 
 		return header;
+	}
+
+	CompressorError Decompressor::decompress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps header) {
+		if (header.metadata.size() > 0) {
+			inStream.setEof(static_cast<uint32_t>(header.metadata.size() + 9));
+		}
+
+		CompressorError res = commonDecompress(inStream, outStream, header.signature);
+		inStream.setEof(0);
+
+		return res;
 	}
 }

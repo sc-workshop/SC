@@ -1,6 +1,11 @@
 #include "SupercellFlash/SupercellSWF.h"
+#include <SupercellCompression.h>
 
 #include <filesystem>
+
+uint8_t someFunction(uint8_t number) {
+	return number + 1;
+}
 
 namespace sc
 {
@@ -14,15 +19,11 @@ namespace sc
 
 	void SupercellSWF::load(const std::string& filePath)
 	{
-		std::vector<uint8_t> buffer;
-		openFile(filePath, &buffer); // reading and decompressing .sc file
-
-		m_buffer = new BufferStream(&buffer);
+		openFile(filePath);
 
 		m_useExternalTexture = loadInternal(false); // loading .sc file
 
-		m_buffer->close();
-		m_buffer = nullptr;
+		stream.close();
 
 		if (m_useExternalTexture)
 		{
@@ -51,45 +52,37 @@ namespace sc
 	}
 
 	void SupercellSWF::loadTexture(const std::string& filePath) {
-		std::vector<uint8_t> buffer;
-		openFile(filePath, &buffer);
-
-		m_buffer = new BufferStream(&buffer);
-
+		openFile(filePath);
 		loadInternal(true);
-
-		m_buffer->close();
-		m_buffer = nullptr;
+		stream.close();
 	}
 
-	void SupercellSWF::save(const std::string& filepath)
+	void SupercellSWF::save(const std::string& filepath, CompressionSignature signature)
 	{
-		std::vector<uint8_t> textureBuffer;
-		m_buffer = new BufferStream(&textureBuffer);
-
+		stream.newBuffer();
 		saveInternal();
+		writeFile(filepath, signature);
 
-		bool isLowRes = m_useLowResTexture;
-		for (SWFTexture texture : textures) {
-			texture.save(this, true, isLowRes);
-		}
+		//bool isLowRes = m_useLowResTexture;
+		//for (SWFTexture texture : textures) {
+		//	texture.save(this, true, isLowRes);
+		//}
 
-		writeFile(filepath, &textureBuffer);
+		//writeFile(filepath, &textureBuffer);
 
-		m_buffer->close();
-		m_buffer = nullptr;
+		//m_buffer->close();
+		//m_buffer = nullptr;
 
-		if (useExternalTexture())
-		{
-			// TODO: low and high res textures
-			
-			// saveTexture(externalFilePath, false);
-		}
+		//if (useExternalTexture())
+		//{
+		//	// TODO: low and high res textures
+		//
+		//	// saveTexture(externalFilePath, false);
+		//}
 	}
 
 	void SupercellSWF::saveTexture(const std::string& filepath, bool isLowres) {
-		std::vector<uint8_t> textureBuffer;
-		m_buffer = new BufferStream(&textureBuffer);
+		/*stream.newBuffer();
 
 		for (SWFTexture texture : textures) {
 			texture.save(this, true, isLowres);
@@ -98,43 +91,7 @@ namespace sc
 		writeFile(filepath, &textureBuffer);
 
 		m_buffer->close();
-		m_buffer = nullptr;
-	}
-
-	void SupercellSWF::openFile(const std::string& filePath, std::vector<uint8_t>* buffer) {
-		// Opening and decompressing .sc file
-		std::string cachePath;
-
-		CompressedSwfProps props;
-		CompressorError decompressResult = Decompressor::decompress(filePath, cachePath, &props);
-		if (decompressResult != CompressorError::OK)
-		{
-			throw std::runtime_error("Failed to decompress *.sc file");
-		}
-		compression = (CompressionSignature)props.signature;
-
-		FILE* decompressedFile = fopen(cachePath.c_str(), "rb");
-		if (decompressedFile == NULL)
-		{
-			throw std::runtime_error("Failed to open decompressed *.sc file");
-		}
-		*buffer = std::vector<uint8_t>(Utils::fileSize(decompressedFile));
-		fread(buffer->data(), 1, buffer->size(), decompressedFile);
-		fclose(decompressedFile);
-	}
-
-	void SupercellSWF::writeFile(const std::string& filePath, std::vector<uint8_t>* buffer) {
-		FILE* outputFile = fopen(filePath.c_str(), "wb");
-		if (outputFile == NULL) {
-			throw std::runtime_error("Failed to open output *.sc file");
-		}
-		FileStream outputStream(outputFile);
-
-#ifdef SC_DEBUG
-		outputStream.write(buffer->data(), buffer->size());
-#else
-		Compressor::compress(*m_buffer, outputStream, compression);
-#endif
+		m_buffer = nullptr;*/
 	}
 
 	bool SupercellSWF::loadInternal(bool isTexture)
@@ -142,36 +99,35 @@ namespace sc
 		// Reading .sc file
 		if (!isTexture)
 		{
-			uint16_t shapesCount = readUnsignedShort();
+			uint16_t shapesCount = stream.readUnsignedShort();
 			shapes = std::vector<Shape>(shapesCount);
 
-			uint16_t movieClipsCount = readUnsignedShort();
+			uint16_t movieClipsCount = stream.readUnsignedShort();
 			movieClips = std::vector<MovieClip>(movieClipsCount);
 
-			uint16_t texturesCount = readUnsignedShort();
+			uint16_t texturesCount = stream.readUnsignedShort();
 			textures = std::vector<SWFTexture>(texturesCount);
 
-			uint16_t textFieldsCount = readUnsignedShort();
+			uint16_t textFieldsCount = stream.readUnsignedShort();
 			textFields = std::vector<TextField>(textFieldsCount);
 
-			uint16_t matricesCount = readUnsignedShort();
-			uint16_t colorTransformsCount = readUnsignedShort();
-			matrixBanks = std::vector<MatrixBank>(0);
+			uint16_t matricesCount = stream.readUnsignedShort();
+			uint16_t colorTransformsCount = stream.readUnsignedShort();
 			initMatrixBank(matricesCount, colorTransformsCount);
 
-			skip(5); // unused
+			stream.skip(5); // unused
 
-			uint16_t exportsCount = readUnsignedShort();
+			uint16_t exportsCount = stream.readUnsignedShort();
 			exports = std::vector<Export>(exportsCount);
 
 			for (uint16_t i = 0; i < exportsCount; i++)
 			{
-				exports[i].id = readUnsignedShort();
+				exports[i].id = stream.readUnsignedShort();
 			}
 
 			for (uint16_t i = 0; i < exportsCount; i++)
 			{
-				exports[i].name = readAscii();
+				exports[i].name = stream.readAscii();
 			}
 		}
 
@@ -193,8 +149,8 @@ namespace sc
 
 		while (true)
 		{
-			uint8_t tag = readUnsignedByte();
-			int32_t tagLength = readInt();
+			uint8_t tag = stream.readUnsignedByte();
+			int32_t tagLength = stream.readInt();
 
 			if (tagLength < 0)
 				throw std::runtime_error("Negative tag length. Tag " + tag);
@@ -217,8 +173,8 @@ namespace sc
 				break;
 
 			case TAG_TEXTURE_FILE_SUFFIXES:
-				m_multiResFileSuffix = readAscii();
-				m_lowResFileSuffix = readAscii();
+				m_multiResFileSuffix = stream.readAscii();
+				m_lowResFileSuffix = stream.readAscii();
 				break;
 
 			case TAG_TEXTURE:
@@ -237,7 +193,7 @@ namespace sc
 				break;
 
 			case TAG_MOVIE_CLIP_MODIFIERS_COUNT: {
-				uint16_t movieClipModifiersCount = readUnsignedShort();
+				uint16_t movieClipModifiersCount = stream.readUnsignedShort();
 				movieClipModifiers = std::vector<MovieClipModifier>(movieClipModifiersCount);
 				break;
 			}
@@ -279,8 +235,8 @@ namespace sc
 				colorTransformsLoaded = 0;
 				matrixBanksLoaded++;
 				{
-					uint16_t matrixCount = readUnsignedShort();
-					uint16_t colorTransformCount = readUnsignedShort();
+					uint16_t matrixCount = stream.readUnsignedShort();
+					uint16_t colorTransformCount = stream.readUnsignedShort();
 					initMatrixBank(matrixCount, colorTransformCount);
 				}
 				break;
@@ -309,7 +265,7 @@ namespace sc
 				break;
 
 			default:
-				skip(tagLength);
+				stream.skip(tagLength);
 				break;
 			}
 		}
@@ -319,52 +275,98 @@ namespace sc
 
 	void SupercellSWF::saveInternal()
 	{
-		writeUnsignedShort(shapes.size());
-		writeUnsignedShort(movieClips.size());
-		writeUnsignedShort(textures.size());
-		writeUnsignedShort(textFields.size());
-
 		if (matrixBanks.size() == 0)
 			matrixBanks = std::vector<MatrixBank>(0);
 
-		writeUnsignedShort(matrixBanks[0].matrices.size());
-		writeUnsignedShort(matrixBanks[0].colorTransforms.size());
+		uint16_t exportsCount = static_cast<uint16_t>(exports.size());
+		uint16_t shapeCount = static_cast<uint16_t>(shapes.size());
+		uint16_t movieClipsCount = static_cast<uint16_t>(movieClips.size());
+		uint16_t texturesCount = static_cast<uint16_t>(textures.size());
+		uint16_t textFieldsCount = static_cast<uint16_t>(textFields.size());
+
+		stream.writeUnsignedShort(shapeCount);
+		stream.writeUnsignedShort(movieClipsCount);
+		stream.writeUnsignedShort(texturesCount);
+		stream.writeUnsignedShort(textFieldsCount);
+
+		stream.writeUnsignedShort(static_cast<uint16_t>(matrixBanks[0].matrices.size()));
+		stream.writeUnsignedShort(static_cast<uint16_t>(matrixBanks[0].colorTransforms.size()));
 
 		// unused 5 bytes
-		writeUnsignedByte(0);
-		writeInt(0);
+		stream.writeUnsignedByte(0);
+		stream.writeInt(0);
 
-		writeUnsignedShort(exports.size());
+		stream.writeUnsignedShort(exportsCount);
 
-		for (uint16_t i = 0; i < 0; i++)
+		for (uint16_t i = 0; exportsCount > i; i++)
 		{
-			writeUnsignedShort(exports[i].id);
+			stream.writeUnsignedShort(exports[i].id);
 		}
 
-		for (uint16_t i = 0; i < 0; i++)
+		for (uint16_t i = 0; exportsCount > i; i++)
 		{
-			writeAscii(exports[i].name);
+			stream.writeAscii(exports[i].name);
 		}
 
-		saveTags();
+		saveTags(shapeCount, movieClipsCount, texturesCount, textFieldsCount);
 	}
 
-	void SupercellSWF::saveTags()
+	void SupercellSWF::saveTags(
+		uint16_t shapeCount,
+		uint16_t movieClipsCount,
+		uint16_t texturesCount,
+		uint16_t textFieldsCount
+	)
 	{
 		if (m_useLowResTexture)
-			writeTag(TAG_USE_LOW_RES_TEXTURE);
+			stream.writeTag(TAG_USE_LOW_RES_TEXTURE);
 
 		if (m_useExternalTexture)
-			writeTag(TAG_USE_EXTERNAL_TEXTURE);
+			stream.writeTag(TAG_USE_EXTERNAL_TEXTURE);
 
 		if (m_useMultiResTexture)
-			writeTag(TAG_USE_MULTI_RES_TEXTURE);
-		
+			stream.writeTag(TAG_USE_MULTI_RES_TEXTURE);
+
 		for (SWFTexture texture : textures) {
-			texture.save(this, true, false); // FIXME: Idk what to do with third argument (low res)
+			texture.save(this, !m_useExternalTexture, false);
 		}
 
-		writeTag(TAG_END); // EoF
+		if (movieClipModifiers.size() > 0) {
+			uint16_t modifiersCount = static_cast<uint16_t>(movieClipModifiers.size());
+			stream.writeUnsignedByte(TAG_MOVIE_CLIP_MODIFIERS_COUNT);
+			stream.writeInt(sizeof(uint16_t));
+			stream.writeUnsignedShort(modifiersCount);
+		}
+
+		for (uint16_t i = 0; shapeCount > i; i++) {
+			shapes[i].save(this);
+		}
+
+		for (uint16_t i = 0; textFieldsCount > i; i++) {
+			textFields[i].save(this);
+		}
+
+		uint8_t matrixBanksCount = static_cast<uint8_t>(matrixBanks.size());
+
+		for (uint8_t i = 0; matrixBanksCount > i; i++) {
+			uint16_t matricesCount = static_cast<uint16_t>(matrixBanks[i].matrices.size());
+			uint16_t colorsCount = static_cast<uint16_t>(matrixBanks[i].colorTransforms.size());
+
+			for (uint16_t m = 0; matricesCount > m; m++) {
+				sc::Matrix2x3 matrix = matrixBanks[i].matrices[m];
+				matrixBanks[i].matrices[m].save(this);
+			}
+
+			for (uint16_t c = 0; colorsCount > c; c++) {
+				matrixBanks[i].colorTransforms[c].save(this);
+			}
+		}
+
+		for (uint16_t i = 0; movieClipsCount > i; i++) {
+			movieClips[i].save(this);
+		}
+
+		stream.writeTag(TAG_END); // EoF
 	}
 
 	void SupercellSWF::initMatrixBank(uint16_t matricesCount, uint16_t colorTransformsCount)
@@ -373,5 +375,39 @@ namespace sc
 		bank.matrices = std::vector<Matrix2x3>(matricesCount);
 		bank.colorTransforms = std::vector<ColorTransform>(colorTransformsCount);
 		matrixBanks.push_back(bank);
+	}
+
+	void SupercellSWF::openFile(const std::string& filePath) {
+		std::string cachePath;
+
+		CompressedSwfProps props;
+		CompressorError decompressResult = Decompressor::decompress(filePath, cachePath, nullptr);
+		if (decompressResult != CompressorError::OK)
+		{
+			throw std::runtime_error("Failed to decompress *.sc file");
+		}
+
+		FILE* decompressedFile = fopen(cachePath.c_str(), "rb");
+		if (decompressedFile == NULL)
+		{
+			throw std::runtime_error("Failed to open decompressed *.sc file");
+		}
+		stream.newBuffer(Utils::fileSize(decompressedFile));
+		fread(stream.buffer()->data(), 1, stream.buffer()->size(), decompressedFile);
+		fclose(decompressedFile);
+	}
+
+	void SupercellSWF::writeFile(const std::string& filePath, CompressionSignature signature) {
+		FILE* outputFile = fopen(filePath.c_str(), "wb");
+		if (outputFile == NULL) {
+			throw std::runtime_error("Failed to open output *.sc file");
+		}
+		FileStream outputStream(outputFile);
+
+#ifdef SC_DEBUG
+		outputStream.write(stream.buffer()->data(), stream.buffer()->size());
+#else
+		Compressor::compress(*stream.stream(), outputStream, signature);
+#endif
 	}
 }

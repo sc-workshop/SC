@@ -6,53 +6,49 @@ namespace sc
 {
 	void ShapeDrawBitmapCommand::load(SupercellSWF* swf, uint8_t tag)
 	{
-		m_textureIndex = swf->readUnsignedByte();
+		m_textureIndex = swf->stream.readUnsignedByte();
 
-		uint8_t pointsCount = tag == 4 ? 4 : swf->readUnsignedByte();
+		uint8_t pointsCount = tag == 4 ? 4 : swf->stream.readUnsignedByte();
 		vertices = std::vector<ShapeDrawBitmapCommandVertex>(pointsCount);
 
 		for (uint8_t i = 0; i < pointsCount; i++)
 		{
-			vertices[i].x = swf->readTwip();
-			vertices[i].y = swf->readTwip();
+			vertices[i].x = swf->stream.readTwip();
+			vertices[i].y = swf->stream.readTwip();
 		}
 
 		for (uint8_t i = 0; i < pointsCount; i++)
 		{
-			vertices[i].u = (float)swf->readUnsignedShort() / 65535.0f;
-			vertices[i].v = (float)swf->readUnsignedShort() / 65535.0f;
+			vertices[i].u = (float)swf->stream.readUnsignedShort() / 65535.0f;
+			vertices[i].v = (float)swf->stream.readUnsignedShort() / 65535.0f;
 		}
 	}
 
-	void ShapeDrawBitmapCommand::save(BufferStream& shapeStream, uint8_t shapeTag)
+	void ShapeDrawBitmapCommand::save(SupercellSWF* swf, uint8_t shapeTag)
 	{
-		std::vector<uint8_t> tagBuffer;
-		BufferStream tagStream(&tagBuffer);
+		uint32_t pos = swf->stream.initTag();
 
-		tagStream.writeUInt8(m_textureIndex);
+		uint8_t verticesCount = static_cast<uint8_t>(vertices.size());
 
-		uint8_t tag = 4;
-		if (shapeTag == 18)
-			tag = 22; // TODO: tag 17 support
+		swf->stream.writeUnsignedByte(m_textureIndex);
 
-		if (tag != 4)
-			tagStream.writeUInt8(vertices.size());
+		uint8_t tag = TAG_SHAPE;
+		if (shapeTag == TAG_SHAPE_2)
+			tag = TAG_SHAPE_DRAW_BITMAP_COMMAND_3; // TODO: tag 17 support
 
-		for (ShapeDrawBitmapCommandVertex vertex : vertices)
-		{
-			tagStream.writeInt32((int32_t)(vertex.x * 20.0f));
-			tagStream.writeInt32((int32_t)(vertex.y * 20.0f));
+		if (tag != TAG_SHAPE_DRAW_BITMAP_COMMAND)
+			swf->stream.writeUnsignedByte(verticesCount);
+
+		for (uint8_t i = 0; verticesCount > i; i++) {
+			swf->stream.writeTwip(vertices[i].x);
+			swf->stream.writeTwip(vertices[i].y);
 		}
 
-		for (ShapeDrawBitmapCommandVertex vertex : vertices)
-		{
-			tagStream.writeUInt16((uint16_t)(vertex.u * 65535.0f));
-			tagStream.writeUInt16((uint16_t)(vertex.v * 65535.0f));
+		for (uint8_t i = 0; verticesCount > i; i++) {
+			swf->stream.writeUnsignedShort((uint16_t)(vertices[i].u * 65535.0f));
+			swf->stream.writeUnsignedShort((uint16_t)(vertices[i].v * 65535.0f));
 		}
 
-		tagStream.close();
-
-		shapeStream.writeUInt8(tag);
-		shapeStream.write(tagBuffer.data(), tagBuffer.size());
+		swf->stream.finalizeTag(tag, pos);
 	}
 }

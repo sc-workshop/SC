@@ -6,25 +6,18 @@ namespace sc
 {
 	void MovieClipFrame::load(SupercellSWF* swf)
 	{
-		elementsCount = swf->readUnsignedShort();
-		label = swf->readAscii();
+		elementsCount = swf->stream.readUnsignedShort();
+		label = swf->stream.readAscii();
 	}
 
-	void MovieClipFrame::save(BufferStream& movieClipStream)
+	void MovieClipFrame::save(SupercellSWF* swf)
 	{
-		std::vector<uint8_t> tagBuffer;
-		BufferStream tagStream(&tagBuffer);
+		uint32_t pos = swf->stream.initTag();
 
-		tagStream.writeUInt16(elementsCount);
+		uint8_t tag = TAG_MOVIE_CLIP_FRAME_2;
+		swf->stream.writeUnsignedShort(elementsCount);
+		swf->stream.writeAscii(label);
 
-		tagStream.writeUInt8(label.length());
-		const char* c_label = label.c_str();
-		tagStream.write(&c_label, label.length());
-
-		tagStream.close();
-
-		movieClipStream.writeUInt8(11);
-		movieClipStream.writeInt32(tagBuffer.size());
-		movieClipStream.write(tagBuffer.data(), tagBuffer.size());
+		swf->stream.finalizeTag(tag, pos);
 	}
 }

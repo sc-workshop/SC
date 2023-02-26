@@ -8,6 +8,8 @@
 
 namespace sc {
 	CompressionError ZSTD::decompress(BinaryStream& inStream, BinaryStream& outStream) {
+		inStream.set(0);
+
 		const size_t buffInSize = ZSTD_DStreamInSize();
 		const size_t buffOutSize = ZSTD_DStreamOutSize();
 

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "SupercellCompression/common/Endian.h"
+#include "SupercellCompression//Signature.h"
 
 namespace sc
 {
@@ -39,7 +40,7 @@ namespace sc
 		std::vector<uint8_t> sign;
 
 		// Compress signature
-		uint32_t signature = 0;
+		CompressionSignature signature = CompressionSignature::NONE;
 	};
 
 	// Error enums

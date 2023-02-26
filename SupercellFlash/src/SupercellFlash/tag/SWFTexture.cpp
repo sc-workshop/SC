@@ -43,30 +43,30 @@ namespace sc
 
 		m_magFilter = Filter::LINEAR;
 		m_minFilter = Filter::NEAREST;
-		if (tag == 16 || tag == 19 || tag == 29) {
+		if (tag == TAG_TEXTURE_2 || tag == TAG_TEXTURE_3 || tag == TAG_TEXTURE_7) {
 			m_magFilter = Filter::LINEAR;
 			m_minFilter = Filter::LINEAR_MIPMAP_NEAREST;
 		}
-		else if (tag == 34) {
+		else if (tag == TAG_TEXTURE_8) {
 			m_magFilter = Filter::LINEAR;
 			m_minFilter = Filter::LINEAR;
 		}
 
 		m_linear = true;
-		if (tag == 27 || tag == 28 || tag == 29)
+		if (tag == TAG_TEXTURE_5 || tag == TAG_TEXTURE_6 || tag == TAG_TEXTURE_7)
 			m_linear = false;
 
 		m_downscaling = false;
-		if (tag == 1 || tag == 16 || tag == 28 || tag == 29) 
+		if (tag == TAG_TEXTURE || tag == TAG_TEXTURE_2 || tag == TAG_TEXTURE_6 || tag == TAG_TEXTURE_7)
 			m_downscaling = true;
 
 		/* Binary data processing */
 
-		uint8_t pixelFormatIndex = swf->readUnsignedByte();
+		uint8_t pixelFormatIndex = swf->stream.readUnsignedByte();
 		m_pixelFormat = SWFTexture::pixelFormatTable.at(pixelFormatIndex);
 
-		m_width = swf->readUnsignedShort();
-		m_height = swf->readUnsignedShort();
+		m_width = swf->stream.readUnsignedShort();
+		m_height = swf->stream.readUnsignedShort();
 
 		if (!useExternalTexture)
 		{
@@ -75,39 +75,38 @@ namespace sc
 
 			data = std::vector<uint8_t>(dataSize);
 
-			swf->read(data.data(), dataSize);
+			swf->stream.read(data.data(), dataSize);
 		}
 	};
 
 	void SWFTexture::save(SupercellSWF* swf, bool isExternal, bool isLowres) {
 		/* Writer init */
 
-		std::vector<uint8_t> tagBuffer;
-		BufferStream tagStream(&tagBuffer);
+		uint32_t pos = swf->stream.initTag();
 
 		/* Tag processing */
 
-		uint8_t tag = 1;
+		uint8_t tag = TAG_TEXTURE;
 
 		if (isExternal) {
 			if (m_magFilter == Filter::LINEAR && m_minFilter == Filter::NEAREST) {
 				if (!m_linear) {
-					tag = m_downscaling ? 28 : 27;
+					tag = m_downscaling ? TAG_TEXTURE_6 : TAG_TEXTURE_5;
 				}
 				else if (!m_downscaling) {
-					tag = 24;
+					tag = TAG_TEXTURE_4;
 				}
 			}
 			else if (m_magFilter == Filter::LINEAR && m_minFilter == Filter::LINEAR_MIPMAP_NEAREST) {
 				if (!m_linear && m_downscaling) {
-					tag = 29;
+					tag = TAG_TEXTURE_7;
 				}
 				else {
-					tag = m_downscaling ? 16 : 19;
+					tag = m_downscaling ? TAG_TEXTURE_2 : TAG_TEXTURE_3;
 				}
 			}
 			else if (m_magFilter == Filter::NEAREST && m_minFilter == Filter::NEAREST) {
-				tag = 34;
+				tag = TAG_TEXTURE_8;
 			}
 		}
 
@@ -117,35 +116,34 @@ namespace sc
 			throw std::runtime_error("SWFTexture image data is empty");
 		}
 
-		tagStream.writeUInt8(pixelIndex());
+		swf->stream.writeUnsignedByte(pixelIndex());
+
 
 		if (!isLowres) {
-			tagStream.writeUInt16(m_width);
-			tagStream.writeUInt16(m_height);
+			swf->stream.writeUnsignedShort(m_width);
+			swf->stream.writeUnsignedShort(m_height);
 
-			if ((swf->useExternalTexture() && isExternal) || (!swf->useExternalTexture() && !isExternal)) // FIXME: ya zaputalsya
-				tagStream.write(data.data(), data.size());
+			if (isExternal) 
+				swf->stream.write(data.data(), data.size());
 		}
 		else {
 			/* Some calculations for lowres texture*/
 			uint16_t lowres_width = static_cast<uint16_t>(round(m_width / 2));
 			uint16_t lowres_height = static_cast<uint16_t>(round(m_height / 2));
-			uint32_t lowres_data_size = (lowres_width * lowres_height) * pixelByteSize();
-			uint8_t* lowres_data = new uint8_t[lowres_data_size]();
+			std::vector<uint8_t> lowres_data((lowres_width * lowres_height) * pixelByteSize());
 
 			stbir_resize_uint8(data.data(), m_width, m_height, 0,
-				lowres_data, lowres_width, lowres_height, 0,
+				lowres_data.data(), lowres_width, lowres_height, 0,
 				pixelByteSize());
 
-			tagStream.writeUInt16(lowres_width);
-			tagStream.writeUInt16(lowres_height);
+			swf->stream.writeUnsignedShort(lowres_width);
+			swf->stream.writeUnsignedShort(lowres_height);
 
-			if ((swf->useExternalTexture() && isExternal) || (!swf->useExternalTexture() && !isExternal)) // FIXME: ya zaputalsya
-				tagStream.write(lowres_data, lowres_data_size);
+			if (isExternal)
+				swf->stream.write(lowres_data.data(), lowres_data.size());
 		}
 
-		tagStream.close();
-		swf->writeTag(tag, tagBuffer);
+		swf->stream.finalizeTag(tag, pos);
 	};
 
 	uint8_t SWFTexture::pixelIndex() {

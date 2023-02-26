@@ -24,6 +24,7 @@ namespace sc
 {
 	CompressionError LZHAM::compress(BinaryStream& inStream, BinaryStream& outStream)
 	{
+		inStream.set(0);
 		uint64_t fileSize = inStream.size();
 
 		const uint inBufferSize = LZHAM_COMP_INPUT_BUFFER_SIZE;

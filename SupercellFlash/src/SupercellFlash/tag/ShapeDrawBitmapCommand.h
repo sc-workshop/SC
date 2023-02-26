@@ -1,12 +1,13 @@
 #pragma once
 
 #include <vector>
-
 #include <cstdint>
+#include "../common/SwfStream.h"
 
 namespace sc
 {
 	class SupercellSWF;
+	class SWFStream;
 
 	struct ShapeDrawBitmapCommandVertex
 	{
@@ -26,7 +27,7 @@ namespace sc
 		/* Functions */
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
-		void save(BufferStream& shapeStream, uint8_t shapeTag);
+		void save(SupercellSWF* swf, uint8_t shapeTag);
 
 		/* Vertices */
 	public:

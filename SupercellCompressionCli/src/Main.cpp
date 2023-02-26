@@ -95,13 +95,13 @@ void processFileInfo(sc::CompressedSwfProps info) {
 	std::string compressionMethod = "NONE";
 	switch (info.signature)
 	{
-	case 1:
+	case sc::CompressionSignature::LZMA:
 		compressionMethod = "LZMA";
 		break;
-	case 2:
+	case sc::CompressionSignature::LZHAM:
 		compressionMethod = "LZHAM";
 		break;
-	case 3:
+	case sc::CompressionSignature::ZSTD:
 		compressionMethod = "ZSTD";
 		break;
 	default:
@@ -115,9 +115,6 @@ void processFileInfo(sc::CompressedSwfProps info) {
 
 int main(int argc, char* argv[])
 {
-	bool enableCache = optionInCmd(argc, argv, "--cache");
-	bool memoryStream = optionInCmd(argc, argv, "--memory-stream");
-
 	printf("SC Compression - %s Command Line app - Compiled %s %s\n\n", PLATFORM, __DATE__, __TIME__);
 	if (argc <= 1) {
 		printUsage();
@@ -136,8 +133,8 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	std::string outFilepath(argv[3] && !enableCache ? argv[3] : "");
-	if (outFilepath.empty() && !(enableCache && mode == "d")) {
+	std::string outFilepath(argv[3]);
+	if (outFilepath.empty()) {
 		std::cout << "[ERROR] Output file does not exist." << std::endl;
 		return 0;
 	}
@@ -154,51 +151,18 @@ int main(int argc, char* argv[])
 		sc::CompressorError res;
 		
 		sc::CompressedSwfProps header;
-		if (enableCache) {
-			res = sc::Decompressor::decompress(inFilepath, outFilepath, &header);
+		FILE* inFile = fopen(inFilepath.c_str(), "rb");
+		FILE* outFile = fopen(outFilepath.c_str(), "wb");
+
+		if (inFile == NULL || outFile == NULL) {
+			std::cout << "[ERROR] Failed to open files!" << std::endl;
+			return 0;
 		}
-		else if (memoryStream) {
-			FILE* inFile = fopen(inFilepath.c_str(), "rb");
-			FILE* outFile = fopen(outFilepath.c_str(), "wb");
 
-			if (inFile == NULL || outFile == NULL) {
-				std::cout << "[ERROR] Failed to open files!" << std::endl;
-				return 0;
-			}
+		sc::FileStream inStream = sc::FileStream(inFile);
+		sc::FileStream outStream = sc::FileStream(outFile);
 
-			uint32_t inBufferSize = sc::Utils::fileSize(inFile);
-			std::vector<uint8_t> inBuffer(inBufferSize);
-			fread(inBuffer.data(), 1, inBufferSize, inFile);
-			sc::BufferStream inStream(&inBuffer);
-
-			std::vector<uint8_t> outBuffer;
-			sc::BufferStream outStream(&outBuffer);
-
-			header = sc::Decompressor::getHeader(inStream);
-
-			res = sc::Decompressor::decompress(inStream, outStream, header);
-
-			fwrite(outBuffer.data(), 1, outBuffer.size(), outFile);
-
-			inStream.close();
-			outStream.close();
-		}
-		else {
-			FILE* inFile = fopen(inFilepath.c_str(), "rb");
-			FILE* outFile = fopen(outFilepath.c_str(), "wb");
-
-			if (inFile == NULL || outFile == NULL) {
-				std::cout << "[ERROR] Failed to open files!" << std::endl;
-				return 0;
-			}
-
-			sc::FileStream inStream = sc::FileStream(inFile);
-			sc::FileStream outStream = sc::FileStream(outFile);
-
-			header = sc::Decompressor::getHeader(inStream);
-
-			res = sc::Decompressor::decompress(inStream, outStream, header);
-		}
+		res = sc::Decompressor::decompress(inStream, outStream, &header);
 
 		processFileInfo(header);
 		processCompressorErrs(res);

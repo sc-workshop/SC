@@ -9,6 +9,9 @@ namespace sc
 {
 	class BinaryStream
 	{
+	protected:
+		uint32_t readEofOffset = 0;
+
 	public:
 		virtual ~BinaryStream() {};
 
@@ -22,10 +25,17 @@ namespace sc
 
 		virtual uint32_t size() = 0;
 
-		virtual bool eof() = 0;
-		virtual void setEof(uint32_t pos) = 0;
-
 		virtual void close() = 0;
+
+		bool eof()
+		{
+			return size() <= tell() - readEofOffset;
+		};
+
+		void setEof(uint32_t pos) {
+			if (size() >= pos)
+				readEofOffset = pos;
+		};
 
 		/* Some common functions */
 
@@ -224,7 +234,6 @@ namespace sc
 	private:
 		FILE* file;
 		uint32_t fileSize = 0;
-		uint32_t readEofOffset = 0;
 
 	public:
 
@@ -266,16 +275,6 @@ namespace sc
 			return fileSize - readEofOffset;
 		};
 
-		bool eof() override
-		{
-			return size() <= tell() - readEofOffset;
-		};
-
-		void setEof(uint32_t pos) override {
-			if (fileSize >= pos)
-				readEofOffset = pos;
-		};
-
 		void close() override {
 			fclose(file);
 		};
@@ -284,13 +283,12 @@ namespace sc
 	// Implementation for buffer binary stream
 	class BufferStream : public BinaryStream {
 	public:
-		explicit BufferStream(std::vector<uint8_t>* buffer) : buffer(buffer) { }
+		explicit BufferStream(std::vector<uint8_t>* buffer) : buffer(buffer) {}
 
 	private:
 		std::vector<uint8_t>* buffer; // FIXME: Why is this pointer?? // because it can be easily used in the future. there is no need to create additional functions.
 
-		size_t position = 0;
-		size_t readEofOffset = 0;
+		size_t position = 0x0;
 
 	public:
 		size_t read(void* data, size_t dataSize) override
@@ -330,7 +328,7 @@ namespace sc
 
 		int set(uint32_t pos) override
 		{
-			if (size() > pos)
+			if (size() >= pos)
 			{
 				position = pos;
 				return 0;
@@ -344,16 +342,6 @@ namespace sc
 		uint32_t size() override
 		{
 			return static_cast<uint32_t>(buffer->size() - readEofOffset);
-		};
-
-		bool eof() override
-		{
-			return size() <= tell() - readEofOffset;
-		};
-
-		void setEof(uint32_t pos) override
-		{
-			readEofOffset = pos;
 		};
 
 		void close() override

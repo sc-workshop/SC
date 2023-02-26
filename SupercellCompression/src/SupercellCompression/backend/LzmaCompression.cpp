@@ -115,6 +115,7 @@ namespace sc
 		CLzmaEncHandle enc;
 		SRes res;
 		CLzmaEncProps props;
+		inStream.set(0);
 
 		enc = LzmaEnc_Create(&g_Alloc);
 		if (enc == 0)
@@ -141,7 +142,9 @@ namespace sc
 
 			outStream.write(&header, headerSize);
 
-			outStream.writeUInt32(static_cast<uint32_t>(inStream.size()));
+			auto outStreamSize = static_cast<uint32_t>(inStream.size());
+
+			outStream.writeUInt32(outStreamSize);
 
 			// Read stream wrap
 			CSeqInStreamWrap inWrap = {};

@@ -1,11 +1,13 @@
 #pragma once
 
 #include "SupercellFlash/common/DisplayObject.h"
-
 #include "SupercellFlash/tag/ShapeDrawBitmapCommand.h"
 
 namespace sc
 {
+	class SupercellSWF;
+	class SWFStream;
+
 	class Shape : public DisplayObject
 	{
 	public:

@@ -11,12 +11,13 @@
 #include "SupercellCompression/backend/LzhamCompression.h"
 
 #include "SupercellCompression/common/ByteStream.hpp"
+#include "SupercellCompression/common/md5.h"
 
 constexpr uint32_t ID_SIZE = 16;
 
 namespace sc
 {
-	CompressorError Compressor::compress(const std::string& inputFilepath, std::string outFilepath, CompressionSignature signature)
+	CompressorError Compressor::compress(const std::string& inputFilepath, const std::string& outFilepath, CompressionSignature signature)
 	{
 		if (!Utils::fileExist(inputFilepath))
 		{
@@ -45,57 +46,58 @@ namespace sc
 	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressionSignature signature)
 	{
 		CompressedSwfProps header;
-		header.id = std::vector<uint8_t>(ID_SIZE);
 
-		srand(static_cast<uint32_t>(time(NULL)));
-		for (uint32_t i = 0; ID_SIZE > i; i++)
-		{
-			header.id[i] = 1 + (rand() % 253);
+		Chocobo1::MD5 md5;
+
+		uint32_t buffSize = 0x7D000; // 512 kb 
+
+		void* buff = malloc(buffSize);
+
+		while (const size_t readSize = inStream.read(buff, buffSize)) {
+			md5.addData(buff, readSize);
 		}
 
-		header.signature = (uint32_t)signature;
+		md5.finalize();
+
+		free(buff);
+
+		header.id = md5.toVector();
+		header.signature = signature;
 
 		return compress(inStream, outStream, header);
 	}
 
 	CompressorError Compressor::compress(BinaryStream& inStream, BinaryStream& outStream, CompressedSwfProps& header)
 	{
-		uint16_t scMagic = 0x5343;
-		uint32_t signMagic = 0x3A676953;
+		const uint16_t scMagic = 0x5343;
 
-		if (header.sign.size() == 64) {
-			outStream.writeUInt32BE(signMagic);
-			outStream.write(header.sign.data(), 64);
+		outStream.writeUInt16BE(scMagic);
+		if (!header.metadata.empty())
+		{
+			outStream.writeUInt32BE(4);
+			outStream.writeUInt32BE((uint32_t)header.signature);
 		}
-		else if (!header.id.empty()) {
-			outStream.writeUInt16BE(scMagic);
-			if (!header.metadata.empty())
+		else
+		{
+			if (header.signature == CompressionSignature::LZMA ||
+				header.signature == CompressionSignature::LZHAM)
 			{
-				outStream.writeUInt32BE(4);
-				outStream.writeUInt32BE(header.signature);
+				outStream.writeUInt32BE(1);
+			}
+			else if (header.signature == CompressionSignature::ZSTD)
+			{
+				outStream.writeUInt32BE(3);
 			}
 			else
 			{
-				if (header.signature == (uint32_t)CompressionSignature::LZMA ||
-					header.signature == (uint32_t)CompressionSignature::LZHAM)
-				{
-					outStream.writeUInt32BE(1);
-				}
-				else if (header.signature == (uint32_t)CompressionSignature::ZSTD)
-				{
-					outStream.writeUInt32BE(3);
-				}
-				else
-				{
-					outStream.writeUInt32BE(2);
-				}
+				outStream.writeUInt32BE(2);
 			}
-
-			outStream.writeUInt32BE(static_cast<uint32_t>(header.id.size()));
-			outStream.write(header.id.data(), header.id.size());
 		}
 
-		CompressorError res = commonCompress(inStream, outStream, static_cast<CompressionSignature>(header.signature));
+		outStream.writeUInt32BE(static_cast<uint32_t>(header.id.size()));
+		outStream.write(header.id.data(), header.id.size());
+
+		CompressorError res = commonCompress(inStream, outStream, header.signature);
 
 		if (!header.metadata.empty())
 		{

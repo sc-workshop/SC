@@ -1,16 +1,18 @@
 #pragma once
 
-#include "SupercellFlash/SupercellSWF.h"
 #include "SupercellFlash/common/DisplayObject.h"
+#include <SupercellFlash/common/TagMap.h>
 
 namespace sc
 {
+	class SupercellSWF;
+
 	class MovieClipModifier : public DisplayObject
 	{
 	public:
 		enum class Type : uint8_t
 		{
-			Mask = 38,
+			Mask = TAG_MOVIE_CLIP_MODIFIER,
 			Masked,
 			Unmasked,
 		};

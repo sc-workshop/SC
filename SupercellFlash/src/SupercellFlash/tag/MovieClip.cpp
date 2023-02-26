@@ -6,51 +6,51 @@ namespace sc
 {
 	void MovieClip::load(SupercellSWF* swf, uint8_t tag)
 	{
-		m_id = swf->readUnsignedShort();
-		m_frameRate = swf->readUnsignedByte();
+		m_id = swf->stream.readUnsignedShort();
+		m_frameRate = swf->stream.readUnsignedByte();
 
-		uint16_t framesCount = swf->readUnsignedShort();
+		uint16_t framesCount = swf->stream.readUnsignedShort();
 		frames = std::vector<MovieClipFrame>(framesCount);
 
-		if (tag == 3 || tag == 14)
+		if (tag == TAG_MOVIE_CLIP || tag == TAG_MOVIE_CLIP_4)
 			throw std::runtime_error("TAG_MOVIE_CLIP and TAG_MOVIE_CLIP_4 is unsupported");
 
-		int32_t frameElementsCount = swf->readInt();
+		int32_t frameElementsCount = swf->stream.readInt();
 		frameElements = std::vector<MovieClipFrameElement>(frameElementsCount);
 
 		for (int32_t i = 0; i < frameElementsCount; i++)
 		{
-			frameElements[i].instanceIndex = swf->readUnsignedShort();
-			frameElements[i].matrixIndex = swf->readUnsignedShort();
-			frameElements[i].colorTransformIndex = swf->readUnsignedShort();
+			frameElements[i].instanceIndex = swf->stream.readUnsignedShort();
+			frameElements[i].matrixIndex = swf->stream.readUnsignedShort();
+			frameElements[i].colorTransformIndex = swf->stream.readUnsignedShort();
 		}
 
-		uint16_t instancesCount = swf->readUnsignedShort();
+		uint16_t instancesCount = swf->stream.readUnsignedShort();
 		instances = std::vector<DisplayObjectInstance>(instancesCount);
 
 		for (int16_t i = 0; i < instancesCount; i++)
 		{
-			instances[i].id = swf->readUnsignedShort();
+			instances[i].id = swf->stream.readUnsignedShort();
 		}
 
-		if (tag == 12 || tag == 35)
+		if (tag == TAG_MOVIE_CLIP_3 || tag == TAG_MOVIE_CLIP_5)
 		{
 			for (int16_t i = 0; i < instancesCount; i++)
 			{
-				instances[i].blend = swf->readUnsignedByte();
+				instances[i].blend = swf->stream.readUnsignedByte();
 			}
 		}
 
 		for (int16_t i = 0; i < instancesCount; i++)
 		{
-			instances[i].name = swf->readAscii();
+			instances[i].name = swf->stream.readAscii();
 		}
 
 		uint16_t framesLoaded = 0;
 		while (true)
 		{
-			uint8_t frameTag = swf->readUnsignedByte();
-			int32_t frameTagLength = swf->readInt();
+			uint8_t frameTag = swf->stream.readUnsignedByte();
+			int32_t frameTagLength = swf->stream.readInt();
 
 			if (frameTagLength < 0)
 				throw std::runtime_error("Negative frame tag length in .sc file");
@@ -60,25 +60,25 @@ namespace sc
 
 			switch (frameTag)
 			{
-			case 11:
+			case TAG_MOVIE_CLIP_FRAME_2:
 				frames[framesLoaded].load(swf);
 				framesLoaded++;
 				break;
 
-			case 31:
+			case TAG_SCALING_GRID:
 				m_scalingGrid = new ScalingGrid();
-				m_scalingGrid->x = swf->readTwip();
-				m_scalingGrid->y = swf->readTwip();
-				m_scalingGrid->width = swf->readTwip();
-				m_scalingGrid->height = swf->readTwip();
+				m_scalingGrid->x = swf->stream.readTwip();
+				m_scalingGrid->y = swf->stream.readTwip();
+				m_scalingGrid->width = swf->stream.readTwip();
+				m_scalingGrid->height = swf->stream.readTwip();
 				break;
 
-			case 41:
-				m_matrixBankIndex = swf->readUnsignedByte();
+			case TAG_MATRIX_BANK_INDEX:
+				m_matrixBankIndex = swf->stream.readUnsignedByte();
 				break;
 
 			default:
-				swf->skip(frameTagLength);
+				swf->stream.skip(frameTagLength);
 				break;
 			}
 		}
@@ -86,69 +86,61 @@ namespace sc
 
 	void MovieClip::save(SupercellSWF* swf)
 	{
-		std::vector<uint8_t> tagBuffer;
-		BufferStream tagStream(&tagBuffer);
+		uint32_t pos = swf->stream.initTag();
 
-		tagStream.writeUInt16(m_id);
-		tagStream.writeUInt8(m_frameRate);
-		tagStream.writeUInt16(frames.size());
+		int16_t instancesCount = static_cast<int16_t>(instances.size());
+		uint16_t frameCount = instancesCount != 0 ? static_cast<uint16_t>(frames.size()) : 0;
+		int32_t frameElementsCount = frameCount != 0 ? static_cast<int32_t>(frameElements.size()) : 0;
+		
+		swf->stream.writeUnsignedShort(m_id);
+		swf->stream.writeUnsignedByte(m_frameRate);
+		swf->stream.writeUnsignedShort(frameCount);
 
-		uint8_t tag = 12; // idk how to add tag 35 support bcs we don't know difference between them
+		uint8_t tag = TAG_MOVIE_CLIP_3; // idk how to add tag 35 support bcs we don't know difference between them
 
-		tagStream.writeInt32(frameElements.size());
-		for (MovieClipFrameElement element : frameElements)
-		{
-			tagStream.writeUInt16(element.instanceIndex);
-			tagStream.writeUInt16(element.matrixIndex);
-			tagStream.writeUInt16(element.colorTransformIndex);
+		swf->stream.writeInt(frameElementsCount);
+		for (int32_t i = 0; frameElementsCount > i; i++) {
+			swf->stream.writeUnsignedShort(frameElements[i].instanceIndex);
+			swf->stream.writeUnsignedShort(frameElements[i].matrixIndex);
+			swf->stream.writeUnsignedShort(frameElements[i].colorTransformIndex);
 		}
 
-		tagStream.writeInt16(instances.size());
+		swf->stream.writeShort(instancesCount);
 
-		for (DisplayObjectInstance instance : instances)
-		{
-			tagStream.writeUInt16(instance.id);
+		for (int16_t i = 0; instancesCount > i; i++) {
+			swf->stream.writeUnsignedShort(instances[i].id); // Ids
 		}
 
-		for (DisplayObjectInstance instance : instances)
-		{
-			tagStream.writeUInt8(instance.blend);
+		for (int16_t i = 0; instancesCount > i; i++) {
+			swf->stream.writeUnsignedByte(instances[i].blend); //Blend modes. TODO: move to enum
 		}
 
-		for (DisplayObjectInstance instance : instances)
-		{
-			tagStream.writeUInt8(instance.name.length());
-
-			// FIXME: I think we should rework some methods in ByteStream
-			const char* c_instanceName = instance.name.c_str();
-			tagStream.write(&c_instanceName, instance.name.length());
+		for (int16_t i = 0; instancesCount > i; i++) {
+			swf->stream.writeAscii(instances[i].name); // Bind name
 		}
 
-		for (MovieClipFrame frame : frames)
-		{
-			frame.save(tagStream);
+		for (uint16_t i = 0; frameCount > i; i++) {
+			frames[i].save(swf); // Frames
 		}
 
 		if (m_scalingGrid)
 		{
-			tagStream.writeUInt8(31);
-			tagStream.writeInt32(16);
+			swf->stream.writeUnsignedByte(TAG_SCALING_GRID);
+			swf->stream.writeInt(16);
 
-			tagStream.writeInt32((int32_t)(m_scalingGrid->x * 20.0f));
-			tagStream.writeInt32((int32_t)(m_scalingGrid->y * 20.0f));
-			tagStream.writeInt32((int32_t)(m_scalingGrid->width * 20.0f));
-			tagStream.writeInt32((int32_t)(m_scalingGrid->height * 20.0f));
+			swf->stream.writeTwip(m_scalingGrid->x);
+			swf->stream.writeTwip(m_scalingGrid->y);
+			swf->stream.writeTwip(m_scalingGrid->width);
+			swf->stream.writeTwip(m_scalingGrid->height);
 		}
 
 		if (m_matrixBankIndex != 0)
 		{
-			tagStream.writeUInt8(41);
-			tagStream.writeInt32(1);
-			tagStream.writeUInt8(m_matrixBankIndex);
+			swf->stream.writeUnsignedByte(TAG_MATRIX_BANK_INDEX);
+			swf->stream.writeInt(1);
+			swf->stream.writeUnsignedByte(m_matrixBankIndex);
 		}
 
-		tagStream.close();
-
-		swf->writeTag(tag, tagBuffer);
+		swf->stream.finalizeTag(tag, pos);
 	}
 }

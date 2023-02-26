@@ -5,96 +5,90 @@ namespace sc
 {
 	void TextField::load(SupercellSWF* swf, uint8_t tag)
 	{
-		m_id = swf->readUnsignedShort();
+		m_id = swf->stream.readUnsignedShort();
 
-		m_fontName = swf->readFontName();
-		m_fontColor = swf->readInt();
+		m_fontName = swf->stream.readAscii();
+		m_fontColor = swf->stream.readInt();
 
-		m_isBold = swf->readBool();
-		m_isItalic = swf->readBool();
-		m_isMultiline = swf->readBool();
-		swf->readBool(); // unused
+		m_isBold = swf->stream.readBool();
+		m_isItalic = swf->stream.readBool();
+		m_isMultiline = swf->stream.readBool();
+		swf->stream.readBool(); // unused
 
-		m_fontAlign = swf->readUnsignedByte();
-		m_fontSize = swf->readUnsignedByte();
+		m_fontAlign = swf->stream.readUnsignedByte();
+		m_fontSize = swf->stream.readUnsignedByte();
 
-		m_left = swf->readShort();
-		m_top = swf->readShort();
-		m_right = swf->readShort();
-		m_bottom = swf->readShort();
+		m_left = swf->stream.readShort();
+		m_top = swf->stream.readShort();
+		m_right = swf->stream.readShort();
+		m_bottom = swf->stream.readShort();
 
-		m_isOutlined = swf->readBool();
+		m_isOutlined = swf->stream.readBool();
 
-		m_text = swf->readAscii();
+		m_text = swf->stream.readAscii();
 
-		if (tag == 7)
+		if (tag == TAG_TEXT_FIELD)
 			return;
 
-		m_useDeviceFont = swf->readBool();
+		m_useDeviceFont = swf->stream.readBool();
 
-		if (tag > 15)
+		if (tag > TAG_TEXT_FIELD_2)
 			bool flag = (tag != 25);
 
-		if (tag > 20)
-			swf->readInt(); // outline color
+		if (tag > TAG_TEXT_FIELD_3)
+			swf->stream.readInt(); // outline color
 
-		if (tag > 25)
+		if (tag > TAG_TEXT_FIELD_5)
 		{
-			swf->readShort(); // unknown
-			swf->readShort(); // unused
+			swf->stream.readShort(); // unknown
+			swf->stream.readShort(); // unused
 		}
 
-		if (tag > 33)
-			m_bendAngle = swf->readShort() * 91.019f;
+		if (tag > TAG_TEXT_FIELD_6)
+			m_bendAngle = swf->stream.readShort() * 91.019f;
 
-		if (tag > 43)
-			m_autoAdjustFontBounds = swf->readBool();
+		if (tag > TAG_TEXT_FIELD_7)
+			m_autoAdjustFontBounds = swf->stream.readBool();
 	}
 
 	void TextField::save(SupercellSWF* swf)
 	{
 		/* Writer init */
 
-		std::vector<uint8_t> tagBuffer;
-		BufferStream tagStream(&tagBuffer);
+		uint32_t pos = swf->stream.initTag();
 
 		/* Tag processing */
 
-		uint8_t tag = 7;
+		uint8_t tag = TAG_TEXT_FIELD;
 
 		// TODO: other tags, I am too lazy again
 
 		/* Writing */
-		tagStream.writeUInt16(m_id);
+		swf->stream.writeUnsignedShort(m_id);
 
-		tagStream.writeUInt8(m_fontName.length());
+		swf->stream.writeAscii(m_fontName);
 
-		// FIXME: I think we should rework some methods in ByteStream
-		const char* c_fontName = m_fontName.c_str();
-		tagStream.write(&c_fontName, m_fontName.length());
+		swf->stream.writeInt(m_fontColor);
 
-		tagStream.writeInt32(m_fontColor);
+		swf->stream.writeBool(m_isBold);
+		swf->stream.writeBool(m_isItalic);
+		swf->stream.writeBool(m_isMultiline);
+		swf->stream.writeUnsignedByte(0); // unused
 
-		// We dont't have writeBool at ByteStream wtf
-		tagStream.writeUInt8(m_isBold);
-		tagStream.writeUInt8(m_isItalic);
-		tagStream.writeUInt8(m_isMultiline);
-		tagStream.writeUInt8(0); // unused
+		swf->stream.writeUnsignedByte(m_fontAlign);
+		swf->stream.writeUnsignedByte(m_fontSize);
 
-		tagStream.writeUInt8(m_fontAlign);
-		tagStream.writeUInt8(m_fontSize);
+		swf->stream.writeShort(m_left);
+		swf->stream.writeShort(m_top);
+		swf->stream.writeShort(m_right);
+		swf->stream.writeShort(m_bottom);
 
-		tagStream.writeInt16(m_left);
-		tagStream.writeInt16(m_top);
-		tagStream.writeInt16(m_right);
-		tagStream.writeInt16(m_bottom);
+		swf->stream.writeUnsignedByte(m_isOutlined);
 
-		tagStream.writeUInt8(m_isOutlined);
-
-		// FIXME: kill me please
-		const char* c_text = m_text.c_str();
-		tagStream.write(&c_text, m_fontName.length());
+		swf->stream.writeAscii(m_text);
 
 		// TODO: other tags
+
+		swf->stream.finalizeTag(tag, pos);
 	}
 }
