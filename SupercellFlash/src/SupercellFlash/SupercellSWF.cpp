@@ -74,7 +74,7 @@ namespace sc
 			}
 
 			if (m_useLowResTexture || m_useMultiResTexture) {
-				saveTexture(lowResFilePath.string(), true, signature); // TODO fix this
+				saveTexture(lowResFilePath.string(), true, signature);
 			}
 		}
 	}
@@ -85,6 +85,8 @@ namespace sc
 		for (SWFTexture texture : textures) {
 			texture.save(this, true, isLowres);
 		}
+
+		stream.writeTag(0);
 
 		writeFile(filepath, signature);
 		stream.close();

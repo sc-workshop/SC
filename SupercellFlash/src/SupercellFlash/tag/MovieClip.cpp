@@ -91,7 +91,7 @@ namespace sc
 		int16_t instancesCount = static_cast<int16_t>(instances.size());
 		uint16_t frameCount = instancesCount != 0 ? static_cast<uint16_t>(frames.size()) : 0;
 		int32_t frameElementsCount = frameCount != 0 ? static_cast<int32_t>(frameElements.size()) : 0;
-		
+
 		swf->stream.writeUnsignedShort(m_id);
 		swf->stream.writeUnsignedByte(m_frameRate);
 		swf->stream.writeUnsignedShort(frameCount);

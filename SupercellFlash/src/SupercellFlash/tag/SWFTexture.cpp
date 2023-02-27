@@ -118,12 +118,11 @@ namespace sc
 
 		swf->stream.writeUnsignedByte(pixelIndex());
 
-
 		if (!isLowres) {
 			swf->stream.writeUnsignedShort(m_width);
 			swf->stream.writeUnsignedShort(m_height);
 
-			if (isExternal) 
+			if (isExternal)
 				swf->stream.write(data.data(), data.size());
 		}
 		else {

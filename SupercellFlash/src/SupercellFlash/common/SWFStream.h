@@ -31,7 +31,6 @@ namespace sc {
 			return m_stream.tell();
 		}
 
-
 		void newBuffer() {
 			newBuffer(0);
 		}
@@ -80,7 +79,7 @@ namespace sc {
 		float readTwip() { return (float)readInt() * 0.05f; }
 
 		/* Write */
-			
+
 		void write(void* data, size_t size) {
 			m_stream.write(data, size);
 		}
@@ -93,7 +92,7 @@ namespace sc {
 		void writeTag(uint8_t tag, SWFStream* stream) {
 			writeTag(tag, stream->buffer());
 		}
-		
+
 		// More classic and slow way
 		void writeTag(uint8_t tag, std::vector<uint8_t>* buffer) {
 			int32_t tagSize = static_cast<int32_t>(buffer->size());
@@ -143,7 +142,7 @@ namespace sc {
 		void writeTwip(float twip) {
 			writeInt((int)(twip / 0.05f));
 		}
-		
+
 		void writeTag(uint8_t tag, int32_t size) {
 			uint32_t target = static_cast<uint32_t>(m_stream.tell() - size);
 			memcpy(m_buffer.data() + target, &tag, sizeof(tag));
@@ -159,11 +158,10 @@ namespace sc {
 		}
 
 		void finalizeTag(uint8_t tag, uint32_t position) {
-			int32_t tagSize = static_cast<int32_t>(tell() - position);
+			int32_t tagSize = static_cast<int32_t>(tell() - position - (sizeof(tag) + sizeof(position)));
 
 			memcpy(buffer()->data() + position, &tag, sizeof(tag));
 			memcpy(buffer()->data() + (position + sizeof(tag)), &tagSize, sizeof(tagSize));
 		}
-
 	};
 }
