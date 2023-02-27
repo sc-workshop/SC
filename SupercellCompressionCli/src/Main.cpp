@@ -148,9 +148,6 @@ int main(int argc, char* argv[])
 	std::chrono::time_point startTime = high_resolution_clock::now();
 
 	if (mode == "d") {
-		sc::CompressorError res;
-		
-		sc::CompressedSwfProps header;
 		FILE* inFile = fopen(inFilepath.c_str(), "rb");
 		FILE* outFile = fopen(outFilepath.c_str(), "wb");
 
@@ -162,7 +159,8 @@ int main(int argc, char* argv[])
 		sc::FileStream inStream = sc::FileStream(inFile);
 		sc::FileStream outStream = sc::FileStream(outFile);
 
-		res = sc::Decompressor::decompress(inStream, outStream, &header);
+		sc::CompressedSwfProps header;
+		sc::CompressorError res = sc::Decompressor::decompress(inStream, outStream, &header);
 
 		processFileInfo(header);
 		processCompressorErrs(res);

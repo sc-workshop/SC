@@ -3,10 +3,6 @@
 
 #include <filesystem>
 
-uint8_t someFunction(uint8_t number) {
-	return number + 1;
-}
-
 namespace sc
 {
 	SupercellSWF::SupercellSWF()
@@ -62,36 +58,36 @@ namespace sc
 		stream.newBuffer();
 		saveInternal();
 		writeFile(filepath, signature);
+		stream.close();
 
-		//bool isLowRes = m_useLowResTexture;
-		//for (SWFTexture texture : textures) {
-		//	texture.save(this, true, isLowRes);
-		//}
+		if (m_useExternalTexture) {
+			std::filesystem::path path(filepath);
+			std::filesystem::path multiResFilePath = std::filesystem::path(path.root_path()).concat(path.stem().string()).concat(m_multiResFileSuffix + "_tex.sc");
+			std::filesystem::path lowResFilePath = std::filesystem::path(path.root_path()).concat(path.stem().string()).concat(m_lowResFileSuffix + "_tex.sc");
+			std::filesystem::path externalFilePath = std::filesystem::path(path.root_path()).concat(path.stem().string()).concat("_tex.sc");
 
-		//writeFile(filepath, &textureBuffer);
+			if (m_useMultiResTexture) {
+				saveTexture(multiResFilePath.string(), false, signature);
+			}
+			else {
+				saveTexture(externalFilePath.string(), false, signature);
+			}
 
-		//m_buffer->close();
-		//m_buffer = nullptr;
-
-		//if (useExternalTexture())
-		//{
-		//	// TODO: low and high res textures
-		//
-		//	// saveTexture(externalFilePath, false);
-		//}
+			if (m_useLowResTexture || m_useMultiResTexture) {
+				saveTexture(lowResFilePath.string(), true, signature); // TODO fix this
+			}
+		}
 	}
 
-	void SupercellSWF::saveTexture(const std::string& filepath, bool isLowres) {
-		/*stream.newBuffer();
+	void SupercellSWF::saveTexture(const std::string& filepath, bool isLowres, CompressionSignature signature) {
+		stream.newBuffer();
 
 		for (SWFTexture texture : textures) {
 			texture.save(this, true, isLowres);
 		}
 
-		writeFile(filepath, &textureBuffer);
-
-		m_buffer->close();
-		m_buffer = nullptr;*/
+		writeFile(filepath, signature);
+		stream.close();
 	}
 
 	bool SupercellSWF::loadInternal(bool isTexture)

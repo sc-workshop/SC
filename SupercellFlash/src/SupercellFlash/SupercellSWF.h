@@ -56,7 +56,7 @@ namespace sc
 		void loadTexture(const std::string& filePath);
 
 		void save(const std::string& filepath, CompressionSignature signature);
-		void saveTexture(const std::string& filepath, bool isLowres);
+		void saveTexture(const std::string& filepath, bool isLowres, CompressionSignature signature);
 
 		// Getters for class members
 	public:

@@ -55,7 +55,7 @@ namespace sc
 
 		FileStream outputStream = FileStream(outFile);
 
-		CompressorError res = decompress(inputStream, outputStream, &header);
+		CompressorError res = decompress(inputStream, outputStream, header);
 
 		inputStream.close();
 		outputStream.close();
