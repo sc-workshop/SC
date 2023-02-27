@@ -31,6 +31,7 @@ namespace sc
 		bool isMultiline() { return m_isMultiline; }
 		bool isOutlined() { return m_isOutlined; }
 
+		uint32_t outlineColor() { return m_outlineColor; }
 		bool useDeviceFont() { return m_useDeviceFont; }
 		bool autoAdjustFontBounds() { return m_autoAdjustFontBounds; }
 
@@ -60,31 +61,6 @@ namespace sc
 		void autoAdjustFontBounds(bool status) { m_autoAdjustFontBounds = status; }
 
 		void bendAngle(float bend) { m_bendAngle = bend; }
-		
-		/* Getters */
-	public:
-		std::string text() { return m_text; }
-
-		std::string fontName() { return m_fontName; }
-		int32_t fontColor() { return m_fontColor; }
-		uint8_t fontSize() { return m_fontSize; }
-		uint8_t fontAlign() { return m_fontAlign; }
-
-		int16_t left() { return m_left; }
-		int16_t top() { return m_top; }
-		int16_t right() { return m_right; }
-		int16_t bottom() { return m_bottom; }
-
-		bool isBold() { return m_isBold; }
-		bool isItalic() { return m_isItalic; }
-		bool isMultiline() { return m_isMultiline; }
-		bool isOutlined() { return m_isOutlined; }
-
-		int16_t outlineColor() { return m_outlineColor; }
-		bool useDeviceFont() { return m_useDeviceFont; }
-		bool autoAdjustFontBounds() { return m_autoAdjustFontBounds; }
-
-		float bendAngle() { return m_bendAngle; }
 
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
