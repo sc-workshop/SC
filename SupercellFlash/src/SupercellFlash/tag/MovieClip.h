@@ -48,6 +48,12 @@ namespace sc
 		ScalingGrid scalingGrid() { return *m_scalingGrid; }
 		uint8_t matrixBankIndex() { return m_matrixBankIndex; }
 
+		/* Setters */
+	public:
+		void frameRate(uint8_t rate) { m_frameRate = rate; }
+		void scalingGrid(ScalingGrid* grid) { m_scalingGrid = grid; }
+		void matrixBankIndex(uint8_t index) { m_matrixBankIndex = index; }
+
 	public:
 		void load(SupercellSWF* swf, uint8_t tag);
 		void save(SupercellSWF* swf);

@@ -33,15 +33,15 @@ namespace sc
 		m_useDeviceFont = swf->stream.readBool();
 
 		if (tag > TAG_TEXT_FIELD_2)
-			bool flag = (tag != 25);
+			unknownFlag = (tag != 25);
 
 		if (tag > TAG_TEXT_FIELD_3)
-			swf->stream.readInt(); // outline color
+			m_outlineColor = swf->stream.readInt();
 
 		if (tag > TAG_TEXT_FIELD_5)
 		{
-			swf->stream.readShort(); // unknown
-			swf->stream.readShort(); // unused
+			unknown1 = swf->stream.readShort();
+			unknown2 = swf->stream.readShort();
 		}
 
 		if (tag > TAG_TEXT_FIELD_6)
