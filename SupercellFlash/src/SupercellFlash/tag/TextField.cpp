@@ -33,15 +33,15 @@ namespace sc
 		m_useDeviceFont = swf->stream.readBool();
 
 		if (tag > TAG_TEXT_FIELD_2)
-			unknownFlag = (tag != 25);
+			m_unknownFlag = (tag != 25);
 
 		if (tag > TAG_TEXT_FIELD_3)
 			m_outlineColor = swf->stream.readInt();
 
 		if (tag > TAG_TEXT_FIELD_5)
 		{
-			unknown1 = swf->stream.readShort();
-			unknown2 = swf->stream.readShort();
+			m_unknownShort = swf->stream.readShort();
+			swf->stream.readShort(); // unused
 		}
 
 		if (tag > TAG_TEXT_FIELD_6)
@@ -53,21 +53,13 @@ namespace sc
 
 	void TextField::save(SupercellSWF* swf)
 	{
-		/* Writer init */
+		uint8_t tag = TAG_TEXT_FIELD;
 
 		uint32_t pos = swf->stream.initTag();
 
-		/* Tag processing */
-
-		uint8_t tag = TAG_TEXT_FIELD;
-
-		// TODO: other tags, I am too lazy again
-
-		/* Writing */
 		swf->stream.writeUnsignedShort(m_id);
 
 		swf->stream.writeAscii(m_fontName);
-
 		swf->stream.writeInt(m_fontColor);
 
 		swf->stream.writeBool(m_isBold);
@@ -87,7 +79,45 @@ namespace sc
 
 		swf->stream.writeAscii(m_text);
 
-		// TODO: other tags
+		// I think we should add some additional fields for supporting all tags saving (TAG_TEXT_FIELD_7)
+		if (m_useDeviceFont)
+		{
+			tag = TAG_TEXT_FIELD_2;
+			swf->stream.writeBool(m_useDeviceFont);
+
+			if (m_unknownFlag)
+			{
+				tag = TAG_TEXT_FIELD_3;
+				swf->stream.finalizeTag(tag, pos);
+				return;
+			}
+
+			if ((uint32_t)m_outlineColor > 0)
+			{
+				tag = TAG_TEXT_FIELD_4;
+				swf->stream.writeInt(m_outlineColor);
+
+				if (m_unknownShort != 0)
+				{
+					tag = TAG_TEXT_FIELD_5;
+
+					swf->stream.writeShort(m_unknownShort);
+					swf->stream.writeShort(0);
+
+					if (m_bendAngle != 0)
+					{
+						tag = TAG_TEXT_FIELD_6;
+						swf->stream.writeShort((int16_t)(m_bendAngle / 91.019f));
+
+						if (m_autoAdjustFontBounds)
+						{
+							tag = TAG_TEXT_FIELD_8;
+							swf->stream.writeBool(m_autoAdjustFontBounds);
+						}
+					}
+				}
+			}
+		}
 
 		swf->stream.finalizeTag(tag, pos);
 	}

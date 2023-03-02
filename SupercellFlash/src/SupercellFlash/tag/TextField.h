@@ -90,10 +90,7 @@ namespace sc
 
 		float m_bendAngle = 0.0f;
 
-		/* Unknown values*/
-	private:
-		bool unknownFlag = false;
-		int16_t unknown1 = 0;
-		int16_t unknown2 = 0;
+		bool m_unknownFlag = false;
+		int16_t m_unknownShort = 0;
 	};
 }
