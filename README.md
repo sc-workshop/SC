@@ -1,4 +1,6 @@
-<h1 align="center"> SC </h1>
+<h1 align="center"> SC (Deprecated) </h1>
+
+This repository is deprecated. See https://github.com/scwmake for newer version of this tool.
 
 Supercell SWF (Flash) file format decompiler and compiler. Supercell's games using .sc files for almost all 2D graphics (UI, VFX, particles, characters facial animations, etc.).
 
